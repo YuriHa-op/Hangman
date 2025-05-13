@@ -4,6 +4,12 @@ Welcome to the **Hangman Game** project! This is a simple game where players try
 
 ## How to Run
 
+set up the database first using wamp and import the sql file in the database folder src/main/java/server/db
+
+then create account via admin client or phpmyadmin.
+
+admin client don't have password and username just enter enter.
+
 ### 1. Start the CORBA ORB Daemon
 
 Open a terminal and run:
@@ -40,6 +46,7 @@ Run the admin main class:
   ```bash
   java -cp target/classes client.admin.view.AdminApplication
   ```
+  admin client don't have password and username just enter enter.
   *(Or run the built JAR if available.)*
 
 ## Table of Contents
