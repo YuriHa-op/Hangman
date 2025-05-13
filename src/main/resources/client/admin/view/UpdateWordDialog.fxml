@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+
+<VBox alignment="CENTER" spacing="15.0" prefWidth="400.0" prefHeight="300.0"
+      xmlns:fx="http://javafx.com/fxml"
+      stylesheets="@word-management.css"
+      style="-fx-background-image: url('sakura.png'); -fx-background-size: cover;">
+
+    <padding>
+        <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+    </padding>
+
+    <Label text="Update Word" styleClass="dialog-title"/>
+
+    <Label fx:id="currentWordLabel" styleClass="dialog-label"/>
+    <Label text="Enter the new word:" styleClass="dialog-label"/>
+    <TextField fx:id="updatedWordField" promptText="Enter new word..." styleClass="dialog-text-field"/>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Update" onAction="#handleUpdateWord" styleClass="dialog-button"/>
+        <Button text="Cancel" onAction="#handleCancel" styleClass="dialog-button-cancel"/>
+    </HBox>
+</VBox> 

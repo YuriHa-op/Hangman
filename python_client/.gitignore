@@ -1,0 +1,11 @@
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore omniORB generated stubs
+GameModule/
+
+# Ignore virtual environments
+venv/
+.env/ 

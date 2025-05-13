@@ -1,0 +1,63 @@
+module GameModule {
+    exception AlreadyLoggedInException {
+        string message;
+    };
+
+    typedef sequence<string> StringSeq;
+
+    struct GameStateDTO {
+        string maskedWord;
+        long incorrectGuesses;
+        long currentRound;
+        long totalRounds;
+        long playerWins;
+        boolean roundOver;
+        boolean gameOver;
+        string sessionResult;
+        long remainingTime;
+        string roundWinner;
+        long finishedTime;
+    };
+
+    interface GameService {
+        boolean login(in string username, in string password)
+                    raises (AlreadyLoggedInException);
+        void logout(in string username);
+        string startGame(in string username);
+        boolean sendGuess(in string username, in char letter);
+        void finishRound(in string username, in long clientRemainingTime, in boolean guessedWord);
+        string viewLeaderboard();
+        string getMaskedWord(in string username);
+
+        // Admin
+        boolean createPlayer(in string username, in string password);
+        boolean deletePlayer(in string username);
+        boolean updatePlayerPassword(in string username, in string newPassword);
+        boolean updateSettings(in long waitingTime, in long roundTime);
+        boolean updatePlayerUsername(in string username, in string newUsername);
+        boolean updatePlayerWins(in string username, in long wins);
+        string viewPlayers();
+
+        //server
+        long getRoundTime();
+        long getWaitingTime();
+        long getRemainingTime(in string username);
+        long getIncorrectGuesses(in string username);
+        void endGameSession(in string username);
+        long getCurrentRound(in string username);
+        long getPlayerWins(in string username);
+        boolean startNewRound(in string username);
+        boolean isRoundOver(in string username);
+        boolean isGameSessionOver(in string username);
+        GameStateDTO getGameState(in string username);
+<<<<<<< HEAD
+=======
+
+        // Admin word management
+        boolean addWord(in string word);
+        boolean updateWord(in string oldWord, in string newWord);
+        boolean deleteWord(in string word);
+        StringSeq getAllWords();
+>>>>>>> main
+    };
+};

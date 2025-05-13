@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="client.player.controller.LeaderboardController"
+      spacing="15" alignment="CENTER"
+      stylesheets="@LeaderboardView.css"
+      style="-fx-background-image: url('leaderboard.png'); -fx-background-size: cover;"
+      prefWidth="600" prefHeight="500">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Leaderboard" styleClass="leaderboard-title"/>
+
+    <TextArea fx:id="leaderboardArea" editable="false" wrapText="true"
+              styleClass="leaderboard-area" prefHeight="350" prefWidth="500"/>
+
+    <Button text="Back to Menu" onAction="#handleBackToMenu" styleClass="menu-button"/>
+
+</VBox>

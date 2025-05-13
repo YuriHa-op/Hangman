@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox fx:id="root" alignment="CENTER" prefHeight="500.0" prefWidth="600.0" spacing="15.0" style="-fx-background-image: url('blou.png'); -fx-background-size: cover;" stylesheets="@GameView.css" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="client.player.controller.GameViewController">
+
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+
+    <Text fill="RED" styleClass="title-text" text="What's The Word?" />
+    <!-- Hangman Image View -->
+    <ImageView fx:id="hangmanImage" fitHeight="180" fitWidth="120" preserveRatio="true" visible="true" />
+
+    <Label fx:id="wordDisplay" styleClass="word-display" text="_ _ _ _" />
+    <Label fx:id="timerLabel" styleClass="timer-label" text="30" />
+
+    <HBox alignment="CENTER" spacing="20">
+        <Label fx:id="roundLabel" styleClass="round-label" text="Round: 0/3" />
+        <Label fx:id="scoreLabel" styleClass="score-label" text="Words Guessed: 0" />
+        <Text fx:id="statusText" styleClass="status-text" text="" />
+    </HBox>
+
+    <TextArea fx:id="gameOutput" editable="false" prefHeight="150.0" styleClass="output-area" wrapText="true" />
+
+    <!-- Screen Keyboard -->
+    <GridPane fx:id="keyboardGrid" alignment="CENTER" hgap="5" vgap="5" visible="false">
+        <padding>
+            <Insets bottom="10" left="10" right="10" top="10" />
+        </padding>
+        <!-- First row -->
+        <Button fx:id="keyQ" onAction="#handleKeyPress" styleClass="keyboard-key" text="Q" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+        <Button fx:id="keyW" onAction="#handleKeyPress" styleClass="keyboard-key" text="W" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+        <Button fx:id="keyE" onAction="#handleKeyPress" styleClass="keyboard-key" text="E" GridPane.columnIndex="2" GridPane.rowIndex="0" />
+        <Button fx:id="keyR" onAction="#handleKeyPress" styleClass="keyboard-key" text="R" GridPane.columnIndex="3" GridPane.rowIndex="0" />
+        <Button fx:id="keyT" onAction="#handleKeyPress" styleClass="keyboard-key" text="T" GridPane.columnIndex="4" GridPane.rowIndex="0" />
+        <Button fx:id="keyY" onAction="#handleKeyPress" styleClass="keyboard-key" text="Y" GridPane.columnIndex="5" GridPane.rowIndex="0" />
+        <Button fx:id="keyU" onAction="#handleKeyPress" styleClass="keyboard-key" text="U" GridPane.columnIndex="6" GridPane.rowIndex="0" />
+        <Button fx:id="keyI" onAction="#handleKeyPress" styleClass="keyboard-key" text="I" GridPane.columnIndex="7" GridPane.rowIndex="0" />
+        <Button fx:id="keyO" onAction="#handleKeyPress" styleClass="keyboard-key" text="O" GridPane.columnIndex="8" GridPane.rowIndex="0" />
+        <Button fx:id="keyP" onAction="#handleKeyPress" styleClass="keyboard-key" text="P" GridPane.columnIndex="9" GridPane.rowIndex="0" />
+        
+        <!-- Second row -->
+        <Button fx:id="keyA" onAction="#handleKeyPress" styleClass="keyboard-key" text="A" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+        <Button fx:id="keyS" onAction="#handleKeyPress" styleClass="keyboard-key" text="S" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+        <Button fx:id="keyD" onAction="#handleKeyPress" styleClass="keyboard-key" text="D" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+        <Button fx:id="keyF" onAction="#handleKeyPress" styleClass="keyboard-key" text="F" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+        <Button fx:id="keyG" onAction="#handleKeyPress" styleClass="keyboard-key" text="G" GridPane.columnIndex="4" GridPane.rowIndex="1" />
+        <Button fx:id="keyH" onAction="#handleKeyPress" styleClass="keyboard-key" text="H" GridPane.columnIndex="5" GridPane.rowIndex="1" />
+        <Button fx:id="keyJ" onAction="#handleKeyPress" styleClass="keyboard-key" text="J" GridPane.columnIndex="6" GridPane.rowIndex="1" />
+        <Button fx:id="keyK" onAction="#handleKeyPress" styleClass="keyboard-key" text="K" GridPane.columnIndex="7" GridPane.rowIndex="1" />
+        <Button fx:id="keyL" onAction="#handleKeyPress" styleClass="keyboard-key" text="L" GridPane.columnIndex="8" GridPane.rowIndex="1" />
+        
+        <!-- Third row -->
+        <Button fx:id="keyZ" onAction="#handleKeyPress" styleClass="keyboard-key" text="Z" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+        <Button fx:id="keyX" onAction="#handleKeyPress" styleClass="keyboard-key" text="X" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+        <Button fx:id="keyC" onAction="#handleKeyPress" styleClass="keyboard-key" text="C" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+        <Button fx:id="keyV" onAction="#handleKeyPress" styleClass="keyboard-key" text="V" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+        <Button fx:id="keyB" onAction="#handleKeyPress" styleClass="keyboard-key" text="B" GridPane.columnIndex="4" GridPane.rowIndex="2" />
+        <Button fx:id="keyN" onAction="#handleKeyPress" styleClass="keyboard-key" text="N" GridPane.columnIndex="5" GridPane.rowIndex="2" />
+        <Button fx:id="keyM" onAction="#handleKeyPress" styleClass="keyboard-key" text="M" GridPane.columnIndex="6" GridPane.rowIndex="2" />
+      <columnConstraints>
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+         <ColumnConstraints />
+      </columnConstraints>
+      <rowConstraints>
+         <RowConstraints />
+         <RowConstraints />
+         <RowConstraints />
+      </rowConstraints>
+    </GridPane>
+
+    <!--  Back to Menu Button -->
+    <Button fx:id="backButton" onAction="#handleBackToMenu" styleClass="menu-button" text="Back to Menu" />
+
+</VBox>
