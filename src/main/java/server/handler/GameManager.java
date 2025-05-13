@@ -118,6 +118,7 @@ public class GameManager {
     }
 
     public String startGame(String username) {
+        endGameSession(username); // Always clean up any old state first
         if (activeGames.containsKey(username)) {
             return "You are already in a game.";
         }

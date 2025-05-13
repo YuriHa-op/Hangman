@@ -1,6 +1,7 @@
 package client.player.controller;
 
-import javafx.animation.KeyFrame;
+import animatefx.animation.*;
+import javafx.animation.*;
 import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -13,10 +14,11 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import animatefx.animation.FadeInDown;
-import animatefx.animation.Tada;
-import animatefx.animation.Pulse;
-import javafx.animation.FadeTransition;
+import javafx.scene.layout.HBox;
+import javafx.scene.Node;
+import client.player.helper.ConfettiHelper;
+import javafx.scene.layout.Pane;
+import javafx.application.Platform;
 
 public class MatchFoundDialogController {
     @FXML private Label player1Name;
@@ -24,9 +26,12 @@ public class MatchFoundDialogController {
     @FXML private ImageView player1Pfp;
     @FXML private ImageView player2Pfp;
     @FXML private Label countdownLabel;
-    @FXML private VBox root;
     @FXML private Label matchTitle;
     @FXML private ImageView backgroundImage;
+    @FXML private HBox playerRow; // Add fx:id="playerRow" to the HBox in FXML
+    @FXML private Label matchVs;   // Add fx:id="matchVs" to the "vs" label in FXML
+    @FXML private StackPane root;
+
     private Timeline countdownTimeline;
     private int countdown = 5;
     private Runnable onCountdownFinished;
@@ -39,14 +44,7 @@ public class MatchFoundDialogController {
                 Image bgImg = new Image(getClass().getResourceAsStream("/client/player/view/pasobeso.png"));
                 backgroundImage.setImage(bgImg);
                 backgroundImage.setPreserveRatio(false);
-                backgroundImage.setFitWidth(500);
-                backgroundImage.setFitHeight(350);
-                backgroundImage.setOpacity(0.3);
-                // Fade-in animation for background
-                FadeTransition fade = new FadeTransition(Duration.seconds(1.2), backgroundImage);
-                fade.setFromValue(0.0);
-                fade.setToValue(0.3);
-                fade.play();
+                animateBackground();
             } catch (Exception e) {
                 System.err.println("Could not load background image for MatchFoundDialog: " + e.getMessage());
             }
@@ -61,7 +59,6 @@ public class MatchFoundDialogController {
             controller.onCountdownFinished = onCountdownFinished;
             controller.player1Name.setText(player1);
             controller.player2Name.setText(player2);
-            // Set static images (replace with your own images if desired)
             controller.player1Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream("/client/player/view/player1.png")));
             controller.player2Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream("/client/player/view/player2.png")));
             Stage dialog = new Stage();
@@ -72,9 +69,26 @@ public class MatchFoundDialogController {
             dialog.setTitle("Match Found");
             dialog.setResizable(false);
             dialog.getScene().getStylesheets().add(MatchFoundDialogController.class.getResource("/client/player/view/MatchFoundDialog.css").toExternalForm());
-            // Animate root and title (use root from loader and matchTitle from controller)
-            if (root != null) new FadeInDown(root).play();
-            if (controller.matchTitle != null) new Tada(controller.matchTitle).play();
+
+            // Fade in the dialog
+            if (root != null) controller.fadeInNode(root);
+
+            // Slide in player panels and bounce avatars
+            controller.slideAndBouncePlayers();
+
+            // Bounce "vs" label and rotate
+            controller.bounceAndRotateVs();
+
+            // Slightly rotate avatars
+            controller.rotateAvatars();
+
+            // Show confetti burst on open, but only after layout
+            Platform.runLater(() -> {
+                if (controller.root != null && controller.root.getWidth() > 0 && controller.root.getHeight() > 0) {
+                    ConfettiHelper.showConfetti(controller.root);
+                }
+            });
+
             controller.startCountdown();
             dialog.show();
         } catch (Exception e) {
@@ -84,15 +98,21 @@ public class MatchFoundDialogController {
     }
 
     private void startCountdown() {
+        countdown = 5;
         countdownLabel.setText(String.valueOf(countdown));
+        playCountdownAnimation();
         countdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             countdown--;
             if (countdown > 0) {
                 countdownLabel.setText(String.valueOf(countdown));
-                new Pulse(countdownLabel).play();
+                playCountdownAnimation();
             } else {
                 countdownLabel.setText("Go!");
-                new Pulse(countdownLabel).play();
+                playGoPulse();
+                // Show confetti only if root is valid
+                if (root != null && root.getWidth() > 0 && root.getHeight() > 0) {
+                    ConfettiHelper.showConfetti(root);
+                }
                 countdownTimeline.stop();
                 if (dialogStage != null) dialogStage.close();
                 if (onCountdownFinished != null) onCountdownFinished.run();
@@ -101,4 +121,111 @@ public class MatchFoundDialogController {
         countdownTimeline.setCycleCount(5);
         countdownTimeline.play();
     }
-} 
+
+    private void playCountdownAnimation() {
+        if (countdownLabel != null) {
+            try {
+                new ZoomIn(countdownLabel).play();
+            } catch (Exception e) {
+                // fallback: no animation
+            }
+        }
+    }
+
+    private void playGoPulse() {
+        if (countdownLabel != null) {
+            try {
+                new Pulse(countdownLabel).play();
+            } catch (Exception e) {
+                // fallback: no animation
+            }
+        }
+    }
+
+    private void fadeInNode(Node node) {
+        if (node == null) return;
+        FadeTransition ft = new FadeTransition(Duration.millis(700), node);
+        ft.setFromValue(0);
+        ft.setToValue(1);
+        ft.play();
+    }
+
+    private void slideAndBouncePlayers() {
+        if (playerRow != null && playerRow.getChildren().size() >= 3) {
+            VBox leftPanel = (VBox) playerRow.getChildren().get(0);
+            VBox rightPanel = (VBox) playerRow.getChildren().get(2);
+            try {
+                new SlideInLeft(leftPanel).play();
+                new SlideInRight(rightPanel).play();
+                ImageView leftAvatar = (ImageView) leftPanel.getChildren().get(0);
+                ImageView rightAvatar = (ImageView) rightPanel.getChildren().get(0);
+                new BounceIn(leftAvatar).play();
+                new BounceIn(rightAvatar).play();
+            } catch (Exception e) {
+                // fallback: no animation
+            }
+        }
+    }
+
+    private void bounceAndRotateVs() {
+        if (matchVs != null) {
+            try {
+                new BounceIn(matchVs).play();
+                RotateTransition rotate = new RotateTransition(Duration.seconds(1.2), matchVs);
+                rotate.setByAngle(20);
+                rotate.setAutoReverse(true);
+                rotate.setCycleCount(2);
+                rotate.play();
+            } catch (Exception e) {
+                // fallback: no animation
+            }
+        }
+    }
+
+    private void rotateAvatars() {
+        if (playerRow != null && playerRow.getChildren().size() >= 3) {
+            VBox leftPanel = (VBox) playerRow.getChildren().get(0);
+            VBox rightPanel = (VBox) playerRow.getChildren().get(2);
+            try {
+                ImageView leftAvatar = (ImageView) leftPanel.getChildren().get(0);
+                ImageView rightAvatar = (ImageView) rightPanel.getChildren().get(0);
+                RotateTransition rotateLeft = new RotateTransition(Duration.seconds(1.2), leftAvatar);
+                rotateLeft.setByAngle(-15);
+                rotateLeft.setAutoReverse(true);
+                rotateLeft.setCycleCount(2);
+                rotateLeft.play();
+                RotateTransition rotateRight = new RotateTransition(Duration.seconds(1.2), rightAvatar);
+                rotateRight.setByAngle(15);
+                rotateRight.setAutoReverse(true);
+                rotateRight.setCycleCount(2);
+                rotateRight.play();
+            } catch (Exception e) {
+                // fallback: no animation
+            }
+        }
+    }
+
+    private void animateBackground() {
+        if (backgroundImage != null) {
+            try {
+                ScaleTransition scale = new ScaleTransition(Duration.seconds(4), backgroundImage);
+                scale.setFromX(1.0);
+                scale.setFromY(1.0);
+                scale.setToX(1.05);
+                scale.setToY(1.05);
+                scale.setAutoReverse(true);
+                scale.setCycleCount(Animation.INDEFINITE);
+                scale.play();
+
+                FadeTransition fade = new FadeTransition(Duration.seconds(4), backgroundImage);
+                fade.setFromValue(0.85);
+                fade.setToValue(1.0);
+                fade.setAutoReverse(true);
+                fade.setCycleCount(Animation.INDEFINITE);
+                fade.play();
+            } catch (Exception e) {
+                // fallback: no animation
+            }
+        }
+    }
+}

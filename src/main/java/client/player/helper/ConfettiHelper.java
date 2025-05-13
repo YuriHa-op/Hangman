@@ -9,11 +9,12 @@ import java.util.Random;
 
 public class ConfettiHelper {
     public static void showConfetti(Pane parent) {
+        if (parent == null || parent.getWidth() <= 0 || parent.getHeight() <= 0) return;
         Pane confettiPane = new Pane();
         confettiPane.setPickOnBounds(false);
         parent.getChildren().add(confettiPane);
         confettiPane.toFront();
-        int confettiCount = 80;
+        int confettiCount = 100;
         Random random = new Random();
         double centerX = parent.getWidth() / 2.0;
         double centerY = parent.getHeight() / 2.0;

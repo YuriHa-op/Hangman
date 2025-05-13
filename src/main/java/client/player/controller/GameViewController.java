@@ -75,6 +75,7 @@ public class GameViewController implements GameModel.MatchListener {
     @FXML
     private StackPane root;
     private int lastPlayerWins = 0; // Track previous playerWins for confetti trigger
+    private boolean nextRoundStarted = false;
 
     public void setStage(Stage stage) {
         this.stage = stage;
@@ -150,9 +151,11 @@ public class GameViewController implements GameModel.MatchListener {
     }
 
     public void startNewGame() {
+        if (gameStatePoller != null) gameStatePoller.stop();
         gameOverDialogShown = false;
         timeUpHandled = false;
         lastRoundWinnerShown = -1;
+        nextRoundStarted = false;
         resetUI();
         resetKeyboard();
         gameOutput.clear();
@@ -181,6 +184,7 @@ public class GameViewController implements GameModel.MatchListener {
     public void resumeGame() {
         resetUI();
         timeUpHandled = false;
+        nextRoundStarted = false;
         GameStateDTO state = model.getGameState();
         wordDisplay.setText(state.maskedWord);
         updateHangmanImage(state.incorrectGuesses);
@@ -212,8 +216,9 @@ public class GameViewController implements GameModel.MatchListener {
                 clickedButton.getStyleClass().add("incorrect");
             }
             clickedButton.setDisable(true);
-            updateUI();
             GameStateDTO newState = model.getGameState();
+            updateHangmanImage(newState.incorrectGuesses);
+            updateUI();
             // If the round is over after this guess, call finishRound if not already called
             if (newState.roundOver && !timeUpHandled) {
                 boolean guessedWord = !newState.maskedWord.contains("_");
@@ -376,9 +381,11 @@ public class GameViewController implements GameModel.MatchListener {
             gameTimerHelper.stopRoundTimer();
             gameTimerHelper = null;
         }
+        if (gameStatePoller != null) gameStatePoller.stop();
         gameOverDialogShown = false;
         timeUpHandled = false;
         lastRoundWinnerShown = -1;
+        nextRoundStarted = false;
         resetUI();
         if (onBackToMenu != null) {
             onBackToMenu.run();
@@ -414,6 +421,7 @@ public class GameViewController implements GameModel.MatchListener {
                 ("WIN".equals(state.sessionResult) || "LOSE".equals(state.sessionResult))) {
             if (!gameOverDialogShown) {
                 gameOverDialogShown = true;
+                if (gameStatePoller != null) gameStatePoller.stop();
                 if ("WIN".equals(state.sessionResult)) {
                     javafx.application.Platform.runLater(() -> GameViewHelper.showWinCelebration(stage, state.maskedWord, "You won the game!", () -> {
                         // Reset game session on server only after dialog
@@ -472,14 +480,15 @@ public class GameViewController implements GameModel.MatchListener {
             gameOutput.appendText("\nNo one won this round.\n");
         }
         // Automatically start the next round if round is over and game is not over
-        if (state.roundOver && !state.gameOver && (state.sessionResult == null || "ONGOING".equals(state.sessionResult))) {
-            // Animate transition before updating UI for new round
+        if (state.roundOver && !state.gameOver && (state.sessionResult == null || "ONGOING".equals(state.sessionResult)) && !nextRoundStarted) {
+            nextRoundStarted = true;
             if (root != null) {
                 System.out.println("[DEBUG] Starting next round transition animation");
                 FadeOut fadeOut = new FadeOut(root);
                 fadeOut.setOnFinished(e -> {
                     boolean started = model.getGameService().startNewRound(model.getUsername());
                     if (started) {
+                        nextRoundStarted = false; // Allow next round transition for the new round
                         GameStateDTO newState = model.getGameState();
                         wordDisplay.setText(newState.maskedWord);
                         updateHangmanImage(newState.incorrectGuesses);

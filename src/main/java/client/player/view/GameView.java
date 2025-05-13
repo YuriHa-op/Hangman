@@ -54,6 +54,18 @@ public class GameView {
             stage.setMinHeight(900);
             stage.setWidth(900);
             stage.setHeight(950);
+
+            // Add window close handler for forced cleanup
+            stage.setOnCloseRequest(event -> {
+                try {
+                    controller.handleBackToMenu();
+                    if (gameService != null && username != null) {
+                        gameService.endGameSession(username);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error cleaning up on window close: " + e.getMessage());
+                }
+            });
         } catch (Exception e) {
             System.err.println("Error loading GameView: " + e.getMessage());
             e.printStackTrace();
