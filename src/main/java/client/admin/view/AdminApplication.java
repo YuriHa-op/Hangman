@@ -37,11 +37,7 @@ public class AdminApplication extends Application {
         try {
             // Initialize ORB
             Properties props = new Properties();
-<<<<<<< HEAD
             props.put("org.omg.CORBA.ORBInitialHost", "localhost");
-=======
-            props.put("org.omg.CORBA.ORBInitialHost", "192.168.254.125");
->>>>>>> main
             props.put("org.omg.CORBA.ORBInitialPort", "900");
 
             String[] args = {};

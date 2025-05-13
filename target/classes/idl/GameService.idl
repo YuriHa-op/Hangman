@@ -50,14 +50,12 @@ module GameModule {
         boolean isRoundOver(in string username);
         boolean isGameSessionOver(in string username);
         GameStateDTO getGameState(in string username);
-<<<<<<< HEAD
-=======
 
         // Admin word management
         boolean addWord(in string word);
         boolean updateWord(in string oldWord, in string newWord);
         boolean deleteWord(in string word);
         StringSeq getAllWords();
->>>>>>> main
+
     };
 };

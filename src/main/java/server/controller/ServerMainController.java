@@ -40,10 +40,7 @@ public class ServerMainController {
     }
 
     public void initialize() {
-<<<<<<< HEAD
-=======
         // Do not create a new ServerMain here
->>>>>>> main
         // Set up periodic stats update
         statsTimer = new Timer(true);
         statsTimer.scheduleAtFixedRate(new TimerTask() {

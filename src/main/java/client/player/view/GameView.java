@@ -48,13 +48,10 @@ public class GameView {
             Scene scene = new Scene(root);
             stage.setScene(scene);
             stage.setTitle("What's The Word - Game");
-<<<<<<< HEAD
             stage.setResizable(false);
-=======
             stage.setResizable(true);
             stage.setMinWidth(850);
             stage.setMinHeight(900);
->>>>>>> main
             stage.setWidth(900);
             stage.setHeight(950);
         } catch (Exception e) {

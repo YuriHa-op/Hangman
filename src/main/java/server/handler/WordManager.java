@@ -24,8 +24,7 @@ public class WordManager {
     public List<String> getWords() {
         return words;
     }
-<<<<<<< HEAD
-=======
+
 
     public synchronized boolean addWord(String word) {
         if (word == null || word.trim().isEmpty()) return false;
@@ -77,5 +76,5 @@ public class WordManager {
         }
         return true;
     }
->>>>>>> main
+
 } 

@@ -12,11 +12,8 @@ public class Main extends Application {
  @Override
  public void start(Stage primaryStage) {
      // Default CORBA params
-<<<<<<< HEAD
+
      String host = "localhost";
-=======
-     String host = "192.168.254.125";
->>>>>>> main
      String port = "900";
 
      // Parse command line args

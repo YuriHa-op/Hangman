@@ -40,11 +40,7 @@ public class SystemStatisticsController {
     private SystemSettings currentSettings;
 
     // Database connection constants
-<<<<<<< HEAD
     private static final String DB_URL = "jdbc:mysql://localhost:3306/game";
-=======
-    private static final String DB_URL = "jdbc:mysql://192.168.254.125:3306/game";
->>>>>>> main
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "";
 

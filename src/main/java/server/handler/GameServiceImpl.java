@@ -193,8 +193,6 @@ public class GameServiceImpl extends GameServicePOA {
     public void finishRound(String username, int clientRemainingTime, boolean guessedWord) {
         gameManager.finishRound(username, (long)clientRemainingTime, guessedWord);
     }
-<<<<<<< HEAD
-=======
 
     @Override
     public boolean addWord(String word) {
@@ -216,5 +214,5 @@ public class GameServiceImpl extends GameServicePOA {
         List<String> words = wordManager.getWords();
         return words.toArray(new String[0]);
     }
->>>>>>> main
+
 }

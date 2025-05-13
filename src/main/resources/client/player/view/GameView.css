@@ -78,12 +78,6 @@
     -fx-font-family: 'Minecraftia';
     -fx-font-size: 14px;
     -fx-text-fill: #ff0000;
-<<<<<<< HEAD
-    -fx-background-color: rgba(0, 0, 0, 0.7); /* darker for better contrast */
-    -fx-border-color: #5e5e5e;
-    -fx-border-width: 2px;
-    -fx-padding: 10px;
-=======
     -fx-background-color: #444444;
     -fx-border-color: #42bd97;
     -fx-border-width: 2px;
@@ -92,7 +86,7 @@
     -fx-padding: 10px;
     -fx-effect: dropshadow(gaussian, #222, 8, 0.2, 0, 2);
     -fx-focus-color: #42bd97;
->>>>>>> main
+
 }
 
 .timer-label {

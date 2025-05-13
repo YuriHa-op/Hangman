@@ -8,11 +8,7 @@ public class LoginModel {
     private GameService gameService;
 
     public LoginModel() {
-<<<<<<< HEAD
         this("localhost", "900");
-=======
-        this("192.168.254.125", "900");
->>>>>>> main
     }
 
     public LoginModel(String host, String port) {

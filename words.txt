@@ -4,7 +4,5 @@ byron
 franz
 blood
 strike
-<<<<<<< HEAD
-=======
 itlog
->>>>>>> main
+

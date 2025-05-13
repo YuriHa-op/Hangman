@@ -11,10 +11,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
-<<<<<<< HEAD
-=======
 import javafx.scene.layout.StackPane;
->>>>>>> main
 import javafx.stage.Stage;
 import javafx.scene.image.Image;
 import javafx.event.ActionEvent;
@@ -30,13 +27,10 @@ import animatefx.animation.Pulse;
 import animatefx.animation.FadeInDown;
 import animatefx.animation.Tada;
 import client.player.controller.MatchFoundDialogController;
-<<<<<<< HEAD
-=======
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Rectangle;
 import java.util.Random;
 import client.player.helper.ConfettiHelper;
->>>>>>> main
 
 public class GameViewController implements GameModel.MatchListener {
     private String username;
@@ -79,12 +73,8 @@ public class GameViewController implements GameModel.MatchListener {
     private boolean timeUpHandled = false;
     private int lastRoundWinnerShown = -1;
     @FXML
-<<<<<<< HEAD
-    private VBox root;
-=======
     private StackPane root;
     private int lastPlayerWins = 0; // Track previous playerWins for confetti trigger
->>>>>>> main
 
     public void setStage(Stage stage) {
         this.stage = stage;
@@ -160,15 +150,6 @@ public class GameViewController implements GameModel.MatchListener {
     }
 
     public void startNewGame() {
-<<<<<<< HEAD
-        if (model == null || gameService == null) {
-            System.err.println("Error: Model or GameService is null");
-            return;
-        }
-        // Reset dialog and round state for new session
-=======
-
->>>>>>> main
         gameOverDialogShown = false;
         timeUpHandled = false;
         lastRoundWinnerShown = -1;
@@ -204,7 +185,10 @@ public class GameViewController implements GameModel.MatchListener {
         wordDisplay.setText(state.maskedWord);
         updateHangmanImage(state.incorrectGuesses);
         keyboardGrid.setVisible(true);
-        if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
+        if (gameTimerHelper != null) {
+            gameTimerHelper.stopRoundTimer();
+            gameTimerHelper = null;
+        }
         gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
         gameTimerHelper.startRoundTimer(gameService.getRoundTime(), state.remainingTime);
     }
@@ -257,7 +241,10 @@ public class GameViewController implements GameModel.MatchListener {
             if (maskedWord != null) {
                 wordDisplay.setText(maskedWord);
                 updateHangmanImage(0);
-                if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
+                if (gameTimerHelper != null) {
+                    gameTimerHelper.stopRoundTimer();
+                    gameTimerHelper = null;
+                }
                 GameStateDTO state = model.getGameState();
                 // Try to infer opponent's username from the model or state
                 String opponent = null;
@@ -336,16 +323,11 @@ public class GameViewController implements GameModel.MatchListener {
 
     private void handleGameOver(GameStateDTO state) {
         keyboardGrid.setVisible(false);
-<<<<<<< HEAD
-        String result = state.sessionResult != null ? state.sessionResult : (state.playerWins > state.totalRounds / 2 ? "You won!" : "You lost!");
-        gameOutput.appendText("\nGame Over! " + result + "\n");
-=======
         // Only show Game Over message if sessionResult is WIN or LOSE
         if (state.sessionResult != null && ("WIN".equals(state.sessionResult) || "LOSE".equals(state.sessionResult))) {
             String result = state.sessionResult;
             gameOutput.appendText("\nGame Over! " + result + "\n");
         }
->>>>>>> main
         // pollGameSessionResult() call removed as it is no longer needed
     }
 
@@ -379,7 +361,10 @@ public class GameViewController implements GameModel.MatchListener {
         GameStateDTO state = model.getGameState();
         if (!state.gameOver && state.maskedWord != null && !state.maskedWord.isEmpty() && !state.maskedWord.equals("WAITING_FOR_MATCH")) {
             keyboardGrid.setVisible(true);
-            if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
+            if (gameTimerHelper != null) {
+                gameTimerHelper.stopRoundTimer();
+                gameTimerHelper = null;
+            }
             gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
             gameTimerHelper.startRoundTimer(gameService.getRoundTime(), state.remainingTime);
         }
@@ -387,7 +372,10 @@ public class GameViewController implements GameModel.MatchListener {
 
     public void handleBackToMenu() {
         // Only reset local state, not server session (unless triggered from dialog)
-        if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
+        if (gameTimerHelper != null) {
+            gameTimerHelper.stopRoundTimer();
+            gameTimerHelper = null;
+        }
         gameOverDialogShown = false;
         timeUpHandled = false;
         lastRoundWinnerShown = -1;
@@ -411,7 +399,10 @@ public class GameViewController implements GameModel.MatchListener {
         if (state.maskedWord == null || "WAITING_FOR_MATCH".equals(state.maskedWord)) {
             keyboardGrid.setVisible(false);
             timerLabel.setText("");
-            if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
+            if (gameTimerHelper != null) {
+                gameTimerHelper.stopRoundTimer();
+                gameTimerHelper = null;
+            }
             return;
         }
        
@@ -446,18 +437,18 @@ public class GameViewController implements GameModel.MatchListener {
         }
         // Stop timer as soon as the round is over and not game over
         if (state.roundOver && !state.gameOver) {
-            if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
+            if (gameTimerHelper != null) {
+                gameTimerHelper.stopRoundTimer();
+                gameTimerHelper = null;
+            }
         }
         // Always update score label to reflect latest value from server
         scoreLabel.setText("Words Guessed: " + state.playerWins);
-<<<<<<< HEAD
-=======
         // Confetti animation: trigger if playerWins increased (and not game over)
         if (!state.gameOver && state.playerWins > lastPlayerWins) {
             ConfettiHelper.showConfetti(root);
         }
         lastPlayerWins = state.playerWins;
->>>>>>> main
         // Show round winner if round is over, both players finished, and not game over
         if (state.roundOver && !state.gameOver && state.roundWinner != null && !state.roundWinner.isEmpty()) {
             int roundNum = state.currentRound;
@@ -497,7 +488,10 @@ public class GameViewController implements GameModel.MatchListener {
                         timerLabel.setText(String.valueOf(gameService.getRoundTime()));
                         resetKeyboard();
                         keyboardGrid.setVisible(true);
-                        if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
+                        if (gameTimerHelper != null) {
+                            gameTimerHelper.stopRoundTimer();
+                            gameTimerHelper = null;
+                        }
                         gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
                         System.out.println("[DEBUG] Starting new round timer");
                         gameTimerHelper.startRoundTimer(gameService.getRoundTime(), gameService.getRoundTime());
@@ -505,25 +499,6 @@ public class GameViewController implements GameModel.MatchListener {
                     }
                 });
                 fadeOut.play();
-<<<<<<< HEAD
-            } else {
-                boolean started = model.getGameService().startNewRound(model.getUsername());
-                if (started) {
-                    GameStateDTO newState = model.getGameState();
-                    wordDisplay.setText(newState.maskedWord);
-                    updateHangmanImage(newState.incorrectGuesses);
-                    roundLabel.setText("Round: " + (newState.currentRound + 1));
-                    scoreLabel.setText("Words Guessed: " + newState.playerWins);
-                    timerLabel.setText(String.valueOf(gameService.getRoundTime()));
-                    resetKeyboard();
-                    keyboardGrid.setVisible(true);
-                    if (gameTimerHelper != null) gameTimerHelper.stopRoundTimer();
-                    gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
-                    System.out.println("[DEBUG] Starting new round timer (no animation)");
-                    gameTimerHelper.startRoundTimer(gameService.getRoundTime(), gameService.getRoundTime());
-                }
-=======
->>>>>>> main
             }
         }
     }

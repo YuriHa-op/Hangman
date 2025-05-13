@@ -44,27 +44,14 @@ public class AdminViewController {
         this.onLogout = onLogout;
     }
 
-<<<<<<< HEAD
-    private void initializeViews() {
-        if (gameService != null) {
-            wordManagementView = new WordManagementView(this::appendToOutput);
-            wordManagementView.initialize();
-            playerManagementView = new PlayerManagementView(gameService, this::appendToOutput);
-        } else {
-            appendToOutput("Error: Game service is not initialized");
-        }
+private void initializeViews() {
+    if (gameService != null) {
+        wordManagementView = new WordManagementView(gameService, this::appendToOutput);
+        playerManagementView = new PlayerManagementView(gameService, this::appendToOutput);
+    } else {
+        appendToOutput("Error: Game service is not initialized");
     }
-=======
-  private void initializeViews() {
-      if (gameService != null) {
-          wordManagementView = new WordManagementView(gameService, this::appendToOutput);
-          wordManagementView.initialize();
-          playerManagementView = new PlayerManagementView(gameService, this::appendToOutput);
-      } else {
-          appendToOutput("Error: Game service is not initialized");
-      }
-  }
->>>>>>> main
+}
 
     @FXML
     public void initialize() {

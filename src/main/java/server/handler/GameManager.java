@@ -118,13 +118,10 @@ public class GameManager {
     }
 
     public String startGame(String username) {
-<<<<<<< HEAD
-
-=======
         if (activeGames.containsKey(username)) {
             return "You are already in a game.";
         }
->>>>>>> main
+
         waitingPlayers.remove(username);
         String matchedPlayer = findWaitingPlayer();
         if (matchedPlayer != null && !matchedPlayer.equals(username)) {
@@ -140,14 +137,12 @@ public class GameManager {
                 maskedWord.append("_ ");
             }
             return maskedWord.toString();
-<<<<<<< HEAD
-=======
         } else {
             waitingPlayers.put(username, System.currentTimeMillis());
             cleanupPlayerState(username);
             return "WAITING_FOR_MATCH";
         }
->>>>>>> main
+
     }
 
     private void setupMatchedPlayers(String player1, String player2, List<String> wordList, String firstWord) {

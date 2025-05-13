@@ -7,11 +7,6 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="9491-Team02_FinProject" />
-<<<<<<< HEAD
-=======
-        <module name="Hangman" />
->>>>>>> main
-        <module name="9491-Team01_FinProject" />
       </profile>
     </annotationProcessing>
   </component>
