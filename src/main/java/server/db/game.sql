@@ -3,11 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
-<<<<<<< HEAD
--- Generation Time: Apr 30, 2025 at 07:09 PM
-=======
+
 -- Generation Time: May 13, 2025 at 10:46 AM
->>>>>>> main
+
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -40,11 +38,9 @@ CREATE TABLE IF NOT EXISTS `game_results` (
   `game_time` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `player_id` (`player_id`)
-<<<<<<< HEAD
-) ENGINE=MyISAM AUTO_INCREMENT=64 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-=======
+
 ) ENGINE=MyISAM AUTO_INCREMENT=161 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
->>>>>>> main
+
 
 --
 -- Dumping data for table `game_results`
@@ -113,9 +109,7 @@ INSERT INTO `game_results` (`id`, `player_id`, `word_guessed`, `win_status`, `ga
 (60, 5, 'tinker', 0, '2025-05-01 01:21:54'),
 (61, 0, 'privies', 0, '2025-05-01 01:37:22'),
 (62, 0, 'detoxifies', 0, '2025-05-01 02:30:17'),
-<<<<<<< HEAD
-(63, 0, 'ranked', 0, '2025-05-01 03:07:10');
-=======
+
 (63, 0, 'ranked', 0, '2025-05-01 03:07:10'),
 (64, 2, 'hart', 1, '2025-05-11 21:44:39'),
 (65, 0, 'hart', 1, '2025-05-11 21:44:42'),
@@ -214,7 +208,6 @@ INSERT INTO `game_results` (`id`, `player_id`, `word_guessed`, `win_status`, `ga
 (158, 0, 'crane', 1, '2025-05-12 06:07:35'),
 (159, 0, 'blood', 1, '2025-05-12 06:07:45'),
 (160, 0, 'byron', 1, '2025-05-12 06:07:54');
->>>>>>> main
 
 -- --------------------------------------------------------
 
@@ -239,17 +232,12 @@ CREATE TABLE IF NOT EXISTS `players` (
 --
 
 INSERT INTO `players` (`id`, `username`, `password`, `wins`, `currently_logged_in`, `role`) VALUES
-<<<<<<< HEAD
-(0, 'yuri', '1111', 3, 1, 'admin'),
-(2, 'Yuriha', '2222', 69, 1, 'player'),
-(6, 'toomuch', '1111', 2, 0, 'player'),
-(7, 'Idontwanna', '1111', 10, 1, 'player'),
-=======
+
 (0, 'yuri', '1111', 3, 0, 'admin'),
 (2, 'Yuriha', '2222', 3, 0, 'player'),
 (6, 'toomuch', '1111', 2, 0, 'player'),
 (7, 'Idontwanna', '1111', 3, 0, 'player'),
->>>>>>> main
+
 (8, 'dontmake', '1111', 44, 1, 'player'),
 (9, 'meclose', '', 40, 0, 'player'),
 (10, 'onemoredoor', '1111', 35, 0, 'player');
@@ -273,11 +261,9 @@ CREATE TABLE IF NOT EXISTS `settings` (
 --
 
 INSERT INTO `settings` (`id`, `waiting_time_seconds`, `round_time_seconds`) VALUES
-<<<<<<< HEAD
-(1, 10, 30);
-=======
+
 (1, 10, 60);
->>>>>>> main
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
