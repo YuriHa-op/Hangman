@@ -1,0 +1,2 @@
+tkinter
+# Note: omniORB/omniORBpy must be installed manually (not via pip) 

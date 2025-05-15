@@ -1,0 +1,2 @@
+omniORB>=4.2.0
+omniORBpy>=4.2.0 

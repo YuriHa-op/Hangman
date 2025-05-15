@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.geometry.*?>
+
+<StackPane fx:id="root" xmlns:fx="http://javafx.com/fxml/1"
+           xmlns="http://javafx.com/javafx/8.0.171"
+           fx:controller="client.player.controller.MatchFoundDialogController"
+           styleClass="match-dialog-root match-background"
+           prefWidth="500.0" prefHeight="350.0">
+
+    <!-- Background Image -->
+    <ImageView fx:id="backgroundImage"
+               fitWidth="500"
+               fitHeight="350"
+               preserveRatio="false"
+               pickOnBounds="true"
+               style="-fx-background-radius: 15px;" />
+
+    <!-- Content Over Background -->
+    <VBox alignment="CENTER" spacing="20.0">
+        <Label fx:id="matchTitle" text="Game Commenced" styleClass="match-title" />
+
+        <HBox fx:id="playerRow" alignment="CENTER" spacing="40.0">
+            <VBox alignment="CENTER" spacing="10.0">
+                <ImageView fx:id="player1Pfp" fitWidth="80" fitHeight="80" />
+                <Label fx:id="player1Name" styleClass="match-player-name" />
+            </VBox>
+            <Label fx:id="matchVs" text="vs" styleClass="match-vs" />
+            <VBox alignment="CENTER" spacing="10.0">
+                <ImageView fx:id="player2Pfp" fitWidth="80" fitHeight="80" />
+                <Label fx:id="player2Name" styleClass="match-player-name" />
+            </VBox>
+        </HBox>
+
+        <Label fx:id="countdownLabel" text="5" styleClass="match-countdown" />
+    </VBox>
+</StackPane>

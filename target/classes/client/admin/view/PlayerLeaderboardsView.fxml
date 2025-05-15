@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="client.admin.controller.PlayersLeaderboardController"
+      spacing="15" alignment="CENTER"
+      stylesheets="@PlayersLeaderboardView.css"
+      style="-fx-background-image: url('leatherboard.png'); -fx-background-size: cover;"
+      prefWidth="600" prefHeight="500">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Players Leaderboard" styleClass="title-text"/>
+
+    <!-- Search bar -->
+    <HBox spacing="10" alignment="CENTER">
+        <TextField fx:id="searchField" promptText="Search players..." prefWidth="300" styleClass="search-field"/>
+        <Button text="Search" onAction="#handleSearch" styleClass="search-button"/>
+    </HBox>
+
+    <ListView fx:id="playersListView" prefHeight="400" prefWidth="500"/>
+    <Button text="Back" onAction="#handleBack" styleClass="admin-button"/>
+</VBox>

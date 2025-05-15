@@ -1,0 +1,28 @@
+Step-by-step Installation for Hangman Python Client
+--------------------------------------------------
+
+1. Install omniORB and omniORBpy:
+   - Windows:
+     a. Download omniORB and omniORBpy installers from SourceForge.
+     b. Run both installers.
+     c. Add the omniORB and omniORBpy install directories to your PATH and PYTHONPATH if needed.
+   - Linux:
+     sudo apt-get update
+     sudo apt-get install python3-omniorb omniidl python3-omniorb-omg
+
+2. Generate Python stubs:
+   - Open a terminal in the CORBA_IDLs folder.
+   - Run: omniidl -bpython GameService.idl
+   - Copy the generated GameModule.py and any related files into Client_Python/
+
+3. Install Python dependencies:
+   - Open a terminal in Python_Installer.
+   - Run: pip install -r requirements.txt
+
+4. Run the client:
+   - Open a terminal in Client_Python.
+   - Run: python hangman_client.py
+
+Notes:
+- The Python client will only work if the Java server is running and accessible.
+- Use the same GameService.idl for both Java and Python stubs. 
