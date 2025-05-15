@@ -416,9 +416,8 @@ public class GameViewController implements GameModel.MatchListener {
         if (state.remainingTime <= 0 && !timeUpHandled && !state.roundOver && !state.gameOver) {
             handleTimeUp();
         }
-        // Only show game over dialog if sessionResult is WIN or LOSE
-        if (state.gameOver && state.sessionResult != null &&
-                ("WIN".equals(state.sessionResult) || "LOSE".equals(state.sessionResult))) {
+        // Only show game over dialog and stop polling if sessionResult is WIN or LOSE
+        if (state.sessionResult != null && ("WIN".equals(state.sessionResult) || "LOSE".equals(state.sessionResult))) {
             if (!gameOverDialogShown) {
                 gameOverDialogShown = true;
                 if (gameStatePoller != null) gameStatePoller.stop();
@@ -479,8 +478,8 @@ public class GameViewController implements GameModel.MatchListener {
         } else if (state.roundOver && !state.gameOver && state.roundWinner == null) {
             gameOutput.appendText("\nNo one won this round.\n");
         }
-        // Automatically start the next round if round is over and game is not over
-        if (state.roundOver && !state.gameOver && (state.sessionResult == null || "ONGOING".equals(state.sessionResult)) && !nextRoundStarted) {
+        // Automatically start the next round if round is over, game is not over, and session is ongoing
+        if (state.roundOver && !state.gameOver && "ONGOING".equals(state.sessionResult) && !nextRoundStarted) {
             nextRoundStarted = true;
             if (root != null) {
                 System.out.println("[DEBUG] Starting next round transition animation");

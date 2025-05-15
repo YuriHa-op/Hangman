@@ -255,13 +255,15 @@ public class GameManager {
             if (opponent != null) {
                 setGameSessionResult(opponent, "LOSE");
             }
-            // Persist win count in the database
-            playerManager.updatePlayerWins(username, wins);
+            // Increment total wins in the database
+            int totalWins = playerManager.getTotalWins(username);
+            playerManager.updatePlayerWins(username, totalWins + 1);
         } else if (opponent != null && opponentWins >= 3) {
             setGameSessionResult(opponent, "WIN");
             setGameSessionResult(username, "LOSE");
-            // Persist win count for opponent
-            playerManager.updatePlayerWins(opponent, opponentWins);
+            // Increment total wins for opponent in the database
+            int totalOpponentWins = playerManager.getTotalWins(opponent);
+            playerManager.updatePlayerWins(opponent, totalOpponentWins + 1);
         }
     }
 
@@ -421,8 +423,9 @@ public class GameManager {
         dto.playerWins = getPlayerWins(username);
         dto.roundOver = isRoundOver(username);
         dto.gameOver = isGameSessionOver(username);
-        String sessionResult = getGameSessionResult(username);
-        dto.sessionResult = (sessionResult != null) ? sessionResult : "";
+        // Ensure sessionResult is always set from the map, defaulting to 'ONGOING' if not present
+        String sessionResult = gameSessionResult.get(username);
+        dto.sessionResult = (sessionResult != null) ? sessionResult : "ONGOING";
         dto.remainingTime = getRemainingTime(username);
         // Set finishedTime for this player (0 if not finished)
         dto.finishedTime = roundFinishTime.getOrDefault(username, Collections.emptyMap()).getOrDefault(currentRound, 0L).intValue();

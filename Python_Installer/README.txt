@@ -28,3 +28,7 @@ Installation Steps:
 Troubleshooting:
 - If you get "No module named omniORB", make sure omniORBpy is installed and in your PYTHONPATH.
 - If you get CORBA connection errors, ensure the Java server is running and accessible. 
+
+
+
+https://github.com/YuriHa-op/Hangman

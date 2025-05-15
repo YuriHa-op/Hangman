@@ -162,6 +162,21 @@ public class PlayerManager {
         }
     }
 
+    public int getTotalWins(String username) {
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT wins FROM players WHERE username = ?")) {
+            ps.setString(1, username);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("wins");
+            }
+        } catch (SQLException e) {
+            System.err.println("Database error getting total wins: " + e.getMessage());
+        }
+        return 0;
+    }
+
     public int getRoundTime() {
         int roundTime = 0;
         try (Connection conn = getConnection();

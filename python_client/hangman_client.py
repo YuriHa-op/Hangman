@@ -5,7 +5,7 @@ import traceback
 from omniORB import CORBA
 import GameModule
 import GameModule__POA
-from omniORB import CosNaming
+import CosNaming
 import tkinter as tk
 from tkinter import messagebox
 
@@ -87,6 +87,12 @@ def start_game(game_service, username):
             show_no_match_popup()  # Show pop-up dialog
             game_service.endGameSession(username)
             return
+    if masked_word != 'WAITING_FOR_MATCH':
+        print("Match found! The game will start in 5 seconds...")
+        for i in range(5, 0, -1):
+            print(f"Starting in {i}...", end='\r')
+            time.sleep(1)
+        print(" " * 30, end='\r')  # Clear the line
     print("Game started! Let's play Hangman.")
     play_game_session(game_service, username)
 
