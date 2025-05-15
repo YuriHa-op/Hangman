@@ -93,25 +93,6 @@ public class GameManager {
         return correctGuess;
     }
 
-    public String viewLeaderboard() {
-        StringBuilder leaderboard = new StringBuilder("LEADERBOARD:\n");
-        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/game", "root", "");
-             Statement stmt = conn.createStatement()) {
-            ResultSet rs = stmt.executeQuery(
-                    "SELECT username, wins FROM players ORDER BY wins DESC, username ASC LIMIT 5");
-            while (rs.next()) {
-                leaderboard.append(rs.getString("username"))
-                        .append(": ")
-                        .append(rs.getInt("wins"))
-                        .append(" wins\n");
-            }
-        } catch (SQLException e) {
-            System.err.println("Database error retrieving leaderboard: " + e.getMessage());
-            return "Error retrieving leaderboard.";
-        }
-        return leaderboard.toString();
-    }
-
     public String getMaskedWord(String username) {
         StringBuilder progress = playerProgress.get(username);
         return (progress != null) ? progress.toString() : "";

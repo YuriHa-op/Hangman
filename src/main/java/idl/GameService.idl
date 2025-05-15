@@ -19,6 +19,22 @@ module GameModule {
         long finishedTime;
     };
 
+    struct SystemStatisticsDTO {
+        long totalGames;
+        long wins;
+        long losses;
+        double winRate;
+        long waitingTime;
+        long roundTime;
+    };
+
+    struct LeaderboardEntryDTO {
+        string username;
+        long wins;
+    };
+
+    typedef sequence<LeaderboardEntryDTO> LeaderboardEntrySeq;
+
     interface GameService {
         boolean login(in string username, in string password)
                     raises (AlreadyLoggedInException);
@@ -56,6 +72,9 @@ module GameModule {
         boolean updateWord(in string oldWord, in string newWord);
         boolean deleteWord(in string word);
         StringSeq getAllWords();
+
+        SystemStatisticsDTO getSystemStatistics();
+        LeaderboardEntrySeq getLeaderboardEntries();
 
     };
 };

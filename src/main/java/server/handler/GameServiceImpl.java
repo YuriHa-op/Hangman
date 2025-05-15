@@ -14,6 +14,8 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import GameModule.GameStateDTO;
+import client.admin.model.SystemStatisticsDTO;
+import client.admin.model.LeaderboardEntryDTO;
 
 public class GameServiceImpl extends GameServicePOA {
     private final GameManager gameManager;
@@ -62,7 +64,15 @@ public class GameServiceImpl extends GameServicePOA {
 
     @Override
     public String viewLeaderboard() {
-        return gameManager.viewLeaderboard();
+        java.util.List<LeaderboardEntryDTO> entries = playerManager.getLeaderboardEntries();
+        StringBuilder leaderboard = new StringBuilder("LEADERBOARD:\n");
+        for (LeaderboardEntryDTO entry : entries) {
+            leaderboard.append(entry.getUsername())
+                    .append(": ")
+                    .append(entry.getWins())
+                    .append(" wins\n");
+        }
+        return leaderboard.toString();
     }
 
     @Override
@@ -213,6 +223,33 @@ public class GameServiceImpl extends GameServicePOA {
     public String[] getAllWords() {
         List<String> words = wordManager.getWords();
         return words.toArray(new String[0]);
+    }
+
+    @Override
+    public GameModule.SystemStatisticsDTO getSystemStatistics() {
+        SystemStatisticsDTO stats = playerManager.getSystemStatistics();
+        GameModule.SystemStatisticsDTO corbaDto = new GameModule.SystemStatisticsDTO();
+        corbaDto.totalGames = stats.getTotalGames();
+        corbaDto.wins = stats.getWins();
+        corbaDto.losses = stats.getLosses();
+        corbaDto.winRate = stats.getWinRate();
+        corbaDto.waitingTime = stats.getWaitingTime();
+        corbaDto.roundTime = stats.getRoundTime();
+        return corbaDto;
+    }
+
+    @Override
+    public GameModule.LeaderboardEntryDTO[] getLeaderboardEntries() {
+        java.util.List<LeaderboardEntryDTO> entries = playerManager.getLeaderboardEntries();
+        GameModule.LeaderboardEntryDTO[] corbaEntries = new GameModule.LeaderboardEntryDTO[entries.size()];
+        for (int i = 0; i < entries.size(); i++) {
+            LeaderboardEntryDTO entry = entries.get(i);
+            GameModule.LeaderboardEntryDTO corbaEntry = new GameModule.LeaderboardEntryDTO();
+            corbaEntry.username = entry.getUsername();
+            corbaEntry.wins = entry.getWins();
+            corbaEntries[i] = corbaEntry;
+        }
+        return corbaEntries;
     }
 
 }

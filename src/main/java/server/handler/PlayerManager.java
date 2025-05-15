@@ -1,6 +1,10 @@
 package server.handler;
 
 import java.sql.*;
+import client.admin.model.SystemStatisticsDTO;
+import client.admin.model.LeaderboardEntryDTO;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PlayerManager {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/game";
@@ -198,5 +202,51 @@ public class PlayerManager {
             System.err.println("Database error updating settings: " + e.getMessage());
             return false;
         }
+    }
+
+    public SystemStatisticsDTO getSystemStatistics() {
+        int totalGames = 0;
+        int wins = 0;
+        int losses = 0;
+        double winRate = 0;
+        int waitingTime = 10;
+        int roundTime = 30;
+        try (Connection conn = getConnection();
+             PreparedStatement totalGamesStmt = conn.prepareStatement("SELECT COUNT(*) FROM game_results");
+             PreparedStatement winsStmt = conn.prepareStatement("SELECT COUNT(*) FROM game_results WHERE win_status = 1");
+             PreparedStatement settingsStmt = conn.prepareStatement("SELECT waiting_time_seconds, round_time_seconds FROM settings WHERE id = 1")) {
+            ResultSet totalGamesRs = totalGamesStmt.executeQuery();
+            if (totalGamesRs.next()) {
+                totalGames = totalGamesRs.getInt(1);
+            }
+            ResultSet winsRs = winsStmt.executeQuery();
+            if (winsRs.next()) {
+                wins = winsRs.getInt(1);
+            }
+            losses = totalGames - wins;
+            winRate = totalGames > 0 ? (double) wins / totalGames * 100 : 0;
+            ResultSet settingsRs = settingsStmt.executeQuery();
+            if (settingsRs.next()) {
+                waitingTime = settingsRs.getInt("waiting_time_seconds");
+                roundTime = settingsRs.getInt("round_time_seconds");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return new SystemStatisticsDTO(totalGames, wins, losses, winRate, waitingTime, roundTime);
+    }
+
+    public List<LeaderboardEntryDTO> getLeaderboardEntries() {
+        List<LeaderboardEntryDTO> leaderboard = new ArrayList<>();
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT username, wins FROM players ORDER BY wins DESC, username ASC LIMIT 5")) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                leaderboard.add(new LeaderboardEntryDTO(rs.getString("username"), rs.getInt("wins")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return leaderboard;
     }
 } 
