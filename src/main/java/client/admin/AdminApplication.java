@@ -1,4 +1,4 @@
-package client.admin.view;
+package client.admin;
 
 import GameModule.GameService;
 import GameModule.GameServiceHelper;

@@ -445,11 +445,21 @@ public class GameManager {
     // Add a public method to fully reset a player's session and their match
     public void endGameSession(String username) {
         String opponent = matchedPlayers.get(username);
-        cleanupPlayerState(username);
-        if (opponent != null) {
-            cleanupPlayerState(opponent);
-            gameSessionResult.remove(opponent);
+        // If the game is not already over, set the opponent as winner
+        if (opponent != null && !isGameSessionOver(username)) {
+            setGameSessionResult(opponent, "WIN");
+            setGameSessionResult(username, "LOSE");
+            // Optionally increment opponent's win count in the database
+            int totalOpponentWins = playerManager.getTotalWins(opponent);
+            playerManager.updatePlayerWins(opponent, totalOpponentWins + 1);
         }
+        // DO NOT clean up state here!
+        // Let the client see the WIN/LOSE result in getGameState.
+        // Cleanup should be triggered by a separate call (e.g., after the client returns to menu).
+    }
+
+    public void cleanupPlayerSession(String username) {
+        cleanupPlayerState(username);
         gameSessionResult.remove(username);
     }
-} 
+}

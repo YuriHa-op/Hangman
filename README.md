@@ -41,10 +41,10 @@ Run the player main class:
 ### 4. Start the Admin Application
 
 Run the admin main class:
-- **Class:** `client.admin.view.AdminApplication`
+- **Class:** `client.admin.AdminApplication`
 
   ```bash
-  java -cp target/classes client.admin.view.AdminApplication
+  java -cp target/classes client.admin.AdminApplication
   ```
   admin client don't have password and username just enter enter.
   *(Or run the built JAR if available.)*

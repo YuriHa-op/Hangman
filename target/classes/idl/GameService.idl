@@ -67,6 +67,9 @@ module GameModule {
         boolean isGameSessionOver(in string username);
         GameStateDTO getGameState(in string username);
 
+        // Explicit cleanup after game session ends
+        void cleanupPlayerSession(in string username);
+
         // Admin word management
         boolean addWord(in string word);
         boolean updateWord(in string oldWord, in string newWord);
@@ -76,5 +79,14 @@ module GameModule {
         SystemStatisticsDTO getSystemStatistics();
         LeaderboardEntrySeq getLeaderboardEntries();
 
+        // Multiplayer mode
+        string startMultiplayerGame(in string username);
+        string getMultiplayerLobbyState(in string username);
+        boolean sendMultiplayerGuess(in string username, in char letter);
+        boolean startMultiplayerNextRound(in string username);
+
+        // Match history (returns JSON)
+        string getMatchHistory(in string username); // JSON array of GameSummary
+        string getMatchDetails(in string gameId);   // JSON GameDetails
     };
 };

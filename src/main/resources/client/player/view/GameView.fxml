@@ -25,9 +25,13 @@
                   editable="false"
                   styleClass="output-area"
                   wrapText="true"
-                  prefHeight="100"
-                  maxHeight="150"
-                  minHeight="60" />
+                  prefWidth="400"
+                  minWidth="400"
+                  maxWidth="400"
+                  prefHeight="120"
+                  minHeight="120"
+                  maxHeight="120"
+                  VBox.vgrow="NEVER"/>
         <!-- Screen Keyboard -->
         <GridPane fx:id="keyboardGrid" alignment="CENTER" hgap="5" vgap="5" visible="false" VBox.vgrow="ALWAYS">
             <padding>
@@ -83,4 +87,12 @@
         <!--  Back to Menu Button -->
         <Button fx:id="backButton" onAction="#handleBackToMenu" styleClass="menu-button" text="Back to Menu" />
     </VBox>
+    <!-- Exit Game Button (top right) -->
+    <AnchorPane pickOnBounds="false" StackPane.alignment="TOP_RIGHT">
+        <ImageView fx:id="exitGameButton"
+                   fitWidth="48" fitHeight="48" pickOnBounds="true" preserveRatio="true"
+                   onMouseClicked="#handleExitGame">
+
+        </ImageView>
+    </AnchorPane>
 </StackPane>

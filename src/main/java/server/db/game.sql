@@ -3,9 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
-
--- Generation Time: May 13, 2025 at 10:46 AM
-
+-- Generation Time: May 23, 2025 at 06:28 PM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -38,9 +36,7 @@ CREATE TABLE IF NOT EXISTS `game_results` (
   `game_time` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `player_id` (`player_id`)
-
 ) ENGINE=MyISAM AUTO_INCREMENT=161 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 
 --
 -- Dumping data for table `game_results`
@@ -109,7 +105,6 @@ INSERT INTO `game_results` (`id`, `player_id`, `word_guessed`, `win_status`, `ga
 (60, 5, 'tinker', 0, '2025-05-01 01:21:54'),
 (61, 0, 'privies', 0, '2025-05-01 01:37:22'),
 (62, 0, 'detoxifies', 0, '2025-05-01 02:30:17'),
-
 (63, 0, 'ranked', 0, '2025-05-01 03:07:10'),
 (64, 2, 'hart', 1, '2025-05-11 21:44:39'),
 (65, 0, 'hart', 1, '2025-05-11 21:44:42'),
@@ -225,22 +220,21 @@ CREATE TABLE IF NOT EXISTS `players` (
   `role` enum('player','admin') DEFAULT 'player',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `players`
 --
 
 INSERT INTO `players` (`id`, `username`, `password`, `wins`, `currently_logged_in`, `role`) VALUES
-
-(0, 'yuri', '1111', 3, 0, 'admin'),
-(2, 'Yuriha', '2222', 3, 0, 'player'),
-(6, 'toomuch', '1111', 2, 0, 'player'),
+(0, 'yuri', '1111', 32, 1, 'admin'),
+(2, 'Yuriha', '2222', 31, 1, 'player'),
+(6, 'toomuch', '1111', 3, 1, 'player'),
 (7, 'Idontwanna', '1111', 3, 0, 'player'),
-
-(8, 'dontmake', '1111', 44, 1, 'player'),
+(8, 'dontmake', '1111', 44, 0, 'player'),
 (9, 'meclose', '', 40, 0, 'player'),
-(10, 'onemoredoor', '1111', 35, 0, 'player');
+(10, 'onemoredoor', '1111', 35, 0, 'player'),
+(12, 'crane', '1111', 0, 0, 'player');
 
 -- --------------------------------------------------------
 
@@ -261,11 +255,47 @@ CREATE TABLE IF NOT EXISTS `settings` (
 --
 
 INSERT INTO `settings` (`id`, `waiting_time_seconds`, `round_time_seconds`) VALUES
-
-(1, 10, 60);
-
+(1, 10, 40);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- --------------------------------------------------------
+-- Table structure for table `games`
+--
+DROP TABLE IF EXISTS `games`;
+CREATE TABLE IF NOT EXISTS `games` (
+  `game_id` varchar(36) NOT NULL,
+  `total_rounds` int NOT NULL,
+  `overall_winner` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`game_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+-- Table structure for table `rounds`
+--
+DROP TABLE IF EXISTS `rounds`;
+CREATE TABLE IF NOT EXISTS `rounds` (
+  `round_id` int NOT NULL AUTO_INCREMENT,
+  `game_id` varchar(36) NOT NULL,
+  `round_number` int NOT NULL,
+  `word` varchar(100) NOT NULL,
+  `winner` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`round_id`),
+  KEY `game_id` (`game_id`),
+  CONSTRAINT `rounds_ibfk_1` FOREIGN KEY (`game_id`) REFERENCES `games` (`game_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+-- Table structure for table `game_players`
+--
+DROP TABLE IF EXISTS `game_players`;
+CREATE TABLE IF NOT EXISTS `game_players` (
+  `game_id` varchar(36) NOT NULL,
+  `player_name` varchar(50) NOT NULL,
+  PRIMARY KEY (`game_id`, `player_name`),
+  KEY `game_id` (`game_id`),
+  CONSTRAINT `game_players_ibfk_1` FOREIGN KEY (`game_id`) REFERENCES `games` (`game_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

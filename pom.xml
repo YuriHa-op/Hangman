@@ -4,55 +4,58 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>groupId</groupId>
-    <artifactId>9491-Team02_FinProject</artifactId>
+    <groupId>com.hangman</groupId>
+    <artifactId>hangman-game</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <!-- Set Java 8 -->
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <javafx.version>8.0.241</javafx.version>
     </properties>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
-
-
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.33</version>
         </dependency>
-        <!-- Add other dependencies  -->
+
+        <!-- Gson for JSON handling -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.8.9</version>
+        </dependency>
+
+        <!-- AnimateFX for animations (last Java 8 compatible version) -->
         <dependency>
             <groupId>io.github.typhon0</groupId>
             <artifactId>AnimateFX</artifactId>
             <version>1.2.1</version>
         </dependency>
+
+        <!-- JUnit for testing -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
-
-
-
-
-
-
 
     <build>
         <plugins>
-            <!-- Configure the Maven Compiler Plugin for Java 8 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
-
-
         </plugins>
     </build>
-
 </project>

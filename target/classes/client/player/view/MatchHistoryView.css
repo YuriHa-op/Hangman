@@ -1,0 +1,90 @@
+/* MatchHistoryView.css */
+
+.title-text {
+    -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;
+    -fx-font-size: 32px;
+    -fx-text-fill: #ffdd00;
+    -fx-font-weight: bold;
+    -fx-padding: 10 0 20 0;
+}
+
+.table-view {
+    -fx-background-color: rgba(30,30,30,0.95);
+    -fx-border-color: #42bd97;
+    -fx-border-width: 2px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-table-cell-border-color: #222;
+    -fx-padding: 8px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #222;
+}
+
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: #222;
+    -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;
+    -fx-font-size: 16px;
+    -fx-text-fill: #ffdd00;
+}
+
+.table-row-cell {
+    -fx-background-color: #333;
+    -fx-font-size: 15px;
+    -fx-text-fill: #fff;
+}
+
+.table-row-cell:filled:selected, .table-row-cell:filled:hover {
+    -fx-background-color: #444;
+}
+
+.menu-button {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 18px;
+    -fx-text-fill: #000000;
+    -fx-background-image: url("../../../button.png");
+    -fx-background-size: cover;
+    -fx-border-color: #8B6B53;
+    -fx-border-width: 2px;
+    -fx-padding: 10px 20px;
+    -fx-border-radius: 5px;
+}
+
+.details-button {
+    -fx-background-color: #42bd97;
+    -fx-text-fill: #222;
+    -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;
+    -fx-font-size: 14px;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+    -fx-padding: 4 12 4 12;
+}
+
+.details-button:hover {
+    -fx-background-color: #ffd600;
+    -fx-text-fill: #222;
+}
+
+/* Table cell text color for normal, hover, and selected states */
+.table-view .table-cell {
+    -fx-text-fill: #f5f5f5; /* Light text for readability */
+}
+
+.table-view .table-row-cell:selected .table-cell {
+    -fx-text-fill: #222; /* Dark text on selected row for contrast */
+    -fx-background-color: #ffd600; /* Optional: highlight selected row */
+}
+
+.table-view .table-row-cell:hover .table-cell {
+    -fx-text-fill: #fffbe7; /* Slightly different on hover */
+}
+
+/* Table header styling for clarity */
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: #222;
+    -fx-text-fill: #ffdd00;
+    -fx-font-weight: bold;
+} 

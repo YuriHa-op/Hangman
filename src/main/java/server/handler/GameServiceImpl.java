@@ -5,10 +5,12 @@ import java.util.function.Consumer;
 import server.handler.GameManager;
 import server.handler.PlayerManager;
 import server.handler.WordManager;
+import server.handler.MultiplayerGameManager;
+import server.handler.MultiplayerLobby;
+import server.handler.MultiplayerGameState;
 
 import java.sql.*;
-import java.util.Random;
-import java.util.HashMap;
+import java.util.*;
 import java.util.Map;
 import java.io.*;
 import java.util.ArrayList;
@@ -16,12 +18,22 @@ import java.util.List;
 import GameModule.GameStateDTO;
 import client.admin.model.SystemStatisticsDTO;
 import client.admin.model.LeaderboardEntryDTO;
+import com.google.gson.Gson;
 
 public class GameServiceImpl extends GameServicePOA {
     private final GameManager gameManager;
     private final PlayerManager playerManager;
     private final WordManager wordManager;
     private Consumer<String> logCallback;
+    private MultiplayerGameManager multiplayerGameManager;
+    private static final int MULTI_MIN_PLAYERS = 2;
+    private static final int MULTI_MAX_PLAYERS = 8;
+    private final MatchResultDAO matchResultDAO = new MatchResultDAO(
+        "jdbc:mysql://localhost:3306/game",
+        "root",
+        ""
+    );
+    private final Gson gson = new Gson();
 
                 //put this hotdog in you GameServiceImpl
 
@@ -31,6 +43,11 @@ public class GameServiceImpl extends GameServicePOA {
         this.wordManager = new WordManager();
         this.playerManager = new PlayerManager();
         this.gameManager = new GameManager(wordManager, playerManager);
+        // Initialize multiplayer manager
+        int waitingTime = playerManager.getWaitingTime();
+        int minPlayers = 2;
+        int maxPlayers = 8;
+        this.multiplayerGameManager = new MultiplayerGameManager(wordManager, playerManager, minPlayers, maxPlayers, waitingTime);
     }
 
     public void setLogCallback(Consumer<String> callback) {
@@ -250,6 +267,132 @@ public class GameServiceImpl extends GameServicePOA {
             corbaEntries[i] = corbaEntry;
         }
         return corbaEntries;
+    }
+
+    public void cleanupPlayerSession(String username) {
+        gameManager.cleanupPlayerSession(username);
+    }
+
+    public void initMultiplayerManager(int queueTimeSeconds) {
+        this.multiplayerGameManager = new MultiplayerGameManager(wordManager, playerManager, MULTI_MIN_PLAYERS, MULTI_MAX_PLAYERS, queueTimeSeconds);
+    }
+
+    public String startMultiplayerGame(String username) {
+        MultiplayerLobby lobby = multiplayerGameManager.joinOrCreateLobby(username);
+        return lobby.getLobbyId();
+    }
+
+    public String getMultiplayerLobbyState(String username) {
+        MultiplayerLobby lobby = multiplayerGameManager.getLobbyByPlayer(username);
+        if (lobby == null) return "{\"state\":\"NOMATCH\"}";
+
+        MultiplayerGameState gameState = multiplayerGameManager.getGameState(username);
+
+        // Schedule cleanup if game is over and winner is declared
+        if (lobby.isStarted() && gameState != null && gameState.getGameWinner() != null) {
+            multiplayerGameManager.scheduleCleanupIfGameOver(lobby.getLobbyId());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"state\":\"")
+          .append(lobby.isStarted() ? "STARTED" : "WAITING")
+          .append("\",");
+        
+        // Add basic lobby info
+        sb.append("\"players\":[");
+        for (int i = 0; i < lobby.getPlayers().size(); i++) {
+            sb.append("\"").append(lobby.getPlayers().get(i)).append("\"");
+            if (i < lobby.getPlayers().size() - 1) sb.append(",");
+        }
+        sb.append("],");
+        sb.append("\"maxPlayers\":").append(lobby.getMaxPlayers()).append(",");
+        sb.append("\"creationTime\":").append(lobby.getCreationTime()).append(",");
+        sb.append("\"queueTimeSeconds\":").append(multiplayerGameManager.getQueueTimeSeconds());
+
+        // Add game state if game has started
+        if (gameState != null) {
+            sb.append(",\"gameState\":{");
+            sb.append("\"currentRound\":").append(gameState.getCurrentRound()).append(",");
+            sb.append("\"roundInProgress\":").append(gameState.isRoundInProgress()).append(",");
+            sb.append("\"remainingTime\":").append(gameState.getRemainingTime()).append(",");
+            sb.append("\"maskedWord\":\"").append(gameState.getMaskedWord(username)).append("\",");
+            
+            // Add scores
+            sb.append("\"scores\":{");
+            Map<String, Integer> scores = gameState.getScores();
+            Iterator<Map.Entry<String, Integer>> it = scores.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<String, Integer> entry = it.next();
+                sb.append("\"").append(entry.getKey()).append("\":")
+                  .append(entry.getValue());
+                if (it.hasNext()) sb.append(",");
+            }
+            sb.append("},");
+
+            // Add player guesses
+            sb.append("\"guesses\":[");
+            Set<Character> guesses = gameState.getPlayerGuesses(username);
+            Iterator<Character> guessIt = guesses.iterator();
+            while (guessIt.hasNext()) {
+                sb.append("\"").append(guessIt.next()).append("\"");
+                if (guessIt.hasNext()) sb.append(",");
+            }
+            sb.append("],");
+
+            // Add round winner
+            sb.append("\"roundWinner\":\"").append(gameState.getRoundWinner()).append("\",");
+
+            // Add player round wins
+            sb.append("\"playerRoundWins\":{");
+            List<String> allPlayers = lobby.getPlayers();
+            for (int i = 0; i < allPlayers.size(); i++) {
+                String p = allPlayers.get(i);
+                sb.append("\"").append(p).append("\":").append(gameState.getPlayerRoundWins(p));
+                if (i < allPlayers.size() - 1) sb.append(",");
+            }
+            sb.append("},");
+
+            // Add game winner
+            sb.append("\"gameWinner\":\"").append(gameState.getGameWinner() != null ? gameState.getGameWinner() : "").append("\",");
+
+            // Add sessionResult for this player
+            String sessionResult = "";
+            String gameWinner = gameState.getGameWinner();
+            if (gameWinner != null && !gameWinner.isEmpty()) {
+                if (gameWinner.equals(username)) {
+                    sessionResult = "WIN";
+                } else {
+                    sessionResult = "LOSE";
+                }
+            } else {
+                sessionResult = "ONGOING";
+            }
+            sb.append("\"sessionResult\":\"").append(sessionResult).append("\"");
+            sb.append("}");
+        }
+        
+        sb.append("}");
+        return sb.toString();
+    }
+
+    public boolean sendMultiplayerGuess(String username, char letter) {
+        return multiplayerGameManager.makeGuess(username, letter);
+    }
+
+    // Expose a method to start the next round in multiplayer
+    public boolean startMultiplayerNextRound(String username) {
+        return multiplayerGameManager.startNextRound(username);
+    }
+
+    // --- Match History Service Methods ---
+    public String getMatchHistory(String username) {
+        java.util.List<MatchResultDAO.GameSummary> games = matchResultDAO.getGamesForPlayer(username);
+        return gson.toJson(games);
+    }
+
+    public String getMatchDetails(String gameId) {
+        MatchResultDAO.GameDetails details = matchResultDAO.getGameDetails(gameId);
+        return gson.toJson(details);
     }
 
 }

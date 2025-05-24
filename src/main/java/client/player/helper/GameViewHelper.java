@@ -15,6 +15,7 @@ import javafx.util.Duration;
 import java.util.Random;//victory animation
 import animatefx.animation.Tada;
 import animatefx.animation.FadeInDown;
+import animatefx.animation.Bounce;
 
 public class GameViewHelper {
 
@@ -162,5 +163,108 @@ public class GameViewHelper {
         });
 
         dialog.showAndWait();
+    }
+
+    public static void showExitGameDialog(Stage owner, Runnable onExit) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Exit Game");
+        dialog.initOwner(owner);
+        dialog.initModality(Modality.APPLICATION_MODAL);
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getStylesheets().add(GameViewHelper.class.getResource("/client/player/view/GameView.css").toExternalForm());
+        dialogPane.getStyleClass().add("minecraft-dialog");
+
+        VBox content = new VBox(15);
+        content.setAlignment(Pos.CENTER);
+        content.getStyleClass().add("gameover-background");
+
+        Label titleLabel = new Label("Are you sure you want to leave the game?");
+        titleLabel.setStyle("-fx-font-family: 'Minecraftia', 'Arial Black', sans-serif; -fx-font-size: 22px; -fx-text-fill: #FF5555; -fx-font-weight: bold;");
+        Label messageLabel = new Label("Leaving will forfeit the game and return you to the home menu.");
+        messageLabel.setWrapText(true);
+        messageLabel.setStyle("-fx-font-family: 'Minecraftia', 'Arial Black', sans-serif; -fx-font-size: 16px; -fx-text-fill: #FFFFFF;");
+
+        content.getChildren().addAll(titleLabel, messageLabel);
+        dialogPane.setContent(content);
+        ButtonType leaveButton = new ButtonType("Leave", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialogPane.getButtonTypes().setAll(leaveButton, cancelButton);
+
+        Button leaveBtn = (Button) dialogPane.lookupButton(leaveButton);
+        leaveBtn.setStyle("-fx-background-color: #FF5555; -fx-text-fill: white; -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif; -fx-font-size: 16px; -fx-background-radius: 5;");
+        Button cancelBtn = (Button) dialogPane.lookupButton(cancelButton);
+        cancelBtn.setStyle("-fx-background-color: #555555; -fx-text-fill: white; -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif; -fx-font-size: 16px; -fx-background-radius: 5;");
+
+        dialog.setOnShown(e -> {
+            new Tada(titleLabel).play();
+            new FadeInDown(dialogPane).play();
+        });
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == leaveButton) {
+                if (onExit != null) onExit.run();
+            }
+            return null;
+        });
+
+        dialog.showAndWait();
+    }
+
+    public static void animateWordDisplay(Label label) {
+        // Minecraft-style bounce and color effect
+        ScaleTransition scale = new ScaleTransition(Duration.millis(250), label);
+        scale.setFromX(1.0);
+        scale.setFromY(1.0);
+        scale.setToX(1.2);
+        scale.setToY(1.2);
+        scale.setAutoReverse(true);
+        scale.setCycleCount(2);
+
+        FillTransition color = new FillTransition(Duration.millis(500));
+        // Only works for Text, so for Label, use setStyle
+        String originalStyle = label.getStyle();
+        label.setStyle(originalStyle + "; -fx-text-fill: #55FF55; -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;");
+        scale.setOnFinished(e -> label.setStyle(originalStyle));
+
+        scale.play();
+    }
+
+    public static void showRoundWinner(TextArea gameOutput, int roundNum, String winner, boolean playerWon) {
+        String msg = "\n§l§a[Round " + (roundNum + 1) + "] Winner: " + winner + (playerWon ? " (You!)" : "") + "\n";
+        gameOutput.appendText(msg);
+    }
+
+    public static void showNoRoundWinner(TextArea gameOutput) {
+        String msg = "\n§l§e[Round] No winner this round.\n";
+        gameOutput.appendText(msg);
+    }
+
+    // Explosion animation for round transition
+    public static void explodeNode(javafx.scene.Node node, Runnable onFinished) {
+        if (node == null) {
+            if (onFinished != null) onFinished.run();
+            return;
+        }
+        javafx.animation.ScaleTransition scale = new javafx.animation.ScaleTransition(javafx.util.Duration.millis(400), node);
+        scale.setFromX(1.0);
+        scale.setFromY(1.0);
+        scale.setToX(2.5);
+        scale.setToY(2.5);
+        scale.setInterpolator(javafx.animation.Interpolator.EASE_IN);
+
+        javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(javafx.util.Duration.millis(350), node);
+        fade.setFromValue(1.0);
+        fade.setToValue(0.0);
+
+        javafx.animation.ParallelTransition pt = new javafx.animation.ParallelTransition(node, scale, fade);
+        pt.setOnFinished(e -> {
+            node.setVisible(false);
+            node.setScaleX(1.0);
+            node.setScaleY(1.0);
+            node.setOpacity(1.0);
+            if (onFinished != null) onFinished.run();
+        });
+        pt.play();
     }
 }

@@ -3,6 +3,7 @@ package client.player.controller;
 import GameModule.GameService;
 import client.player.view.GameView;
 import client.player.view.LeaderboardView;
+import client.player.view.MultiplayerGameView;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
@@ -82,6 +83,30 @@ public class HomeViewController {
         }
         if (stage != null) stage.close();
         if (onLogout != null) onLogout.run();
+    }
+
+    @FXML
+    private void handleMultiplayer() {
+        Stage multiplayerStage = new Stage();
+        MultiplayerGameView multiplayerGameView = new MultiplayerGameView();
+
+        multiplayerGameView.start(multiplayerStage, gameService, username, () -> {
+            stage.show(); // Show menu again when multiplayer closes
+        });
+
+        stage.hide();
+        multiplayerGameView.show();
+    }
+
+    @FXML
+    private void handleMatchHistory() {
+        Stage historyStage = new Stage();
+        client.player.view.MatchHistoryView historyView = new client.player.view.MatchHistoryView();
+        historyView.start(historyStage, gameService, username, () -> {
+            stage.show();
+        });
+        stage.hide();
+        historyView.show();
     }
 
     public void setStage(Stage stage) {

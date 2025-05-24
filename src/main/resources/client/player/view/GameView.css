@@ -191,3 +191,55 @@
     -fx-border-color: #555555;
 }
 
+/* Multiplayer Styles */
+.scores-panel {
+    -fx-background-color: rgba(0, 0, 0, 0.7);
+    -fx-padding: 10px;
+    -fx-border-color: #42bd97;
+    -fx-border-width: 2px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-min-height: 60px;
+}
+
+.player-score {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 14px;
+    -fx-text-fill: #ffffff;
+    -fx-padding: 5px 10px;
+    -fx-background-color: rgba(66, 189, 151, 0.3);
+    -fx-border-color: #42bd97;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.player-score.current-player {
+    -fx-background-color: rgba(255, 221, 0, 0.3);
+    -fx-border-color: #ffdd00;
+}
+
+.player-score.finished {
+    -fx-background-color: rgba(76, 175, 80, 0.3);
+    -fx-border-color: #4CAF50;
+}
+
+.waiting-overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.8);
+    -fx-alignment: center;
+}
+
+.waiting-text {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 24px;
+    -fx-text-fill: #ffdd00;
+    -fx-effect: dropshadow(gaussian, black, 2, 0.5, 0, 0);
+}
+
+.player-count {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 18px;
+    -fx-text-fill: #42bd97;
+    -fx-effect: dropshadow(gaussian, black, 2, 0.5, 0, 0);
+}
+

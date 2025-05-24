@@ -26,7 +26,7 @@ public class HomeView {
             stage.setScene(scene);
             stage.setTitle("Home - What's The Word");
             stage.setResizable(false);
-            stage.setWidth(650);
+            stage.setWidth(750);
             stage.setHeight(650);
         } catch (Exception e) {
             System.err.println("Error loading HomeView: " + e.getMessage());

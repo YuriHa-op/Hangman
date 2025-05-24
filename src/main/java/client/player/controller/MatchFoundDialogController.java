@@ -70,6 +70,9 @@ public class MatchFoundDialogController {
             dialog.setResizable(false);
             dialog.getScene().getStylesheets().add(MatchFoundDialogController.class.getResource("/client/player/view/MatchFoundDialog.css").toExternalForm());
 
+            // Disable the close (X) button
+            dialog.setOnCloseRequest(event -> event.consume());
+
             // Fade in the dialog
             if (root != null) controller.fadeInNode(root);
 
@@ -229,3 +232,4 @@ public class MatchFoundDialogController {
         }
     }
 }
+

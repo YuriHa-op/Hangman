@@ -1,24 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.geometry.Pos?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
-<VBox alignment="CENTER" spacing="15.0" prefWidth="400.0" prefHeight="300.0"
-      xmlns:fx="http://javafx.com/fxml"
-      fx:controller="client.player.controller.HomeViewController"
-      stylesheets="@HomeView.css"
-      style="-fx-background-image: url('game.png'); -fx-background-size: cover;">
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="client.player.controller.HomeViewController"
+            stylesheets="@HomeView.css"
+            style="-fx-background-image: url('game.png'); -fx-background-size: cover;"
+            prefWidth="600.0" prefHeight="400.0">
 
-    <padding>
-        <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
-    </padding>
+    <top>
+        <VBox alignment="CENTER" spacing="10" BorderPane.alignment="CENTER">
+            <Text text="WHAT'S THE WORD?" styleClass="title-text"/>
+        </VBox>
+    </top>
 
-    <Text text="Welcome to What's The Word!" styleClass="title-text"/>
-    <Button fx:id="startGameButton" text="Start Game" onAction="#handleStartGame" styleClass="menu-button"/>
-    <Button fx:id="viewLeaderboardButton" text="View Leaderboard" onAction="#handleViewLeaderboard" styleClass="menu-button"/>
-    <Button fx:id="logoutButton" text="Logout" onAction="#handleLogout" styleClass="menu-button"/>
-    <!--    <TextArea fx:id="outputArea" editable="false" prefHeight="120.0" wrapText="true" styleClass="output-area"/>-->
- </VBox>
+    <center>
+        <VBox alignment="CENTER" spacing="20">
+            <GridPane hgap="30" vgap="20" alignment="CENTER">
+                <Button fx:id="startGameButton" text="Start Game" onAction="#handleStartGame" styleClass="menu-button"/>
+                <Button fx:id="viewLeaderboardButton" text="View Leaderboard" onAction="#handleViewLeaderboard" styleClass="menu-button" GridPane.columnIndex="1"/>
+                <Button fx:id="multiplayerButton" text="Multiplayer Mode" onAction="#handleMultiplayer" styleClass="menu-button" GridPane.rowIndex="1"/>
+                <Button fx:id="matchHistoryButton" text="Match History" onAction="#handleMatchHistory" styleClass="menu-button" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+            </GridPane>
+
+            <Button fx:id="logoutButton" text="Logout" onAction="#handleLogout" styleClass="menu-button"/>
+        </VBox>
+    </center>
+
+</BorderPane>
