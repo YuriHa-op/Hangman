@@ -19,6 +19,9 @@ import javafx.animation.Timeline;
 import javafx.util.Duration;
 import java.util.*;
 import client.player.helper.ConfettiHelper;
+import client.player.helper.SpectatablePlayerLabel;
+import client.player.helper.SpectatorManager;
+import javafx.animation.FadeTransition;
 
 public class MultiplayerGameViewController implements MultiplayerGameModel.LobbyStateListener {
     @FXML private StackPane root;
@@ -44,6 +47,9 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private boolean gameOverDialogShown = false;
     // Track last incorrect guess count for immediate feedback
     private int lastIncorrectGuesses = 0;
+    private SpectatorManager spectatorManager = new SpectatorManager();
+    private String povPlayer = null; // Whose POV is being shown
+    private StackPane spectateOverlay = null;
 
     @FXML
     public void initialize() {
@@ -59,6 +65,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 System.err.println("Could not load leave.png for exit button: " + e.getMessage());
             }
         }
+        // Listen for spectated player changes
+        spectatorManager.addListener(this::onSpectatedPlayerChanged);
     }
 
     private void setupLobbyPolling() {
@@ -137,10 +145,22 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             }
             updateScoresPanel(state);
 
-            wordDisplay.setText(state.getStringFromGameState("maskedWord", ""));
-            int incorrectGuesses = state.getIntFromGameState("incorrectGuesses", 0);
+            String pov = povPlayer != null ? povPlayer : model.getUsername();
+            wordDisplay.setText(state.getPlayerMaskedWord(pov));
+            int incorrectGuesses = state.getPlayerIncorrectGuesses(pov);
             updateHangmanImage(incorrectGuesses);
             lastIncorrectGuesses = incorrectGuesses;
+            // Update keyboard for spectate mode
+            updateKeyboardForPOV(state, pov);
+
+            // If spectating and the spectated player is now finished, return to own POV
+            if (povPlayer != null && !povPlayer.equals(model.getUsername())) {
+                String masked = state.getPlayerMaskedWord(povPlayer);
+                int incorrect = state.getPlayerIncorrectGuesses(povPlayer);
+                if ((incorrect >= 5) || (masked != null && !masked.contains("_"))) {
+                    spectatorManager.setSpectatedPlayer(model.getUsername());
+                }
+            }
 
             String sessionResult = state.getStringFromGameState("sessionResult", "");
             boolean gameOver = "WIN".equals(sessionResult) || "LOSE".equals(sessionResult);
@@ -148,7 +168,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 gameOverDialogShown = true;
                 stopPolling();
                 if ("WIN".equals(sessionResult)) {
-                    GameViewHelper.showWinCelebration(stage, state.getStringFromGameState("maskedWord", ""), "You won the game!", this::handleBackToMenu);
+                    GameViewHelper.showWinCelebration(stage, state.getPlayerMaskedWord(pov), "You won the game!", this::handleBackToMenu);
                 } else if ("LOSE".equals(sessionResult)) {
                     GameViewHelper.showGameOverDialog(stage, "You lost the game.", false, this::handleBackToMenu);
                 }
@@ -199,6 +219,11 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             } else if ("NOMATCH".equals(state.getState())) {
                 handleNoMatchState();
             }
+
+            // Stop timer if round is not in progress
+            if (!roundInProgress && gameTimerHelper != null) {
+                gameTimerHelper.stopRoundTimer();
+            }
         });
     }
 
@@ -248,16 +273,43 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         if (scores == null) return;
         scoresPanel.getChildren().clear();
         playerScoreLabels.clear();
+        boolean canSpectate = isUserDoneGuessing(state);
         for (String player : state.getPlayers()) {
             int score = scores.getOrDefault(player, 0);
-            Label scoreLabel = new Label(player + ":" + score);
-            scoreLabel.getStyleClass().add("player-score");
+            Label label = new Label(player + ":" + score);
+            label.getStyleClass().add("player-score");
             if (player.equals(model.getUsername())) {
-                scoreLabel.getStyleClass().add("current-player");
+                label.getStyleClass().add("current-player");
             }
-            playerScoreLabels.put(player, scoreLabel);
-            scoresPanel.getChildren().add(scoreLabel);
+            HBox playerBox = new HBox(5); // spacing between icon and label
+            playerBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            // Only show eye icon if user can spectate and not self
+            if (canSpectate && !player.equals(model.getUsername())) {
+                try {
+                    Image eyeImg = new Image(getClass().getResourceAsStream("/eye.png"));
+                    ImageView eyeView = new ImageView(eyeImg);
+                    eyeView.setFitWidth(18);
+                    eyeView.setFitHeight(18);
+                    eyeView.setPreserveRatio(true);
+                    eyeView.setStyle("-fx-cursor: hand;");
+                    eyeView.setOnMouseClicked(e -> spectatorManager.setSpectatedPlayer(player));
+                    playerBox.getChildren().add(eyeView);
+                } catch (Exception e) {
+                    System.err.println("Could not load eye.png for spectate icon: " + e.getMessage());
+                }
+            }
+            playerBox.getChildren().add(label);
+            playerScoreLabels.put(player, label);
+            scoresPanel.getChildren().add(playerBox);
         }
+    }
+
+    private boolean isUserDoneGuessing(LobbyState state) {
+        // User is done if they have guessed the word or lost all lives
+        String username = model.getUsername();
+        String masked = state.getPlayerMaskedWord(username);
+        int incorrect = state.getPlayerIncorrectGuesses(username);
+        return (incorrect >= 5) || (masked != null && !masked.contains("_"));
     }
 
     @FXML
@@ -271,6 +323,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             boolean correct = model.makeGuess(letter.charAt(0));
             new animatefx.animation.Pulse(clickedButton).play();
 
+            // Always remove both classes before adding
+            clickedButton.getStyleClass().removeAll("correct", "incorrect");
             // Color the key for correct/incorrect
             if (correct) {
                 clickedButton.getStyleClass().add("correct");
@@ -403,5 +457,66 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private void enableAllKeys() {
         keyboardGrid.setDisable(false);
         keyboardHelper.getKeyboardButtons().values().forEach(btn -> btn.setDisable(false));
+    }
+
+    private void onSpectatedPlayerChanged(String playerName) {
+        this.povPlayer = playerName;
+        showSpectateTransition(playerName);
+        if (model != null) {
+            model.updateLobbyState();
+        }
+    }
+
+    private void showSpectateTransition(String playerName) {
+        if (root == null) return;
+        if (spectateOverlay == null) {
+            spectateOverlay = new StackPane();
+            spectateOverlay.setStyle("-fx-background-color: rgba(0,0,0,0.85); -fx-alignment: center;");
+            spectateOverlay.setPrefSize(root.getWidth(), root.getHeight());
+            Label label = new Label();
+            label.setStyle("-fx-font-size: 38px; -fx-text-fill: #ffdd00; -fx-font-family: 'Minecraftia';");
+            spectateOverlay.getChildren().add(label);
+            root.getChildren().add(spectateOverlay);
+        }
+        Label label = (Label) spectateOverlay.getChildren().get(0);
+        if (playerName != null && !playerName.equals(model.getUsername())) {
+            label.setText("Spectating: " + playerName);
+        } else {
+            label.setText("Returning to your POV");
+        }
+        spectateOverlay.setOpacity(0);
+        spectateOverlay.setVisible(true);
+        FadeTransition fadeIn = new FadeTransition(javafx.util.Duration.millis(400), spectateOverlay);
+        fadeIn.setFromValue(0);
+        fadeIn.setToValue(1);
+        fadeIn.setOnFinished(e -> {
+            FadeTransition fadeOut = new FadeTransition(javafx.util.Duration.millis(400), spectateOverlay);
+            fadeOut.setFromValue(1);
+            fadeOut.setToValue(0);
+            fadeOut.setDelay(javafx.util.Duration.millis(500));
+            fadeOut.setOnFinished(ev -> spectateOverlay.setVisible(false));
+            fadeOut.play();
+        });
+        fadeIn.play();
+    }
+
+    private void updateKeyboardForPOV(LobbyState state, String pov) {
+        Set<Character> guesses = state.getPlayerGuesses(pov);
+        // Disable all keys if spectating someone else
+        boolean isSpectating = povPlayer != null && !povPlayer.equals(model.getUsername());
+        keyboardGrid.setDisable(isSpectating);
+        String actualWord = state.getPlayerActualWord(pov).toUpperCase();
+        keyboardHelper.getKeyboardButtons().forEach((letter, btn) -> {
+            btn.setDisable(isSpectating);
+            btn.getStyleClass().removeAll("correct", "incorrect");
+            if (guesses.contains(letter.charAt(0))) {
+                // Mark as correct or incorrect using the actual word
+                if (actualWord.contains(letter.toUpperCase())) {
+                    btn.getStyleClass().add("correct");
+                } else {
+                    btn.getStyleClass().add("incorrect");
+                }
+            }
+        });
     }
 } 

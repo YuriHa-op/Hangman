@@ -5,6 +5,7 @@ import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
 import javafx.util.Duration;
+import animatefx.animation.Shake;
 
 public class GameTimerHelper {
     private Timeline timerTimeline;
@@ -30,6 +31,7 @@ public class GameTimerHelper {
                     if (remainingTime <= 10) timerLabel.setStyle("-fx-text-fill: red;");
                     if (remainingTime <= 0) {
                         stopRoundTimer();
+                        Platform.runLater(() -> new Shake(timerLabel).play());
                         if (onTimeUp != null) Platform.runLater(onTimeUp);
                     }
                 })

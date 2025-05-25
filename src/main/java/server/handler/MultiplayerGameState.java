@@ -276,4 +276,47 @@ public class MultiplayerGameState {
             new ArrayList<>(roundResults)
         );
     }
+
+    // Add a method to force end the round if time is up
+    public synchronized void forceEndRound() {
+        if (roundInProgress) {
+            endRound();
+        }
+    }
+
+    // For spectate mode: get all players' masked words
+    public Map<String, String> getAllMaskedWords() {
+        Map<String, String> map = new HashMap<>();
+        for (String player : players) {
+            map.put(player, getMaskedWord(player));
+        }
+        return map;
+    }
+
+    // For spectate mode: get all players' incorrect guesses
+    public Map<String, Integer> getAllIncorrectGuesses() {
+        Map<String, Integer> map = new HashMap<>();
+        for (String player : players) {
+            map.put(player, getIncorrectGuesses(player));
+        }
+        return map;
+    }
+
+    // For spectate mode: get all players' guessed letters
+    public Map<String, Set<Character>> getAllPlayerGuesses() {
+        Map<String, Set<Character>> map = new HashMap<>();
+        for (String player : players) {
+            map.put(player, getPlayerGuesses(player));
+        }
+        return map;
+    }
+
+    // For spectate mode: get the current word for all players (same word for all in this round)
+    public Map<String, String> getAllCurrentWords() {
+        Map<String, String> map = new HashMap<>();
+        for (String player : players) {
+            map.put(player, currentWord != null ? currentWord : "");
+        }
+        return map;
+    }
 } 

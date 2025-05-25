@@ -56,6 +56,64 @@ public class MultiplayerGameModel {
             }
             return new HashMap<>();
         }
+
+        @SuppressWarnings("unchecked")
+        public String getPlayerMaskedWord(String player) {
+            if (gameState == null || !gameState.containsKey("maskedWords")) return "";
+            Object mapObj = gameState.get("maskedWords");
+            if (mapObj instanceof Map) {
+                Map<String, String> map = (Map<String, String>) mapObj;
+                return map.getOrDefault(player, "");
+            }
+            return "";
+        }
+
+        @SuppressWarnings("unchecked")
+        public int getPlayerIncorrectGuesses(String player) {
+            if (gameState == null || !gameState.containsKey("incorrectGuessesMap")) return 0;
+            Object mapObj = gameState.get("incorrectGuessesMap");
+            if (mapObj instanceof Map) {
+                Map<String, Number> map = (Map<String, Number>) mapObj;
+                Number n = map.get(player);
+                return n != null ? n.intValue() : 0;
+            }
+            return 0;
+        }
+
+        @SuppressWarnings("unchecked")
+        public Set<Character> getPlayerGuesses(String player) {
+            if (gameState == null || !gameState.containsKey("playerGuessesMap")) return new HashSet<>();
+            Object mapObj = gameState.get("playerGuessesMap");
+            if (mapObj instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) mapObj;
+                Object guessesObj = map.get(player);
+                if (guessesObj instanceof List) {
+                    List<Object> list = (List<Object>) guessesObj;
+                    Set<Character> result = new HashSet<>();
+                    for (Object o : list) {
+                        if (o instanceof String && ((String) o).length() == 1) {
+                            result.add(((String) o).charAt(0));
+                        }
+                    }
+                    return result;
+                }
+            }
+            return new HashSet<>();
+        }
+
+        @SuppressWarnings("unchecked")
+        public String getPlayerActualWord(String player) {
+            if (gameState == null || !gameState.containsKey("allCurrentWords")) return "";
+            Object mapObj = gameState.get("allCurrentWords");
+            if (mapObj instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>) mapObj;
+                Object wordObj = map.get(player);
+                if (wordObj instanceof String) {
+                    return (String) wordObj;
+                }
+            }
+            return "";
+        }
     }
 
     private final GameService gameService;

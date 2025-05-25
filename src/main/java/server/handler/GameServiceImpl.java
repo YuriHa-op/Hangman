@@ -316,7 +316,29 @@ public class GameServiceImpl extends GameServicePOA {
             sb.append("\"roundInProgress\":").append(gameState.isRoundInProgress()).append(",");
             sb.append("\"remainingTime\":").append(gameState.getRemainingTime()).append(",");
             sb.append("\"maskedWord\":\"").append(gameState.getMaskedWord(username)).append("\",");
-            
+
+            // Add all players' masked words for spectate mode
+            sb.append("\"maskedWords\":{");
+            Map<String, String> maskedWords = gameState.getAllMaskedWords();
+            Iterator<Map.Entry<String, String>> mwIt = maskedWords.entrySet().iterator();
+            while (mwIt.hasNext()) {
+                Map.Entry<String, String> entry = mwIt.next();
+                sb.append("\"").append(entry.getKey()).append("\":\"").append(entry.getValue()).append("\"");
+                if (mwIt.hasNext()) sb.append(",");
+            }
+            sb.append("},");
+
+            // Add all players' incorrect guesses for spectate mode
+            sb.append("\"incorrectGuessesMap\":{");
+            Map<String, Integer> incorrectGuessesMap = gameState.getAllIncorrectGuesses();
+            Iterator<Map.Entry<String, Integer>> igIt = incorrectGuessesMap.entrySet().iterator();
+            while (igIt.hasNext()) {
+                Map.Entry<String, Integer> entry = igIt.next();
+                sb.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
+                if (igIt.hasNext()) sb.append(",");
+            }
+            sb.append("},");
+
             // Add scores
             sb.append("\"scores\":{");
             Map<String, Integer> scores = gameState.getScores();
@@ -368,6 +390,35 @@ public class GameServiceImpl extends GameServicePOA {
                 sessionResult = "ONGOING";
             }
             sb.append("\"sessionResult\":\"").append(sessionResult).append("\"");
+
+            // Add all players' guessed letters for spectate mode
+            sb.append(",\"playerGuessesMap\":{");
+            Map<String, Set<Character>> playerGuessesMap = gameState.getAllPlayerGuesses();
+            Iterator<Map.Entry<String, Set<Character>>> pgIt = playerGuessesMap.entrySet().iterator();
+            while (pgIt.hasNext()) {
+                Map.Entry<String, Set<Character>> entry = pgIt.next();
+                sb.append("\"").append(entry.getKey()).append("\":[");
+                Iterator<Character> charIt = entry.getValue().iterator();
+                while (charIt.hasNext()) {
+                    sb.append("\"").append(charIt.next()).append("\"");
+                    if (charIt.hasNext()) sb.append(",");
+                }
+                sb.append("]");
+                if (pgIt.hasNext()) sb.append(",");
+            }
+            sb.append("},");
+
+            // Add all players' current word for spectate mode (NO leading comma)
+            sb.append("\"allCurrentWords\":{");
+            Map<String, String> allCurrentWords = gameState.getAllCurrentWords();
+            Iterator<Map.Entry<String, String>> cwIt = allCurrentWords.entrySet().iterator();
+            while (cwIt.hasNext()) {
+                Map.Entry<String, String> entry = cwIt.next();
+                sb.append("\"").append(entry.getKey()).append("\":\"").append(entry.getValue()).append("\"");
+                if (cwIt.hasNext()) sb.append(",");
+            }
+            sb.append("}");
+
             sb.append("}");
         }
         

@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import threading
 import json
+from PIL import Image, ImageTk  # pip install pillow
 
 # Default ORB settings (change if your server uses different host/port)
 ORB_HOST = os.environ.get('ORB_HOST', 'localhost')
@@ -309,12 +310,15 @@ class MultiplayerGame(tk.Frame):
         self.status_var = tk.StringVar()
         self.scores_var = tk.StringVar()
         self.keyboard_buttons = {}
+        self.spectating_player = None  # None means your own POV
+        self.last_keyboard_state = None  # Track last keyboard state
 
         tk.Label(self, text="Multiplayer Game", font=("Arial", 20)).pack(pady=10)
         tk.Label(self, textvariable=self.word_var, font=("Consolas", 32)).pack(pady=10)
         tk.Label(self, textvariable=self.timer_var, font=("Arial", 18)).pack(pady=5)
         tk.Label(self, textvariable=self.round_var, font=("Arial", 14)).pack(pady=5)
-        tk.Label(self, textvariable=self.scores_var, font=("Arial", 14)).pack(pady=5)
+        self.scores_frame = tk.Frame(self)
+        self.scores_frame.pack(pady=5)
         tk.Label(self, textvariable=self.status_var, font=("Arial", 16), fg="green").pack(pady=5)
 
         kb_frame = tk.Frame(self)
@@ -331,12 +335,20 @@ class MultiplayerGame(tk.Frame):
         tk.Button(self, text="Back to Menu", command=self.back_to_menu).pack(pady=10)
         self.polling = False
 
+        # Load spectate icon
+        try:
+            self.eye_img = Image.open("eye.png").resize((18, 18), Image.ANTIALIAS)
+            self.eye_tk = ImageTk.PhotoImage(self.eye_img)
+        except Exception:
+            self.eye_tk = None
+
     def enable_keyboard(self):
         for btn in self.keyboard_buttons.values():
             btn.config(state=tk.NORMAL, bg='SystemButtonFace')
 
     def on_show(self):
         self.polling = True
+        self.spectating_player = None
         self.enable_keyboard()
         self.status_var.set("")
         threading.Thread(target=self.poll_game, daemon=True).start()
@@ -347,18 +359,50 @@ class MultiplayerGame(tk.Frame):
             state_json = self.master.game_service.getMultiplayerLobbyState(self.master.username)
             state = json.loads(state_json)
             game = state.get("gameState", {})
-            self.word_var.set(game.get("maskedWord", ""))
+            players = state.get("players", [])
+            # --- Spectate logic ---
+            if self.spectating_player and self.spectating_player not in players:
+                self.spectating_player = None  # Player left, return to self
+
+            # Determine POV
+            pov = self.spectating_player or self.master.username
+
+            # Get all relevant maps
+            masked_words = game.get("maskedWords", {})
+            all_words = game.get("allCurrentWords", {})
+            guesses_map = game.get("playerGuessesMap", {})
+            incorrect_map = game.get("incorrectGuessesMap", {})
+
+            # Update word, timer, round, scores
+            self.word_var.set(masked_words.get(pov, ""))
             self.timer_var.set(f"Time left: {game.get('remainingTime', 0)}s")
             self.round_var.set(f"Round: {game.get('currentRound', 0) + 1}")
             scores = game.get("scores", {})
-            scores_str = " | ".join(f"{p}: {scores.get(p, 0)}" for p in state.get("players", []))
+            scores_str = " | ".join(f"{p}: {scores.get(p, 0)}" for p in players)
             self.scores_var.set(f"Scores: {scores_str}")
-            guesses = set(game.get("guesses", []))
-            for letter, btn in self.keyboard_buttons.items():
-                if letter.lower() in guesses:
-                    btn.config(state=tk.DISABLED)
-            if not game.get("roundInProgress", True):
-                winner = game.get("roundWinner", "")
+
+            # Update scores panel with spectate icons
+            self.update_scores_panel(players, scores, guesses_map, incorrect_map, masked_words)
+
+            # Keyboard coloring (only if changed)
+            guesses = set(guesses_map.get(pov, []))
+            actual_word = all_words.get(pov, "").upper()
+            round_num = game.get("currentRound", 0)
+            keyboard_state = (frozenset(guesses), actual_word, round_num)
+            if keyboard_state != self.last_keyboard_state:
+                self.update_keyboard(pov, guesses_map, all_words)
+                self.last_keyboard_state = keyboard_state
+
+            # Keyboard enable/disable
+            can_guess = (self.spectating_player is None)
+            for btn in self.keyboard_buttons.values():
+                btn.config(state=tk.NORMAL if can_guess else tk.DISABLED)
+
+            # Status and round/game over logic
+            round_in_progress = game.get("roundInProgress", True)
+            round_over = not round_in_progress
+            winner = game.get("roundWinner", "")
+            if round_over:
                 if winner:
                     if winner == self.master.username:
                         self.status_var.set("You won this round!")
@@ -386,9 +430,54 @@ class MultiplayerGame(tk.Frame):
                 else:
                     self.status_var.set(f"{game['gameWinner']} won the game.")
                 self.polling = False
+
+            # --- Auto-return from spectate if player finished ---
+            if self.spectating_player:
+                masked = masked_words.get(self.spectating_player, "")
+                incorrect = incorrect_map.get(self.spectating_player, 0)
+                if (incorrect is not None and incorrect >= 5) or (masked and "_" not in masked):
+                    self.spectating_player = None
+
             time.sleep(1)
 
+    def update_scores_panel(self, players, scores, guesses_map, incorrect_map, masked_words):
+        for widget in self.scores_frame.winfo_children():
+            widget.destroy()
+        can_spectate = self.is_user_done_guessing(guesses_map, incorrect_map, masked_words)
+        for player in players:
+            frame = tk.Frame(self.scores_frame)
+            frame.pack(side=tk.LEFT, padx=5)
+            # Spectate icon
+            if can_spectate and player != self.master.username and self.eye_tk:
+                btn = tk.Button(frame, image=self.eye_tk, command=lambda p=player: self.set_spectate(p), borderwidth=0)
+                btn.pack(side=tk.LEFT)
+            label = tk.Label(frame, text=f"{player}:{scores.get(player, 0)}", font=("Arial", 12))
+            label.pack(side=tk.LEFT)
+
+    def set_spectate(self, player):
+        self.spectating_player = player
+
+    def is_user_done_guessing(self, guesses_map, incorrect_map, masked_words):
+        # User is done if they have guessed the word or lost all lives
+        my_guesses = guesses_map.get(self.master.username, [])
+        my_incorrect = incorrect_map.get(self.master.username, 0)
+        my_masked = masked_words.get(self.master.username, "")
+        return (my_incorrect is not None and my_incorrect >= 5) or (my_masked and "_" not in my_masked)
+
+    def update_keyboard(self, pov, guesses_map, all_words):
+        guesses = set(guesses_map.get(pov, []))
+        actual_word = all_words.get(pov, "").upper()
+        for letter, btn in self.keyboard_buttons.items():
+            btn.config(bg='SystemButtonFace')
+            if letter in guesses:
+                if letter in actual_word:
+                    btn.config(bg='#4CAF50')  # Green
+                else:
+                    btn.config(bg='#f44336')  # Red
+
     def make_guess(self, letter):
+        if self.spectating_player:
+            return  # Don't allow guesses while spectating
         correct = self.master.game_service.sendMultiplayerGuess(self.master.username, letter.lower())
         btn = self.keyboard_buttons[letter.upper()]
         if correct:

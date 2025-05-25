@@ -18,6 +18,8 @@ public class MultiplayerGameManager {
         ""      // DB password (change as needed)
     );
     private final Set<String> cleanupScheduled = ConcurrentHashMap.newKeySet();
+    // Track round timers for each lobby
+    private final Map<String, ScheduledFuture<?>> roundTimers = new ConcurrentHashMap<>();
 
     public MultiplayerGameManager(WordManager wordManager, PlayerManager playerManager, int minPlayers, int maxPlayers, int queueTimeSeconds) {
         this.wordManager = wordManager;
@@ -61,6 +63,7 @@ public class MultiplayerGameManager {
             );
             activeGames.put(lobbyId, gameState);
             gameState.startNewRound();
+            scheduleRoundTimer(lobbyId);
         } else {
             // Not enough players, notify and remove lobby
             for (String player : lobby.getPlayers()) {
@@ -113,10 +116,15 @@ public class MultiplayerGameManager {
     public boolean startNewRound(String lobbyId) {
         MultiplayerGameState game = activeGames.get(lobbyId);
         if (game == null) return false;
-        return game.startNewRound();
+        boolean started = game.startNewRound();
+        if (started) {
+            scheduleRoundTimer(lobbyId);
+        }
+        return started;
     }
 
     public void cleanupGame(String lobbyId) {
+        cancelRoundTimer(lobbyId);
         activeLobbies.remove(lobbyId);
         activeGames.remove(lobbyId);
     }
@@ -140,7 +148,11 @@ public class MultiplayerGameManager {
             scheduler.schedule(() -> cleanupGame(lobby.getLobbyId()), 5, java.util.concurrent.TimeUnit.SECONDS);
             return false;
         }
-        return game.startNewRound();
+        boolean started = game.startNewRound();
+        if (started) {
+            scheduleRoundTimer(lobby.getLobbyId());
+        }
+        return started;
     }
 
     // Save match result to DB (stub for now)
@@ -159,6 +171,24 @@ public class MultiplayerGameManager {
                 cleanupScheduled.remove(lobbyId);
             }, 7, TimeUnit.SECONDS); // 7 seconds for clients to poll result
         }
+    }
+
+    private void scheduleRoundTimer(String lobbyId) {
+        // Cancel any existing timer for this lobby
+        ScheduledFuture<?> prev = roundTimers.remove(lobbyId);
+        if (prev != null) prev.cancel(false);
+        ScheduledFuture<?> future = scheduler.schedule(() -> {
+            MultiplayerGameState state = activeGames.get(lobbyId);
+            if (state != null) {
+                state.forceEndRound();
+            }
+        }, playerManager.getRoundTime(), TimeUnit.SECONDS);
+        roundTimers.put(lobbyId, future);
+    }
+
+    private void cancelRoundTimer(String lobbyId) {
+        ScheduledFuture<?> future = roundTimers.remove(lobbyId);
+        if (future != null) future.cancel(false);
     }
 
     // Additional methods for game state, guesses, win condition, etc. will be added as needed.
