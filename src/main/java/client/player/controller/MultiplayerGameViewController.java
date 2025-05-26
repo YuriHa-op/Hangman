@@ -95,16 +95,23 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
     public void startNewGame() {
         resetUI();
-        model.startGame();
-        lobbyPoller.play();
-        showWaitingUI();
+        // model.startGame(); // DO NOT start game again, HomeViewController already did.
+        // Game is already started by HomeViewController, just start polling.
+        if (lobbyPoller != null) {
+            lobbyPoller.play();
+        }
+        // showWaitingUI(); // Don't show waiting UI, expect game to be in progress or starting.
+        // Immediately poll to get the current state.
+        if (model != null) {
+            model.updateLobbyState();
+        }
     }
 
     private void showWaitingUI() {
         wordDisplay.setText("Waiting for players...");
         keyboardGrid.setVisible(false);
         timerLabel.setText("");
-        roundLabel.setText("Lobby");
+        // roundLabel.setText("Lobby"); // Let onLobbyUpdate handle this
     }
 
     private void resetUI() {
@@ -228,10 +235,15 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     }
 
     private void handleWaitingState(LobbyState state) {
+        // This method might be redundant now or need adjustment,
+        // as we don't explicitly call showWaitingUI() anymore in startNewGame.
+        // The game should transition from HomeView's queue directly to a STARTED state.
         if (!gameStarted) {
             int playerCount = state.getPlayers().size();
             int maxPlayers = state.getMaxPlayers();
-            wordDisplay.setText(String.format("Waiting for players (%d/%d)...", playerCount, maxPlayers));
+            // Update a generic status if needed, but primary update comes from handleStartedState
+            // wordDisplay.setText(String.format("Waiting for players (%d/%d)...", playerCount, maxPlayers));
+            roundLabel.setText("Preparing Game..."); // More appropriate if game is about to start
         }
     }
 
@@ -239,23 +251,42 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         if (!gameStarted) {
             gameStarted = true;
             keyboardGrid.setVisible(true);
-            resetKeyboard();
+            // resetKeyboard(); // resetForNewRound will handle this if it's a new round
             
             // Start round timer
             if (gameTimerHelper != null) {
                 gameTimerHelper.stopRoundTimer();
             }
             gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
-            gameTimerHelper.startRoundTimer(model.getGameService().getRoundTime(), state.getIntFromGameState("remainingTime", 60));
+            // Use remainingTime from state for consistency, fallback to configured round time
+            int roundTime = model.getGameService().getRoundTime();
+            int remainingTime = state.getIntFromGameState("remainingTime", roundTime);
+            gameTimerHelper.startRoundTimer(roundTime, remainingTime);
             
             // Update UI
-            wordDisplay.setText(state.getStringFromGameState("maskedWord", ""));
+            // povPlayer should be initialized to model.getUsername() if null
+            if (povPlayer == null) povPlayer = model.getUsername();
+            String pov = povPlayer;
+            wordDisplay.setText(state.getPlayerMaskedWord(pov));
             roundLabel.setText("Round: " + (state.getIntFromGameState("currentRound", 0) + 1));
             updateHangmanImage(state.getIntFromGameState("incorrectGuesses", 0));
+            updateKeyboardForPOV(state, pov); // Ensure keyboard is correctly set for POV
             
             // Show game started message
-            GameViewHelper.animateWordDisplay(wordDisplay);
+            // GameViewHelper.animateWordDisplay(wordDisplay); // This can be distracting if round just started
         }
+        // If game is already started, ensure UI elements like keyboard visibility are correct based on state
+        boolean isPlayerFinished = isUserDoneGuessing(state, model.getUsername());
+        boolean isSpectating = povPlayer != null && !povPlayer.equals(model.getUsername());
+
+        if(isSpectating || isPlayerFinished){
+            disableAllKeys();
+        } else {
+            enableAllKeys();
+            // Ensure keyboard state (pressed keys) is also updated
+            updateKeyboardForPOV(state, model.getUsername());
+        }
+        keyboardGrid.setVisible(true); // Should generally be visible in started state unless round is over
     }
 
     private void handleNoMatchState() {
@@ -304,11 +335,14 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         }
     }
 
-    private boolean isUserDoneGuessing(LobbyState state) {
+    private boolean isUserDoneGuessing(LobbyState state) { // Keep old signature for compatibility if used elsewhere
+        return isUserDoneGuessing(state, model.getUsername());
+    }
+
+    private boolean isUserDoneGuessing(LobbyState state, String player) {
         // User is done if they have guessed the word or lost all lives
-        String username = model.getUsername();
-        String masked = state.getPlayerMaskedWord(username);
-        int incorrect = state.getPlayerIncorrectGuesses(username);
+        String masked = state.getPlayerMaskedWord(player);
+        int incorrect = state.getPlayerIncorrectGuesses(player);
         return (incorrect >= 5) || (masked != null && !masked.contains("_"));
     }
 

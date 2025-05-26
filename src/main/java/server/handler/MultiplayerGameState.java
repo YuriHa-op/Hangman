@@ -34,7 +34,7 @@ public class MultiplayerGameState {
         this.playerGuesses = new ConcurrentHashMap<>();
         this.playerFinishTimes = new ConcurrentHashMap<>();
         this.playerMisses = new ConcurrentHashMap<>();
-        this.currentRound = 0;
+        this.currentRound = -1;
         this.roundInProgress = false;
         
         // Initialize player scores, guesses, and misses
@@ -52,8 +52,14 @@ public class MultiplayerGameState {
     public synchronized boolean startNewRound() {
         if (roundInProgress) return false;
         
+        currentRound++;
+        
         currentWord = selectNewWord();
-        if (currentWord == null) return false;
+        
+        if (currentWord == null) {
+            currentRound--;
+            return false;
+        }
 
         roundInProgress = true;
         roundStartTime = System.currentTimeMillis();
@@ -70,12 +76,13 @@ public class MultiplayerGameState {
             playerMisses.put(player, 0);
         }
         
-        currentRound++;
         return true;
     }
 
     private String selectNewWord() {
         if (matchWords.isEmpty()) return null;
+        if (currentRound < 0) return null;
+
         int idx = currentRound % matchWords.size();
         return matchWords.get(idx);
     }

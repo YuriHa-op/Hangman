@@ -5,6 +5,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Text?>
 
@@ -16,6 +17,7 @@
 
     <top>
         <VBox alignment="CENTER" spacing="10" BorderPane.alignment="CENTER">
+            <StackPane fx:id="queueStatusContainer" />
             <Text text="WHAT'S THE WORD?" styleClass="title-text"/>
         </VBox>
     </top>
