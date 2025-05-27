@@ -7,6 +7,7 @@ import client.player.view.GameView;
 import client.player.view.LeaderboardView;
 import client.player.view.MultiplayerGameView;
 import client.player.view.QueueStatusPane;
+import client.player.view.MatchHistoryView;
 import javafx.animation.KeyFrame;
 import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
@@ -312,3 +313,4 @@ public class HomeViewController {
         return stage;
     }
 }
+

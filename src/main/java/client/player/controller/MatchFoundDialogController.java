@@ -13,6 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import javafx.scene.layout.HBox;
 import javafx.scene.Node;
@@ -61,31 +62,35 @@ public class MatchFoundDialogController {
             controller.player2Name.setText(player2);
             controller.player1Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream("/client/player/view/player1.png")));
             controller.player2Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream("/client/player/view/player2.png")));
+
             Stage dialog = new Stage();
             controller.dialogStage = dialog;
             dialog.initOwner(owner);
             dialog.initModality(Modality.APPLICATION_MODAL);
-            dialog.setScene(new Scene(root));
+            dialog.initStyle(StageStyle.UNDECORATED);
             dialog.setTitle("Match Found");
-            dialog.setResizable(false);
-            dialog.getScene().getStylesheets().add(MatchFoundDialogController.class.getResource("/client/player/view/MatchFoundDialog.css").toExternalForm());
 
-            // Disable the close (X) button
+            Scene scene = new Scene(root);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+            dialog.setScene(scene);
+            String cssPath = "/client/player/view/MatchFoundDialog.css";
+            String css = MatchFoundDialogController.class.getResource(cssPath).toExternalForm();
+            if (css != null) {
+                dialog.getScene().getStylesheets().add(css);
+            } else {
+                System.err.println("Could not load CSS for MatchFoundDialog: " + cssPath);
+            }
+
             dialog.setOnCloseRequest(event -> event.consume());
 
-            // Fade in the dialog
             if (root != null) controller.fadeInNode(root);
 
-            // Slide in player panels and bounce avatars
             controller.slideAndBouncePlayers();
 
-            // Bounce "vs" label and rotate
             controller.bounceAndRotateVs();
 
-            // Slightly rotate avatars
             controller.rotateAvatars();
 
-            // Show confetti burst on open, but only after layout
             Platform.runLater(() -> {
                 if (controller.root != null && controller.root.getWidth() > 0 && controller.root.getHeight() > 0) {
                     ConfettiHelper.showConfetti(controller.root);
@@ -112,7 +117,6 @@ public class MatchFoundDialogController {
             } else {
                 countdownLabel.setText("Go!");
                 playGoPulse();
-                // Show confetti only if root is valid
                 if (root != null && root.getWidth() > 0 && root.getHeight() > 0) {
                     ConfettiHelper.showConfetti(root);
                 }

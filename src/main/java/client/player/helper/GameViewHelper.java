@@ -10,6 +10,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
 
 import java.util.Random;//victory animation
@@ -23,16 +24,18 @@ public class GameViewHelper {
         Stage celebrationStage = new Stage();
         celebrationStage.initModality(Modality.APPLICATION_MODAL);
         celebrationStage.initOwner(owner);
+        celebrationStage.initStyle(StageStyle.TRANSPARENT);
         celebrationStage.setTitle("VICTORY!");
 
         StackPane root = new StackPane();
-        root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.8); -fx-background-radius: 10;");
+        root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.85); -fx-border-color: gold; -fx-border-width: 2px; -fx-background-radius: 15px; -fx-border-radius: 15px;");
 
         VBox content = new VBox(20);
         content.setAlignment(Pos.CENTER);
         content.setPadding(new Insets(30));
         content.setMaxWidth(400);
         content.setMaxHeight(400);
+        content.setStyle("-fx-background-color: transparent;");
 
         Label victoryLabel = new Label("VICTORY!");
         victoryLabel.setStyle("-fx-font-family: 'Minecraft'; -fx-font-size: 48px; -fx-text-fill: gold; -fx-font-weight: bold;");
@@ -47,13 +50,23 @@ public class GameViewHelper {
         Button continueButton = new Button("Continue");
         continueButton.setStyle("-fx-font-family: 'Minecraft'; -fx-font-size: 20px; -fx-background-color: #55AA55; " +
                 "-fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 5;");
-        continueButton.setOnAction(e -> {
-            celebrationStage.close();
-            if (onContinue != null) onContinue.run();
-        });
 
         content.getChildren().addAll(victoryLabel, wordLabel, messageLabel, continueButton);
         root.getChildren().add(content);
+
+        // Make window draggable
+        final double[] xOffset = {0};
+        final double[] yOffset = {0};
+
+        root.setOnMousePressed(event -> {
+            xOffset[0] = event.getSceneX();
+            yOffset[0] = event.getSceneY();
+        });
+
+        root.setOnMouseDragged(event -> {
+            celebrationStage.setX(event.getScreenX() - xOffset[0]);
+            celebrationStage.setY(event.getScreenY() - yOffset[0]);
+        });
 
         // Particle effect
         Pane particlePane = new Pane();
@@ -110,23 +123,25 @@ public class GameViewHelper {
             bounce.play();
             particleTimeline.play();
         });
+        // Original logic: onContinue runs when the button is clicked and stage is closed.
+        continueButton.setOnAction(e -> {
+            celebrationStage.close();
+            if (onContinue != null) onContinue.run();
+        });
 
         celebrationStage.showAndWait();
     }
 
     public static void showGameOverDialog(Stage owner, String message, boolean isWin, Runnable onClose) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Game Over");
+        Stage dialog = new Stage();
         dialog.initOwner(owner);
         dialog.initModality(Modality.APPLICATION_MODAL);
-
-        DialogPane dialogPane = dialog.getDialogPane();
-        dialogPane.getStylesheets().add(GameViewHelper.class.getResource("/client/player/view/GameView.css").toExternalForm());
-        dialogPane.getStyleClass().add("minecraft-dialog");
+        dialog.initStyle(StageStyle.UNDECORATED); // Removes window buttons
 
         VBox content = new VBox(10);
         content.setAlignment(Pos.CENTER);
         content.getStyleClass().add("gameover-background");
+        content.getStylesheets().add(GameViewHelper.class.getResource("/client/player/view/GameView.css").toExternalForm());
 
         Label resultLabel = new Label(isWin ? "You Win!" : "Game Over");
         resultLabel.getStyleClass().add("gameover-title");
@@ -144,26 +159,43 @@ public class GameViewHelper {
         messageLabel.setWrapText(true);
         messageLabel.getStyleClass().add("gameover-message");
 
-        content.getChildren().addAll(resultLabel, messageLabel);
-        dialogPane.setContent(content);
-        dialogPane.getButtonTypes().add(ButtonType.OK);
-
-        Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+        Button okButton = new Button("OK");
         okButton.getStyleClass().add("gameover-button");
-
         okButton.setOnAction(e -> {
             dialog.close();
             if (onClose != null) onClose.run();
         });
 
+        content.getChildren().addAll(resultLabel, messageLabel, okButton);
+
+        Scene scene = new Scene(content);
+        dialog.setScene(scene);
+
+        // Make it draggable
+        final Delta dragDelta = new Delta();
+        content.setOnMousePressed(event -> {
+            dragDelta.x = dialog.getX() - event.getScreenX();
+            dragDelta.y = dialog.getY() - event.getScreenY();
+        });
+        content.setOnMouseDragged(event -> {
+            dialog.setX(event.getScreenX() + dragDelta.x);
+            dialog.setY(event.getScreenY() + dragDelta.y);
+        });
+
+        // AnimateFX: Optional
         dialog.setOnShown(e -> {
-            // AnimateFX: Tada for resultLabel, FadeInDown for dialogPane
             new Tada(resultLabel).play();
-            new FadeInDown(dialogPane).play();
+            new FadeInDown(content).play();
         });
 
         dialog.showAndWait();
     }
+
+    // Helper class for dragging
+    private static class Delta {
+        double x, y;
+    }
+
 
     public static void showExitGameDialog(Stage owner, Runnable onExit) {
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -221,11 +253,12 @@ public class GameViewHelper {
         scale.setAutoReverse(true);
         scale.setCycleCount(2);
 
-        FillTransition color = new FillTransition(Duration.millis(500));
-        // Only works for Text, so for Label, use setStyle
+        // For Label, setStyle to change text fill color as FillTransition is for Shapes
         String originalStyle = label.getStyle();
-        label.setStyle(originalStyle + "; -fx-text-fill: #55FF55; -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;");
-        scale.setOnFinished(e -> label.setStyle(originalStyle));
+        // Append new style, assuming originalStyle might not end with a semicolon
+        String newStyle = originalStyle + (originalStyle.trim().endsWith(";") ? "" : ";") + " -fx-text-fill: #55FF55;";
+        label.setStyle(newStyle);
+        scale.setOnFinished(e -> label.setStyle(originalStyle)); // Revert to original style
 
         scale.play();
     }
@@ -260,6 +293,7 @@ public class GameViewHelper {
         javafx.animation.ParallelTransition pt = new javafx.animation.ParallelTransition(node, scale, fade);
         pt.setOnFinished(e -> {
             node.setVisible(false);
+            // Reset properties for potential reuse
             node.setScaleX(1.0);
             node.setScaleY(1.0);
             node.setOpacity(1.0);

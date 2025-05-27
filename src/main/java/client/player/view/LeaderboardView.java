@@ -14,6 +14,7 @@ public class LeaderboardView {
     public void start(Stage stage, GameService gameService, Runnable onBackToMenu) {
         this.stage = stage;
         try {
+            stage.initStyle(javafx.stage.StageStyle.UNDECORATED);
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/player/view/LeaderboardsView.fxml"));
             Parent root = loader.load();
             controller = loader.getController();
@@ -21,6 +22,20 @@ public class LeaderboardView {
             controller.setStage(stage);
             controller.setOnBackToMenu(onBackToMenu);
             controller.setGameService(gameService);
+
+            // Make window draggable
+            final double[] xOffset = {0};
+            final double[] yOffset = {0};
+
+            root.setOnMousePressed(event -> {
+                xOffset[0] = event.getSceneX();
+                yOffset[0] = event.getSceneY();
+            });
+
+            root.setOnMouseDragged(event -> {
+                stage.setX(event.getScreenX() - xOffset[0]);
+                stage.setY(event.getScreenY() - yOffset[0]);
+            });
 
             Scene scene = new Scene(root);
             stage.setScene(scene);
@@ -42,3 +57,4 @@ public class LeaderboardView {
         stage.close();
     }
 }
+

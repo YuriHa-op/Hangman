@@ -22,6 +22,7 @@ import client.player.helper.ConfettiHelper;
 import client.player.helper.SpectatablePlayerLabel;
 import client.player.helper.SpectatorManager;
 import javafx.animation.FadeTransition;
+import client.player.view.results.GameResultsView;
 
 public class MultiplayerGameViewController implements MultiplayerGameModel.LobbyStateListener {
     @FXML private StackPane root;
@@ -174,10 +175,24 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             if (gameOver && !gameOverDialogShown) {
                 gameOverDialogShown = true;
                 stopPolling();
+
+                // Prepare data for results screen
+                final List<String> playerNames = new ArrayList<>(state.getPlayers());
+                final Map<String, Integer> finalScores = new HashMap<>(state.getScoresFromGameState());
+
+                Runnable showResultsAndGoHome = () -> {
+                    // Defer showing the results view to allow the current dialog to fully close
+                    Platform.runLater(() -> {
+                        GameResultsView resultsView = new GameResultsView();
+                        // Pass the main game stage (this.stage) as owner
+                        resultsView.showResults(this.stage, playerNames, finalScores, this::handleBackToMenu);
+                    });
+                };
+
                 if ("WIN".equals(sessionResult)) {
-                    GameViewHelper.showWinCelebration(stage, state.getPlayerMaskedWord(pov), "You won the game!", this::handleBackToMenu);
+                    GameViewHelper.showWinCelebration(this.stage, state.getPlayerMaskedWord(pov), "You won the game!", showResultsAndGoHome);
                 } else if ("LOSE".equals(sessionResult)) {
-                    GameViewHelper.showGameOverDialog(stage, "You lost the game.", false, this::handleBackToMenu);
+                    GameViewHelper.showGameOverDialog(this.stage, "You lost the game.", false, showResultsAndGoHome);
                 }
                 return;
             }

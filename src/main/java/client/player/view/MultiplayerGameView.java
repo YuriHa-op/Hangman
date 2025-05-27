@@ -7,6 +7,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 public class MultiplayerGameView {
     private Stage stage;
@@ -16,48 +17,48 @@ public class MultiplayerGameView {
     public void start(Stage stage, GameService gameService, String username, Runnable onBackToMenu) {
         this.stage = stage;
         try {
+            stage.initStyle(StageStyle.UNDECORATED);
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/player/view/MultiplayerGameView.fxml"));
             root = loader.load();
-
-            // Get controller from FXML
             controller = loader.getController();
-
-            // Create model
             MultiplayerGameModel model = new MultiplayerGameModel(gameService, username);
-
-            // Setup UI component controller with dependencies
             controller.setStage(stage);
             controller.setModel(model);
-
-            // Properly handle returning to menu
             controller.setOnBackToMenu(() -> {
-                this.close(); // Close the game view window
+                this.close();
                 if (onBackToMenu != null) {
-                    onBackToMenu.run(); // Show the menu
+                    onBackToMenu.run();
                 }
             });
-
-            // Start new game
             controller.startNewGame();
+
+            // Make window draggable
+            final double[] xOffset = {0};
+            final double[] yOffset = {0};
+
+            root.setOnMousePressed(event -> {
+                xOffset[0] = event.getSceneX();
+                yOffset[0] = event.getSceneY();
+            });
+
+            root.setOnMouseDragged(event -> {
+                stage.setX(event.getScreenX() - xOffset[0]);
+                stage.setY(event.getScreenY() - yOffset[0]);
+            });
 
             Scene scene = new Scene(root);
             stage.setScene(scene);
-            stage.setTitle("What's The Word - Multiplayer");
-            stage.setResizable(true);
-            stage.setMinWidth(850);
-            stage.setMinHeight(900);
-            stage.setWidth(900);
-            stage.setHeight(950);
-
-            // Add window close handler for forced cleanup
+            stage.setTitle("What's The Word - Multiplayer Game");
+            stage.setResizable(false);
+            stage.setMinWidth(900);
+            stage.setMinHeight(950);
+            stage.setWidth(950);
+            stage.setHeight(1000);
             stage.setOnCloseRequest(event -> {
-                try {
-                    controller.handleBackToMenu();
-                    if (gameService != null && username != null) {
-                        gameService.endGameSession(username);
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error cleaning up on window close: " + e.getMessage());
+                controller.handleBackToMenu();
+                controller.handleBackToMenu();
+                if (gameService != null && username != null) {
+                    gameService.endGameSession(username);
                 }
             });
         } catch (Exception e) {
@@ -68,12 +69,9 @@ public class MultiplayerGameView {
 
     public void show() {
         stage.show();
-        if (controller != null) {
-            controller.onReturned();
-        }
     }
 
     public void close() {
         stage.close();
     }
-} 
+}
