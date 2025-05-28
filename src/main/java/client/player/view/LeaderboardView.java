@@ -41,8 +41,8 @@ public class LeaderboardView {
             stage.setScene(scene);
             stage.setTitle("Leaderboard - What's The Word");
             stage.setResizable(false);
-            stage.setWidth(650);
-            stage.setHeight(550);
+            stage.setWidth(700);
+            stage.sizeToScene();
         } catch (Exception e) {
             System.err.println("Error loading LeaderboardView: " + e.getMessage());
             e.printStackTrace();

@@ -16,7 +16,7 @@
       spacing="15" alignment="TOP_CENTER"
       stylesheets="@LeaderboardView.css"
       style="-fx-background-image: url('/leaderboard.png'); -fx-background-size: cover;"
-      prefWidth="600" prefHeight="550">
+      prefWidth="600">
 
     <padding>
         <Insets top="30" right="20" bottom="30" left="20"/>
@@ -24,12 +24,22 @@
 
     <Label text="LEADERBOARD" styleClass="leaderboard-title-main"/>
 
-    <StackPane prefHeight="400" VBox.vgrow="ALWAYS">
+    <StackPane VBox.vgrow="ALWAYS">
         <VBox fx:id="leaderboardContentPanel" alignment="TOP_CENTER" spacing="10" >
             <padding>
                 <Insets top="40" right="20" bottom="20" left="20"/>
             </padding>
-            <ListView fx:id="leaderboardListView" prefHeight="350" VBox.vgrow="ALWAYS"/>
+
+            <!-- Header Row for Username and Wins -->
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="leaderboard-header-row">
+                <padding>
+                    <Insets left="80" right="15"/> <!-- Adjust left padding to align with names, modified right padding -->
+                </padding>
+                <Label text="Username" styleClass="leaderboard-header-label" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <Label text="Wins" styleClass="leaderboard-header-label,wins-header-label" alignment="CENTER_RIGHT" minWidth="-Infinity"/>
+            </HBox>
+
+            <ListView fx:id="leaderboardListView" VBox.vgrow="ALWAYS"/>
         </VBox>
 
         <Button fx:id="closeButton" onAction="#handleBackToMenu" styleClass="close-button" StackPane.alignment="TOP_RIGHT">

@@ -32,6 +32,8 @@ import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Animation;
 import javafx.animation.ParallelTransition;
+import client.player.helper.AfkCheckDialog;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MultiplayerGameViewController implements MultiplayerGameModel.LobbyStateListener {
     @FXML private StackPane root;
@@ -62,6 +64,12 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private StackPane spectateOverlay = null;
     private Map<String, Animation> activeAnimations = new HashMap<>(); // Store active animations
 
+    // AFK Dialog related fields
+    private static final long AFK_DIALOG_COOLDOWN_MS = 20000; // 20 seconds cooldown
+    private long lastAfkDialogShownTime = 0;
+    private AtomicBoolean afkDialogCooldownActive = new AtomicBoolean(false);
+    private Timeline afkDialogCooldownTimer;
+
     @FXML
     public void initialize() {
         keyboardHelper = new KeyboardHelper(keyboardGrid, this::handleKeyPress);
@@ -78,6 +86,13 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         }
         // Listen for spectated player changes
         spectatorManager.addListener(this::onSpectatedPlayerChanged);
+
+        // Initialize AFK Dialog Cooldown Timer
+        afkDialogCooldownTimer = new Timeline(new KeyFrame(Duration.millis(AFK_DIALOG_COOLDOWN_MS), e -> {
+            afkDialogCooldownActive.set(false);
+            System.out.println("AFK Dialog cooldown finished.");
+        }));
+        afkDialogCooldownTimer.setCycleCount(1); // Run once per start
     }
 
     private void setupLobbyPolling() {
@@ -118,12 +133,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         }
     }
 
-    private void showWaitingUI() {
-        wordDisplay.setText("Waiting for players...");
-        keyboardGrid.setVisible(false);
-        timerLabel.setText("");
-        // roundLabel.setText("Lobby"); // Let onLobbyUpdate handle this
-    }
+   
 
     private void resetUI() {
         keyboardGrid.setVisible(false);
@@ -161,7 +171,9 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 if (finishedObj instanceof Map) {
                     isPlayerFinished = ((Map<?,?>)finishedObj).containsKey(model.getUsername());
                 }
-                if (state.getIntFromGameState("incorrectGuesses", 0) >= 5 || !state.getStringFromGameState("maskedWord", "_").contains("_")) {
+                // Additional check if player is finished based on incorrect guesses or completed word
+                String pov = povPlayer != null ? povPlayer : model.getUsername(); // Use pov to check for current player
+                if (state.getPlayerIncorrectGuesses(pov) >= 5 || !state.getPlayerMaskedWord(pov).contains("_")) {
                     isPlayerFinished = true;
                 }
             }
@@ -176,8 +188,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             int incorrectGuesses = state.getPlayerIncorrectGuesses(pov);
             updateHangmanImage(incorrectGuesses);
             lastIncorrectGuesses = incorrectGuesses;
-            // Update keyboard for spectate mode
-            updateKeyboardForPOV(state, pov);
+            updateKeyboardForPOV(state, pov); // THIS IS THE PRIMARY KEYBOARD UPDATE
 
             // If spectating and the spectated player is now finished, return to own POV
             if (povPlayer != null && !povPlayer.equals(model.getUsername())) {
@@ -219,10 +230,11 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 handleWaitingState(state);
                 roundLabel.setText("Lobby");
                 roundWinnerBanner.setVisible(false);
+                AfkCheckDialog.closeDialog(); // Close if waiting for players
             } else if (isStarted) {
                 roundLabel.setText("Round: " + (state.getIntFromGameState("currentRound", 0) + 1));
                 boolean roundOver = incorrectGuesses >= 5 || !state.getStringFromGameState("maskedWord", "_").contains("_");
-                if (roundOver) {
+                if (roundOver || isPlayerFinished) { // Check current player's finished state
                     disableAllKeys();
                     if (!gameOver) {
                         javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(3));
@@ -232,24 +244,38 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                         pause.play();
                     }
                 } else {
-                    // Disable all keys if player is finished, else enable
-                    if (isPlayerFinished) {
-                        disableAllKeys();
-                    } else {
-                        enableAllKeys();
-                    }
+                    // Keyboard state is handled by updateKeyboardForPOV
+                    // No explicit enableAllKeys() here.
                 }
-                handleStartedState(state);
+                handleStartedState(state); // Ensures game elements are visible if started
                 if (!roundInProgress) {
                     boolean isPlayerWinner = roundWinner.equals(model.getUsername());
                     if (!roundWinner.isEmpty()) {
                         if (isPlayerWinner) {
                             showRoundWinnerBanner("You won this round!", "#4CAF50", true);
+                            AfkCheckDialog.closeDialog(); // Close dialog if there's a winner
                         } else {
                             showRoundWinnerBanner(roundWinner + " won this round!", "#4CAF50", false);
+                            AfkCheckDialog.closeDialog(); // Close dialog if there's a winner
                         }
                     } else {
                         showRoundWinnerBanner("No one won this round.", null, false);
+                        // Potentially show AFK dialog if conditions met
+                        if (!gameOver && !AfkCheckDialog.isShowing() && !afkDialogCooldownActive.get()) {
+                            System.out.println("No round winner, considering AFK dialog.");
+                            AfkCheckDialog.show(stage,
+                                () -> { // onYesClicked
+                                    System.out.println("AFK Dialog: Yes clicked. Attempting to start next round.");
+                                    model.startNextRound(); // Tell server to start next round
+                                    startAfkDialogCooldown();
+                                },
+                                () -> { // onTimedOut
+                                    System.out.println("AFK Dialog: Timed out.");
+                                    startAfkDialogCooldown(); // Start cooldown even on timeout
+                                    // Server-side stall check will handle game cleanup if needed
+                                }
+                            );
+                        }
                     }
                 } else if (isPlayerFinished) {
                     showRoundWinnerBanner("Opponents still guessing...", "#FFD600", false);
@@ -291,35 +317,38 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 gameTimerHelper.stopRoundTimer();
             }
             gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
-            // Use remainingTime from state for consistency, fallback to configured round time
             int roundTime = model.getGameService().getRoundTime();
             int remainingTime = state.getIntFromGameState("remainingTime", roundTime);
             gameTimerHelper.startRoundTimer(roundTime, remainingTime);
             
-            // Update UI
-            // povPlayer should be initialized to model.getUsername() if null
             if (povPlayer == null) povPlayer = model.getUsername();
             String pov = povPlayer;
             wordDisplay.setText(state.getPlayerMaskedWord(pov));
             roundLabel.setText("Round: " + (state.getIntFromGameState("currentRound", 0) + 1));
-            updateHangmanImage(state.getIntFromGameState("incorrectGuesses", 0));
-            updateKeyboardForPOV(state, pov); // Ensure keyboard is correctly set for POV
+            updateHangmanImage(state.getPlayerIncorrectGuesses(pov)); // Use POV-specific incorrect guesses
+            updateKeyboardForPOV(state, pov);
             
             // Show game started message
             // GameViewHelper.animateWordDisplay(wordDisplay); // This can be distracting if round just started
         }
         // If game is already started, ensure UI elements like keyboard visibility are correct based on state
-        boolean isPlayerFinished_local = isUserDoneGuessing(state, model.getUsername()); // Renamed to avoid conflict with field
+        boolean isPlayerFinished_local = isUserDoneGuessing(state, model.getUsername());
         boolean isSpectating = povPlayer != null && !povPlayer.equals(model.getUsername());
 
         if(isSpectating || isPlayerFinished_local){
             disableAllKeys();
         } else {
-            enableAllKeys();
             // Ensure keyboard state (pressed keys) is also updated
             updateKeyboardForPOV(state, model.getUsername());
         }
         keyboardGrid.setVisible(true); // Should generally be visible in started state unless round is over
+    }
+
+    private boolean isCurrentPlayerActuallyFinished(LobbyState state) {
+        String currentPlayerUsername = model.getUsername();
+        String maskedWord = state.getPlayerMaskedWord(currentPlayerUsername);
+        int incorrectGuesses = state.getPlayerIncorrectGuesses(currentPlayerUsername);
+        return (incorrectGuesses >= 5) || (maskedWord != null && !maskedWord.contains("_"));
     }
 
     private void handleNoMatchState() {
@@ -492,23 +521,28 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             gameTimerHelper.stopRoundTimer();
             gameTimerHelper = null;
         }
+        AfkCheckDialog.closeDialog(); // Ensure dialog is closed when polling stops
+        if (afkDialogCooldownTimer != null) { // Stop cooldown timer
+            afkDialogCooldownTimer.stop();
+        }
         new ArrayList<>(activeAnimations.keySet()).forEach(this::stopFieryGlowAnimation);
         activeAnimations.clear(); 
     }
 
     public void onReturned() {
+        // This method is called when the view becomes active again.
+        // We should re-fetch the latest state to update the UI correctly.
         if (model != null) {
-            model.updateLobbyState();
+            model.updateLobbyState(); // This will trigger onLobbyUpdate where UI is handled
         }
     }
 
     private void resetForNewRound(LobbyState state) {
         // Round transition explosion animation (like 1v1)
         Runnable afterExplosion = () -> {
-            resetKeyboard();
-            enableAllKeys();
-            keyboardGrid.setDisable(false);
-            // Start timer for the new round using the round time from the server/database
+            resetKeyboard(); // This now correctly re-enables keys for a new round
+            // keyboardGrid.setDisable(false); // resetKeyboard handles button states, grid interactivity via updateKeyboardForPOV
+            
             if (gameTimerHelper != null) {
                 gameTimerHelper.stopRoundTimer();
             }
@@ -563,11 +597,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         keyboardGrid.setDisable(true);
         keyboardHelper.getKeyboardButtons().values().forEach(btn -> btn.setDisable(true));
     }
-    // Helper to enable all keys
-    private void enableAllKeys() {
-        keyboardGrid.setDisable(false);
-        keyboardHelper.getKeyboardButtons().values().forEach(btn -> btn.setDisable(false));
-    }
 
     private void onSpectatedPlayerChanged(String playerName) {
         this.povPlayer = playerName;
@@ -610,24 +639,66 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         fadeIn.play();
     }
 
-    private void updateKeyboardForPOV(LobbyState state, String pov) {
-        Set<Character> guesses = state.getPlayerGuesses(pov);
-        // Disable all keys if spectating someone else
-        boolean isSpectating = povPlayer != null && !povPlayer.equals(model.getUsername());
-        keyboardGrid.setDisable(isSpectating);
-        String actualWord = state.getPlayerActualWord(pov).toUpperCase();
-        keyboardHelper.getKeyboardButtons().forEach((letter, btn) -> {
-            btn.setDisable(isSpectating);
-            btn.getStyleClass().removeAll("correct", "incorrect");
-            if (guesses.contains(letter.charAt(0))) {
-                // Mark as correct or incorrect using the actual word
-                if (actualWord.contains(letter.toUpperCase())) {
-                    btn.getStyleClass().add("correct");
+    private void updateKeyboardForPOV(LobbyState state, String povToUpdate) {
+        Set<Character> serverGuessesForPov = state.getPlayerGuesses(povToUpdate);
+        String actualWordForPov = state.getPlayerActualWord(povToUpdate).toUpperCase();
+        boolean isCurrentPlayerPov = povToUpdate.equals(model.getUsername());
+        boolean isSpectatorModeActive = povPlayer != null && !povPlayer.equals(model.getUsername());
+
+        keyboardGrid.setDisable(isSpectatorModeActive && !isCurrentPlayerPov); // Grid disabled if spectating OTHERS
+
+        keyboardHelper.getKeyboardButtons().forEach((keyLetterString, btn) -> {
+            char kChar = keyLetterString.charAt(0);
+
+            if (isSpectatorModeActive && povToUpdate.equals(this.povPlayer)) {
+                // Viewing the spectated player (this.povPlayer)
+                btn.getStyleClass().removeAll("correct", "incorrect"); // Clear previous spectator styles
+                if (serverGuessesForPov.contains(kChar)) {
+                    btn.setDisable(true);
+                    if (actualWordForPov.contains(keyLetterString)) {
+                        btn.getStyleClass().add("correct");
+                    } else {
+                        btn.getStyleClass().add("incorrect");
+                    }
                 } else {
-                    btn.getStyleClass().add("incorrect");
+                    btn.setDisable(false); // Key available for the spectated player
                 }
+            } else if (isCurrentPlayerPov && !isSpectatorModeActive) {
+                // Active player's own view (not spectating anyone else)
+                if (serverGuessesForPov.contains(kChar)) {
+                    // Server has processed this guess for the current player
+                    btn.getStyleClass().removeAll("correct", "incorrect"); // Clear local/old styles
+                    btn.setDisable(true); // Server confirms guess, ensure disabled
+                    if (actualWordForPov.contains(keyLetterString)) {
+                        btn.getStyleClass().add("correct");
+                    } else {
+                        btn.getStyleClass().add("incorrect");
+                    }
+                } else {
+                    // Server has NOT processed this guess for the current player yet.
+                    // The button's state (disabled + styled .correct/.incorrect)
+                    // should reflect what handleKeyPress set. We don't touch its styles or disabled state here.
+                    // It remains disabled if handleKeyPress disabled it.
+                    // It retains .correct/.incorrect if handleKeyPress set it.
+                }
+            } else {
+                // Fallback: Either spectating self (which is treated as normal play) or unexpected state.
+                // If it's the current player's POV (isCurrentPlayerPov is true, but isSpectatorModeActive might be false or true if povPlayer == username)
+                // and server hasn't processed, local styles from handleKeyPress persist.
+                // If truly unexpected, disable button as a safe default.
+                 if (!isCurrentPlayerPov) btn.setDisable(true);
             }
         });
+
+        if (isCurrentPlayerPov && !isSpectatorModeActive) {
+            boolean isPlayerFinishedForRound = isUserDoneGuessing(state, model.getUsername());
+            if (isPlayerFinishedForRound) {
+                disableAllKeys(); 
+            } else {
+                // Make sure grid itself is enabled if player is not finished and not spectating
+                keyboardGrid.setDisable(false);
+            }
+        }
     }
 
     private void animateFieryGlow(Label label, String playerName) {
@@ -693,5 +764,11 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             label.setScaleX(1.0);  // Reset scale
             label.setScaleY(1.0);  // Reset scale
         }
+    }
+
+    private void startAfkDialogCooldown() {
+        afkDialogCooldownActive.set(true);
+        afkDialogCooldownTimer.playFromStart(); // Restart the cooldown timer
+        System.out.println("AFK Dialog cooldown started.");
     }
 } 

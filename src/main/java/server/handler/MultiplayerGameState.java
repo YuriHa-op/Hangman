@@ -25,6 +25,7 @@ public class MultiplayerGameState {
     private final String gameId = UUID.randomUUID().toString();
     private final List<String> matchWords = new ArrayList<>(); // Shuffled list of words for this match
     private boolean gameWinProcessed = false; // Flag to ensure game win is processed only once
+    private boolean roundPotentiallyStalled = false; // NEW: Flag for stall condition
 
     public MultiplayerGameState(String lobbyId, List<String> players, WordManager wordManager, int roundTimeSeconds) {
         this.lobbyId = lobbyId;
@@ -57,6 +58,7 @@ public class MultiplayerGameState {
         if (roundInProgress) return false;
         
         currentRound++;
+        roundPotentiallyStalled = false; // Reset stall flag for new round
         
         currentWord = selectNewWord();
         
@@ -193,6 +195,7 @@ public class MultiplayerGameState {
             for (String player : players) {
                 playerWinStreaks.put(player, 0);
             }
+            roundPotentiallyStalled = true; // Set stall flag if no round winner
         }
 
         // Track round result for DB
@@ -364,5 +367,9 @@ public class MultiplayerGameState {
     // Getter for playerWinStreaks
     public Map<String, Integer> getPlayerWinStreaks() {
         return new HashMap<>(playerWinStreaks);
+    }
+
+    public boolean isRoundPotentiallyStalled() { // NEW: Getter for the flag
+        return roundPotentiallyStalled;
     }
 } 

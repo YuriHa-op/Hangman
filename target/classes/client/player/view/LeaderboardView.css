@@ -93,6 +93,26 @@
         -fx-font-weight: bold;
     }
 
+    /* Header row for Username and Wins */
+    .leaderboard-header-row {
+        -fx-padding: 0px 12px 5px 12px; /* Adjust padding as needed */
+        /* -fx-border-color: red; /* For debugging alignment */
+        /* -fx-border-width: 1px; */
+    }
+
+    .leaderboard-header-label {
+        -fx-font-family: 'Minecraftia';
+        -fx-font-size: 16px; /* Slightly smaller than player names */
+        -fx-text-fill: #E0E0E0; /* Light grey, less prominent than data */
+        -fx-font-weight: bold;
+    }
+
+    .wins-header-label {
+        -fx-font-size: 18px; /* Increased font size for Wins header */
+        /* -fx-border-color: blue; /* For debugging */
+        /* -fx-border-width: 1px; */
+    }
+
     /* Wins container (HBox) */
     .wins-container {
         -fx-alignment: center-left;
@@ -139,12 +159,13 @@
     /* Remove default scroll bar from ListView if not needed, or style it */
     #leaderboardListView .scroll-bar:vertical,
     #leaderboardListView .scroll-bar:horizontal {
-        -fx-pref-width: 10px; /* Slightly wider scrollbar */
-        -fx-background-color: transparent;
+        -fx-pref-width: 0px; /* Hide scrollbar by setting width to 0 */
+        -fx-pref-height: 0px; /* Hide scrollbar by setting height to 0 */
+        -fx-opacity: 0; /* Make it fully transparent */
+        -fx-padding: 0; /* Remove any padding */
     }
     #leaderboardListView .scroll-bar .thumb {
-        -fx-background-color: #505050; /* Dark grey thumb, like stone */
-        -fx-background-radius: 4px;
+        -fx-background-color: transparent; /* Make thumb transparent */
     }
     #leaderboardListView .scroll-bar .increment-button,
     #leaderboardListView .scroll-bar .decrement-button {

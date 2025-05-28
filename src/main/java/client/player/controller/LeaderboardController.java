@@ -97,6 +97,17 @@ public class LeaderboardController {
                 }
                 leaderboardListView.setItems(entries);
 
+                // Adjust ListView height to show all items
+                // Assuming an approximate cell height (e.g., 60px based on CSS and content)
+                // This might need fine-tuning based on actual rendered cell height.
+                double cellHeight = 70; // Approximate height of a single cell - Increased
+                int numItems = entries.size();
+                if (numItems > 0) {
+                    leaderboardListView.setPrefHeight(numItems * cellHeight + 10); // +10 for a little padding/border
+                } else {
+                    leaderboardListView.setPrefHeight(100); // Default height for empty placeholder
+                }
+
                 if (dtoArray.length == 0) {
                     leaderboardListView.setPlaceholder(new Label("Leaderboard is empty."));
                 }

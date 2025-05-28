@@ -20,6 +20,8 @@ public class MultiplayerGameManager {
     private final Set<String> cleanupScheduled = ConcurrentHashMap.newKeySet();
     // Track round timers for each lobby
     private final Map<String, ScheduledFuture<?>> roundTimers = new ConcurrentHashMap<>();
+    private final Map<String, ScheduledFuture<?>> stallCheckTimers = new ConcurrentHashMap<>();
+    private static final int STALL_CHECK_TIMEOUT_SECONDS = 30;
 
     public MultiplayerGameManager(WordManager wordManager, PlayerManager playerManager, int minPlayers, int maxPlayers, int queueTimeSeconds) {
         this.wordManager = wordManager;
@@ -110,6 +112,7 @@ public class MultiplayerGameManager {
     public boolean makeGuess(String username, char letter) {
         MultiplayerGameState game = getGameState(username);
         if (game == null) return false;
+        cancelStallCheckTimer(game.getLobbyId());
         return game.makeGuess(username, letter);
     }
 
@@ -118,7 +121,12 @@ public class MultiplayerGameManager {
         if (game == null) return false;
         boolean started = game.startNewRound();
         if (started) {
+            cancelStallCheckTimer(lobbyId);
             scheduleRoundTimer(lobbyId);
+        } else {
+            if (game.isRoundPotentiallyStalled()) {
+                scheduleStallCheckTimer(lobbyId);
+            }
         }
         return started;
     }
@@ -165,7 +173,12 @@ public class MultiplayerGameManager {
 
         boolean started = game.startNewRound();
         if (started) {
+            cancelStallCheckTimer(lobby.getLobbyId());
             scheduleRoundTimer(lobby.getLobbyId());
+        } else {
+            if (game.isRoundPotentiallyStalled()) {
+                scheduleStallCheckTimer(lobby.getLobbyId());
+            }
         }
         return started;
     }
@@ -202,6 +215,9 @@ public class MultiplayerGameManager {
             MultiplayerGameState state = activeGames.get(lobbyId);
             if (state != null) {
                 state.forceEndRound();
+                if (state.isRoundPotentiallyStalled()) {
+                    scheduleStallCheckTimer(lobbyId);
+                }
             }
         }, playerManager.getRoundTime(), TimeUnit.SECONDS);
         roundTimers.put(lobbyId, future);
@@ -210,6 +226,24 @@ public class MultiplayerGameManager {
     private void cancelRoundTimer(String lobbyId) {
         ScheduledFuture<?> future = roundTimers.remove(lobbyId);
         if (future != null) future.cancel(false);
+    }
+
+    private void scheduleStallCheckTimer(String lobbyId) {
+        logMessage("Scheduling stall check for lobby: " + lobbyId);
+        cancelStallCheckTimer(lobbyId);
+        ScheduledFuture<?> future = scheduler.schedule(() -> {
+            logMessage("Stall check triggered for lobby: " + lobbyId + ". Cleaning up game.");
+            cleanupGame(lobbyId);
+        }, STALL_CHECK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        stallCheckTimers.put(lobbyId, future);
+    }
+
+    public void cancelStallCheckTimer(String lobbyId) {
+        ScheduledFuture<?> future = stallCheckTimers.remove(lobbyId);
+        if (future != null) {
+            future.cancel(false);
+            logMessage("Cancelled stall check timer for lobby: " + lobbyId);
+        }
     }
 
     // Additional methods for game state, guesses, win condition, etc. will be added as needed.

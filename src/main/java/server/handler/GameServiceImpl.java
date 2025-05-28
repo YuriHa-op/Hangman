@@ -311,6 +311,12 @@ public class GameServiceImpl extends GameServicePOA {
 
         // Add game state if game has started
         if (gameState != null) {
+            // If we fetch a game state and it's NOT potentially stalled (e.g., new round started, winner declared)
+            // then cancel any outstanding stall check for this lobby.
+            if (!gameState.isRoundPotentiallyStalled()) {
+                multiplayerGameManager.cancelStallCheckTimer(lobby.getLobbyId()); // Method needs to be public or called internally by manager
+            }
+
             sb.append(",\"gameState\":{");
             sb.append("\"currentRound\":").append(gameState.getCurrentRound()).append(",");
             sb.append("\"roundInProgress\":").append(gameState.isRoundInProgress()).append(",");
