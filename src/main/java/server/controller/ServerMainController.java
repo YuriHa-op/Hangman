@@ -6,7 +6,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.text.Text;
 import server.handler.GameServiceImpl;
-import server.handler.ServerMain;
+import server.ServerMain;
 
 import java.time.Duration;
 import java.time.Instant;

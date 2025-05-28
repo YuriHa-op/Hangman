@@ -11,6 +11,7 @@ public class MultiplayerGameState {
     private final Map<String, Set<Character>> playerGuesses;
     private final Map<String, Long> playerFinishTimes;
     private final Map<String, Integer> playerMisses;
+    private final Map<String, Integer> playerWinStreaks; // Added for win streaks
     private String currentWord;
     private int currentRound;
     private boolean roundInProgress;
@@ -37,12 +38,14 @@ public class MultiplayerGameState {
         this.playerMisses = new ConcurrentHashMap<>();
         this.currentRound = -1;
         this.roundInProgress = false;
+        this.playerWinStreaks = new ConcurrentHashMap<>(); // Initialize win streaks
         
         // Initialize player scores, guesses, and misses
         for (String player : players) {
             playerScores.put(player, 0);
             playerGuesses.put(player, new HashSet<>());
             playerMisses.put(player, 0);
+            playerWinStreaks.put(player, 0); // Initialize streak to 0
         }
         // Initialize shuffled word list for this match
         List<String> allWords = new ArrayList<>(wordManager.getWords());
@@ -157,7 +160,7 @@ public class MultiplayerGameState {
         // Sort by finish time
         finishers.sort(Map.Entry.comparingByValue());
 
-        String roundWinner = "";
+        String actualRoundWinner = ""; // Renamed to avoid conflict
         if (!finishers.isEmpty()) {
             String winner = finishers.get(0).getKey();
             roundWinners.put(currentRound, winner);
@@ -170,13 +173,30 @@ public class MultiplayerGameState {
             if (wins >= 3 && gameWinner == null) {
                 gameWinner = winner;
             }
-            roundWinner = winner;
+            actualRoundWinner = winner;
         } else {
             // No winner for this round
             roundWinners.put(currentRound, "");
         }
+
+        // Update win streaks
+        if (!actualRoundWinner.isEmpty()) {
+            for (String player : players) {
+                if (player.equals(actualRoundWinner)) {
+                    playerWinStreaks.put(player, playerWinStreaks.getOrDefault(player, 0) + 1);
+                } else {
+                    playerWinStreaks.put(player, 0); // Reset streak for others
+                }
+            }
+        } else {
+            // No winner, reset all streaks
+            for (String player : players) {
+                playerWinStreaks.put(player, 0);
+            }
+        }
+
         // Track round result for DB
-        roundResults.add(new RoundResult(currentRound, currentWord, roundWinner));
+        roundResults.add(new RoundResult(currentRound, currentWord, actualRoundWinner));
     }
 
     public String getMaskedWord(String username) {
@@ -339,5 +359,10 @@ public class MultiplayerGameState {
             map.put(player, currentWord != null ? currentWord : "");
         }
         return map;
+    }
+
+    // Getter for playerWinStreaks
+    public Map<String, Integer> getPlayerWinStreaks() {
+        return new HashMap<>(playerWinStreaks);
     }
 } 

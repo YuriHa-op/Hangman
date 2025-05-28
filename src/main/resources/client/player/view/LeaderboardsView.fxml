@@ -1,24 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.geometry.*?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
 
 <VBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="client.player.controller.LeaderboardController"
-      spacing="15" alignment="CENTER"
+      spacing="15" alignment="TOP_CENTER"
       stylesheets="@LeaderboardView.css"
-      style="-fx-background-image: url('leaderboard.png'); -fx-background-size: cover;"
-      prefWidth="600" prefHeight="500">
+      style="-fx-background-image: url('/leaderboard.png'); -fx-background-size: cover;"
+      prefWidth="600" prefHeight="550">
 
     <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
+        <Insets top="30" right="20" bottom="30" left="20"/>
     </padding>
 
-    <Label text="Leaderboard" styleClass="leaderboard-title"/>
+    <Label text="LEADERBOARD" styleClass="leaderboard-title-main"/>
 
-    <TextArea fx:id="leaderboardArea" editable="false" wrapText="true"
-              styleClass="leaderboard-area" prefHeight="350" prefWidth="500"/>
+    <StackPane prefHeight="400" VBox.vgrow="ALWAYS">
+        <VBox fx:id="leaderboardContentPanel" alignment="TOP_CENTER" spacing="10" >
+            <padding>
+                <Insets top="40" right="20" bottom="20" left="20"/>
+            </padding>
+            <ListView fx:id="leaderboardListView" prefHeight="350" VBox.vgrow="ALWAYS"/>
+        </VBox>
 
-    <Button text="Back to Menu" onAction="#handleBackToMenu" styleClass="menu-button"/>
+        <Button fx:id="closeButton" onAction="#handleBackToMenu" styleClass="close-button" StackPane.alignment="TOP_RIGHT">
+            <graphic>
+                <!-- Placeholder for an X icon, or use text -->
+                <Text text="X" styleClass="close-button-text"/>
+            </graphic>
+            <StackPane.margin>
+                <Insets top="5" right="5"/>
+            </StackPane.margin>
+        </Button>
+    </StackPane>
 
 </VBox>

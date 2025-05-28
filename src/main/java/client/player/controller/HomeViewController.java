@@ -19,6 +19,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -32,6 +33,7 @@ public class HomeViewController {
     @FXML private Button multiplayerButton;
     @FXML private Button matchHistoryButton;
     @FXML private StackPane queueStatusContainer;
+    @FXML private Text splashText;
     private Stage stage;
 
     private GameService gameService;
@@ -60,7 +62,17 @@ public class HomeViewController {
 
     @FXML
     public void initialize() {
-        // No-op for now
+        // Initialize and play the splash text animation
+        if (splashText != null) {
+            ScaleTransition st = new ScaleTransition(Duration.seconds(1.5), splashText);
+            st.setFromX(1.0);
+            st.setFromY(1.0);
+            st.setToX(1.05);
+            st.setToY(1.05);
+            st.setAutoReverse(true);
+            st.setCycleCount(Timeline.INDEFINITE);
+            st.play();
+        }
     }
 
     @FXML

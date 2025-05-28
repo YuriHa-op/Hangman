@@ -17,6 +17,7 @@ public class MultiplayerGameModel {
         private long creationTime;
         private int queueTimeSeconds;
         private Map<String, Object> gameState;
+        private Map<String, Integer> playerWinStreaks;
 
         public String getState() { return state; }
         public List<String> getPlayers() { return players; }
@@ -113,6 +114,18 @@ public class MultiplayerGameModel {
                 }
             }
             return "";
+        }
+
+        @SuppressWarnings("unchecked")
+        public int getPlayerWinStreak(String player) {
+            if (gameState == null || !gameState.containsKey("playerWinStreaks")) return 0;
+            Object mapObj = gameState.get("playerWinStreaks");
+            if (mapObj instanceof Map) {
+                Map<String, Number> map = (Map<String, Number>) mapObj;
+                Number n = map.get(player);
+                return n != null ? n.intValue() : 0;
+            }
+            return 0;
         }
     }
 

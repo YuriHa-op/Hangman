@@ -419,6 +419,18 @@ public class GameServiceImpl extends GameServicePOA {
             }
             sb.append("}");
 
+            // ***** ADDING playerWinStreaks HERE *****
+            sb.append(",\"playerWinStreaks\":{");
+            Map<String, Integer> playerWinStreaks = gameState.getPlayerWinStreaks();
+            Iterator<Map.Entry<String, Integer>> pwsIt = playerWinStreaks.entrySet().iterator();
+            while (pwsIt.hasNext()) {
+                Map.Entry<String, Integer> entry = pwsIt.next();
+                sb.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
+                if (pwsIt.hasNext()) sb.append(",");
+            }
+            sb.append("}");
+            // ***** END playerWinStreaks *****
+
             sb.append("}");
         }
         

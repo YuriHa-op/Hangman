@@ -21,10 +21,10 @@ Leave this terminal open; the ORB must be running for the server and clients to 
 ### 2. Start the Server
 
 Run the server main class:
-- **Class:** `server.handler.ServerMain`
+- **Class:** `server.ServerMain`
 
   ```bash
-  java -cp target/classes server.handler.ServerMain
+  java -cp target/classes server.ServerMain
   ```
 
 

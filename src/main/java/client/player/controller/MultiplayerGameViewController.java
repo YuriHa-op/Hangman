@@ -23,6 +23,15 @@ import client.player.helper.SpectatablePlayerLabel;
 import client.player.helper.SpectatorManager;
 import javafx.animation.FadeTransition;
 import client.player.view.results.GameResultsView;
+import javafx.scene.effect.Glow;
+import javafx.scene.effect.DropShadow;
+import javafx.animation.ScaleTransition;
+import javafx.animation.SequentialTransition;
+import javafx.scene.paint.Color;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Animation;
+import javafx.animation.ParallelTransition;
 
 public class MultiplayerGameViewController implements MultiplayerGameModel.LobbyStateListener {
     @FXML private StackPane root;
@@ -51,6 +60,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private SpectatorManager spectatorManager = new SpectatorManager();
     private String povPlayer = null; // Whose POV is being shown
     private StackPane spectateOverlay = null;
+    private Map<String, Animation> activeAnimations = new HashMap<>(); // Store active animations
 
     @FXML
     public void initialize() {
@@ -132,6 +142,14 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     @Override
     public void onLobbyUpdate(LobbyState state) {
         Platform.runLater(() -> {
+            // --- DEBUGGING: Print received playerWinStreaks --- 
+            // if (state.getGameState() != null && state.getGameState().containsKey("playerWinStreaks")) {
+            //     System.out.println("MultiplayerGameViewController: Received playerWinStreaks from server: " + state.getGameState().get("playerWinStreaks"));
+            // } else {
+            //     System.out.println("MultiplayerGameViewController: playerWinStreaks not found in received game state.");
+            // }
+            // --- END DEBUGGING ---
+
             int currentRound = state.getIntFromGameState("currentRound", 0);
             boolean roundInProgress = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundInProgress"));
             String roundWinner = state.getStringFromGameState("roundWinner", "");
@@ -291,10 +309,10 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             // GameViewHelper.animateWordDisplay(wordDisplay); // This can be distracting if round just started
         }
         // If game is already started, ensure UI elements like keyboard visibility are correct based on state
-        boolean isPlayerFinished = isUserDoneGuessing(state, model.getUsername());
+        boolean isPlayerFinished_local = isUserDoneGuessing(state, model.getUsername()); // Renamed to avoid conflict with field
         boolean isSpectating = povPlayer != null && !povPlayer.equals(model.getUsername());
 
-        if(isSpectating || isPlayerFinished){
+        if(isSpectating || isPlayerFinished_local){
             disableAllKeys();
         } else {
             enableAllKeys();
@@ -318,15 +336,55 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         Map<String, Integer> scores = state.getScoresFromGameState();
         if (scores == null) return;
         scoresPanel.getChildren().clear();
-        playerScoreLabels.clear();
+        
+        // Stop animations for players no longer in the list or whose labels will be recreated
+        List<String> currentPlayersInPanel = new ArrayList<>(playerScoreLabels.keySet());
+        for (String existingPlayer : currentPlayersInPanel) {
+            if (!state.getPlayers().contains(existingPlayer)) {
+                stopFieryGlowAnimation(existingPlayer);
+                playerScoreLabels.remove(existingPlayer);
+            }
+        }
+
+        // Temporarily store new labels to avoid concurrent modification if we were iterating playerScoreLabels for stopping
+        Map<String, Label> newPlayerScoreLabels = new HashMap<>();
+
         boolean canSpectate = isUserDoneGuessing(state);
         for (String player : state.getPlayers()) {
             int score = scores.getOrDefault(player, 0);
-            Label label = new Label(player + ":" + score);
-            label.getStyleClass().add("player-score");
-            if (player.equals(model.getUsername())) {
-                label.getStyleClass().add("current-player");
+            Label label = playerScoreLabels.get(player); // Try to reuse existing label
+            if (label == null) {
+                label = new Label();
+                label.getStyleClass().add("player-score");
             }
+            label.setText(player + ":" + score); // Update text
+
+            if (player.equals(model.getUsername())) {
+                if (!label.getStyleClass().contains("current-player")) {
+                    label.getStyleClass().add("current-player");
+                }
+            } else {
+                label.getStyleClass().remove("current-player");
+            }
+
+            // Win streak glow
+            int winStreak = state.getPlayerWinStreak(player);
+            // --- DEBUGGING: Print win streak for player ---
+            // System.out.println("MultiplayerGameViewController: Player: " + player + ", Win Streak: " + winStreak);
+            // --- END DEBUGGING ---
+            if (winStreak >= 2) {
+                // --- DEBUGGING: Log animation attempt ---
+                // System.out.println("MultiplayerGameViewController: Attempting to ANIMATE for player: " + player + " with streak: " + winStreak);
+                // --- END DEBUGGING ---
+                animateFieryGlow(label, player);
+            } else {
+                // --- DEBUGGING: Log animation stop attempt ---
+                // System.out.println("MultiplayerGameViewController: Attempting to STOP animation for player: " + player + " with streak: " + winStreak);
+                // --- END DEBUGGING ---
+                stopFieryGlowAnimation(player); // Stop animation if streak is lost/not active
+                if(label.getEffect() != null) label.setEffect(null); // Ensure effect is cleared if animation was stopped externally
+            }
+
             HBox playerBox = new HBox(5); // spacing between icon and label
             playerBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             // Only show eye icon if user can spectate and not self
@@ -345,9 +403,10 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 }
             }
             playerBox.getChildren().add(label);
-            playerScoreLabels.put(player, label);
+            newPlayerScoreLabels.put(player, label); // Store in new map
             scoresPanel.getChildren().add(playerBox);
         }
+        playerScoreLabels = newPlayerScoreLabels; // Assign new map to the class field
     }
 
     private boolean isUserDoneGuessing(LobbyState state) { // Keep old signature for compatibility if used elsewhere
@@ -433,6 +492,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             gameTimerHelper.stopRoundTimer();
             gameTimerHelper = null;
         }
+        new ArrayList<>(activeAnimations.keySet()).forEach(this::stopFieryGlowAnimation);
+        activeAnimations.clear(); 
     }
 
     public void onReturned() {
@@ -567,5 +628,70 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 }
             }
         });
+    }
+
+    private void animateFieryGlow(Label label, String playerName) {
+        if (activeAnimations.containsKey(playerName)) { 
+            return; 
+        }
+
+        DropShadow fieryShadow = new DropShadow();
+        fieryShadow.setColor(Color.rgb(255, 70, 0, 0.9)); // Brighter, slightly transparent orange-red
+        fieryShadow.setRadius(12); // Initial radius
+        fieryShadow.setSpread(0.6); // Initial spread
+
+        Glow fieryGlow = new Glow();
+        fieryGlow.setLevel(0.1); // Initial glow
+        fieryShadow.setInput(fieryGlow);
+        label.setEffect(fieryShadow);
+
+        Timeline effectTimeline = new Timeline(
+            new KeyFrame(Duration.ZERO, 
+                new KeyValue(fieryGlow.levelProperty(), 0.2),
+                new KeyValue(fieryShadow.radiusProperty(), 12),
+                new KeyValue(fieryShadow.spreadProperty(), 0.6), 
+                new KeyValue(fieryShadow.colorProperty(), Color.rgb(255,70,0,0.8))
+            ),
+            new KeyFrame(Duration.millis(450), // Faster, more dynamic pulse
+                new KeyValue(fieryGlow.levelProperty(), 0.95), // Max glow
+                new KeyValue(fieryShadow.radiusProperty(), 22), // Max radius
+                new KeyValue(fieryShadow.spreadProperty(), 0.75),
+                new KeyValue(fieryShadow.colorProperty(), Color.rgb(255,100,0,1.0)) // Shift color slightly
+            ),
+            new KeyFrame(Duration.millis(900), // Return to base
+                new KeyValue(fieryGlow.levelProperty(), 0.2),
+                new KeyValue(fieryShadow.radiusProperty(), 12),
+                new KeyValue(fieryShadow.spreadProperty(), 0.6),
+                new KeyValue(fieryShadow.colorProperty(), Color.rgb(255,70,0,0.8))
+            )
+        );
+        effectTimeline.setCycleCount(Timeline.INDEFINITE); // This will be part of ParallelTransition
+
+        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(450), label);
+        scaleTransition.setFromX(1.0);
+        scaleTransition.setFromY(1.0);
+        scaleTransition.setToX(1.12); // Slightly more pronounced scale
+        scaleTransition.setToY(1.12);
+        scaleTransition.setAutoReverse(true);
+        scaleTransition.setCycleCount(Timeline.INDEFINITE); // This will also be part of ParallelTransition
+
+        ParallelTransition parallelTransition = new ParallelTransition(label, effectTimeline, scaleTransition);
+        parallelTransition.setCycleCount(Timeline.INDEFINITE); // The whole group pulses indefinitely
+        parallelTransition.play();
+
+        activeAnimations.put(playerName, parallelTransition); // Store the main ParallelTransition
+    }
+
+    private void stopFieryGlowAnimation(String playerName) {
+        Animation animation = activeAnimations.remove(playerName);
+        if (animation != null) {
+            animation.stop();
+        }
+        Label label = playerScoreLabels.get(playerName);
+        if (label != null) {
+            label.setEffect(null); // Clear effects
+            label.setScaleX(1.0);  // Reset scale
+            label.setScaleY(1.0);  // Reset scale
+        }
     }
 } 

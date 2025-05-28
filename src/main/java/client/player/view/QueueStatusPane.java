@@ -22,7 +22,7 @@ public class QueueStatusPane extends VBox {
         queueLabel.setFont(Font.font("Minecraftia", 20));
         queueLabel.setStyle("-fx-text-fill: #ffdd00;");
 
-        timerLabel = new Label("00");
+        timerLabel = new Label("chill");
         timerLabel.setFont(Font.font("Minecraftia", 18));
         timerLabel.setStyle("-fx-text-fill: #ffffff;");
 
