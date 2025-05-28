@@ -16,8 +16,9 @@
     <Text text="Match History" styleClass="title-text" />
     <TableView fx:id="historyTable" prefHeight="450.0" prefWidth="760.0">
         <columns>
-            <TableColumn fx:id="colGameId" text="Game ID" prefWidth="120.0" />
-            <TableColumn fx:id="colPlayers" text="Players" prefWidth="220.0" />
+            <!-- <TableColumn fx:id="colGameId" text="Game ID" prefWidth="200" styleClass="table-column-header"/> -->
+            <TableColumn fx:id="colDateTime" text="Date/Time" prefWidth="180" styleClass="table-column-header"/>
+            <TableColumn fx:id="colPlayers" text="Players" prefWidth="250" styleClass="table-column-header"/>
             <TableColumn fx:id="colWinner" text="Winner" prefWidth="120.0" />
             <TableColumn fx:id="colRounds" text="Rounds" prefWidth="80.0" />
             <TableColumn fx:id="colDetails" text="Details" prefWidth="100.0" />

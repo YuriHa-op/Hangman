@@ -23,6 +23,7 @@ public class MultiplayerGameState {
     private final List<RoundResult> roundResults = new ArrayList<>();
     private final String gameId = UUID.randomUUID().toString();
     private final List<String> matchWords = new ArrayList<>(); // Shuffled list of words for this match
+    private boolean gameWinProcessed = false; // Flag to ensure game win is processed only once
 
     public MultiplayerGameState(String lobbyId, List<String> players, WordManager wordManager, int roundTimeSeconds) {
         this.lobbyId = lobbyId;
@@ -264,12 +265,15 @@ public class MultiplayerGameState {
         public final String overallWinner;
         public final List<String> players;
         public final List<RoundResult> rounds;
-        public MatchResult(String gameId, int totalRounds, String overallWinner, List<String> players, List<RoundResult> rounds) {
+        public final long gameEndTime;
+
+        public MatchResult(String gameId, int totalRounds, String overallWinner, List<String> players, List<RoundResult> rounds, long gameEndTime) {
             this.gameId = gameId;
             this.totalRounds = totalRounds;
             this.overallWinner = overallWinner;
             this.players = players;
             this.rounds = rounds;
+            this.gameEndTime = gameEndTime;
         }
     }
 
@@ -280,7 +284,8 @@ public class MultiplayerGameState {
             currentRound,
             gameWinner,
             new ArrayList<>(players),
-            new ArrayList<>(roundResults)
+            new ArrayList<>(roundResults),
+            System.currentTimeMillis()
         );
     }
 
@@ -289,6 +294,15 @@ public class MultiplayerGameState {
         if (roundInProgress) {
             endRound();
         }
+    }
+
+    // Getter and Setter for gameWinProcessed
+    public synchronized boolean isGameWinProcessed() {
+        return gameWinProcessed;
+    }
+
+    public synchronized void setGameWinProcessed(boolean gameWinProcessed) {
+        this.gameWinProcessed = gameWinProcessed;
     }
 
     // For spectate mode: get all players' masked words

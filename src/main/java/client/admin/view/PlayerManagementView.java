@@ -13,10 +13,16 @@ public class PlayerManagementView {
     private PlayerManagementController controller;
     private GameService gameService;
     private Consumer<String> outputCallback;
+    private Runnable onSuccessfulActionCallback;
 
-    public PlayerManagementView(GameService gameService, Consumer<String> outputCallback) {
+    public PlayerManagementView(GameService gameService, Consumer<String> outputCallback, Runnable onSuccessfulActionCallback) {
         this.gameService = gameService;
         this.outputCallback = outputCallback;
+        this.onSuccessfulActionCallback = onSuccessfulActionCallback;
+    }
+
+    public PlayerManagementView(GameService gameService, Consumer<String> outputCallback) {
+        this(gameService, outputCallback, null);
     }
 
     public void showAddPlayer() {
@@ -26,6 +32,9 @@ public class PlayerManagementView {
             controller = loader.getController();
             controller.setGameService(gameService);
             controller.setOutputCallback(outputCallback);
+            if (onSuccessfulActionCallback != null) {
+                controller.setOnSuccessfulActionCallback(onSuccessfulActionCallback);
+            }
 
             Stage newStage = new Stage();
             controller.setStage(newStage);
@@ -48,6 +57,9 @@ public class PlayerManagementView {
             controller = loader.getController();
             controller.setGameService(gameService);
             controller.setOutputCallback(outputCallback);
+            if (onSuccessfulActionCallback != null) {
+                controller.setOnSuccessfulActionCallback(onSuccessfulActionCallback);
+            }
 
             Stage newStage = new Stage();
             controller.setStage(newStage);
@@ -63,6 +75,32 @@ public class PlayerManagementView {
         }
     }
 
+    public void showUpdatePlayerFor(String username) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/UpdatePlayerView.fxml"));
+            Parent root = loader.load();
+            controller = loader.getController();
+            controller.setGameService(gameService);
+            controller.setOutputCallback(outputCallback);
+            controller.setUsernameForUpdate(username);
+            if (onSuccessfulActionCallback != null) {
+                controller.setOnSuccessfulActionCallback(onSuccessfulActionCallback);
+            }
+
+            Stage newStage = new Stage();
+            controller.setStage(newStage);
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/client/admin/view/player-management.css").toExternalForm());
+            newStage.setScene(scene);
+            newStage.setTitle("Update Player");
+            newStage.setResizable(false);
+            newStage.show();
+        } catch (Exception e) {
+            outputCallback.accept("Error loading Update Player view for " + username + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void showDeletePlayer() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/DeletePlayerView.fxml"));
@@ -70,6 +108,9 @@ public class PlayerManagementView {
             controller = loader.getController();
             controller.setGameService(gameService);
             controller.setOutputCallback(outputCallback);
+            if (onSuccessfulActionCallback != null) {
+                controller.setOnSuccessfulActionCallback(onSuccessfulActionCallback);
+            }
 
             Stage newStage = new Stage();
             controller.setStage(newStage);

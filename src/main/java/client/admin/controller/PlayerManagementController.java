@@ -36,10 +36,14 @@ public class PlayerManagementController {
     private Stage stage;
     private String selectedUpdateType;
     private String existingUsername;
+    private Runnable onSuccessfulActionCallback;
+
+    public void setOnSuccessfulActionCallback(Runnable onSuccessfulActionCallback) {
+        this.onSuccessfulActionCallback = onSuccessfulActionCallback;
+    }
 
     @FXML
     public void initialize() {
-        // Only initialize the combo box if it exists (Update Player view)
         if (updateTypeComboBox != null) {
             ObservableList<String> updateTypes = FXCollections.observableArrayList(
                 "Username", "Password", "Wins"
@@ -58,6 +62,14 @@ public class PlayerManagementController {
 
     public void setStage(Stage stage) {
         this.stage = stage;
+    }
+
+    public void setUsernameForUpdate(String username) {
+        if (usernameField != null) {
+            usernameField.setText(username);
+            usernameField.setDisable(true);
+        }
+        this.existingUsername = username;
     }
 
     @FXML
@@ -96,9 +108,7 @@ public class PlayerManagementController {
             String playersList = gameService.viewPlayers();
             if (playerExists(username, playersList)) {
                 existingUsername = username;
-                // Enable only the selected field in the second stage
                 enableSelectedField(selectedUpdateType);
-                // Show second stage
                 firstStage.setVisible(false);
                 secondStage.setVisible(true);
             } else {
@@ -111,12 +121,10 @@ public class PlayerManagementController {
     }
 
     private void enableSelectedField(String updateType) {
-        // Disable all fields first
         newUsernameField.setDisable(true);
         passwordField.setDisable(true);
         winsField.setDisable(true);
 
-        // Enable only the selected field
         switch (updateType) {
             case "Username":
                 newUsernameField.setDisable(false);
@@ -133,7 +141,11 @@ public class PlayerManagementController {
     @FXML
     public void handleUpdatePlayer() {
         if (existingUsername == null) {
-            showError("Error", "Please check if player exists first");
+            showError("Error", "Please check if player exists first or ensure player was selected.");
+            return;
+        }
+        if (selectedUpdateType == null) {
+            showError("Error", "Update type not selected. Please go back and select what to update or ensure it's selected.");
             return;
         }
 
@@ -164,10 +176,16 @@ public class PlayerManagementController {
                     }
                     success = gameService.updatePlayerWins(existingUsername, Integer.parseInt(wins));
                     break;
+                default: 
+                    showError("Error", "Update type not selected. Please go back and select what to update.");
+                    return;
             }
 
             if (success) {
                 outputCallback.accept("Player updated successfully: " + existingUsername);
+                if (onSuccessfulActionCallback != null) {
+                    onSuccessfulActionCallback.run();
+                }
                 if (stage != null) {
                     stage.close();
                 }
@@ -220,6 +238,9 @@ public class PlayerManagementController {
             boolean success = gameService.createPlayer(username, password);
             if (success) {
                 outputCallback.accept("Player created successfully: " + username);
+                if (onSuccessfulActionCallback != null) {
+                    onSuccessfulActionCallback.run();
+                }
                 if (stage != null) {
                     stage.close();
                 }
@@ -228,7 +249,7 @@ public class PlayerManagementController {
             }
         } catch (Exception e) {
             showError("Error", "Failed to create player: " + e.getMessage());
-            e.printStackTrace(); // Add stack trace for debugging
+            e.printStackTrace();
         }
     }
 
@@ -247,7 +268,6 @@ public class PlayerManagementController {
         }
 
         try {
-            // Check if player exists first
             String playersList = gameService.viewPlayers();
             if (!playerExists(username, playersList)) {
                 showError("Error", "Player '" + username + "' does not exist");
@@ -259,17 +279,14 @@ public class PlayerManagementController {
             confirm.setHeaderText("Delete player: " + username);
             confirm.setContentText("Are you sure you want to delete this player?");
             
-            // Style the dialog
             DialogPane dialogPane = confirm.getDialogPane();
             dialogPane.getStyleClass().add("minecraft-dialog");
             dialogPane.getStylesheets().add(getClass().getResource("/client/admin/view/player-management.css").toExternalForm());
             
-            // Set custom button text
             ButtonType yesButton = new ButtonType("Yes", ButtonBar.ButtonData.OK_DONE);
             ButtonType noButton = new ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE);
             confirm.getButtonTypes().setAll(yesButton, noButton);
 
-            // Style the buttons
             for (ButtonType buttonType : confirm.getButtonTypes()) {
                 Button button = (Button) dialogPane.lookupButton(buttonType);
                 if (buttonType == yesButton) {
@@ -283,6 +300,9 @@ public class PlayerManagementController {
                 boolean success = gameService.deletePlayer(username);
                 if (success) {
                     outputCallback.accept("Player deleted successfully: " + username);
+                    if (onSuccessfulActionCallback != null) {
+                        onSuccessfulActionCallback.run();
+                    }
                     if (stage != null) {
                         stage.close();
                     }

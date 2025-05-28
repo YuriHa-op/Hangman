@@ -3,6 +3,7 @@ from tkinter import messagebox, ttk
 from PIL import Image, ImageTk
 import time
 import json # Added for show_match_found_dialog and show_details in MatchHistory
+from datetime import datetime # Added for timestamp formatting
 
 class BaseView(tk.Frame):
     def __init__(self, master, controller):
@@ -171,9 +172,15 @@ class MatchHistoryView(BaseView):
     def __init__(self, master, controller):
         super().__init__(master, controller)
         tk.Label(self, text="Match History", font=("Arial", 20)).pack(pady=10)
-        self.tree = ttk.Treeview(self, columns=("Game ID", "Players", "Winner", "Rounds"), show="headings")
-        for col in self.tree["columns"]:
-            self.tree.heading(col, text=col)
+        self.tree = ttk.Treeview(self, columns=("Date/Time", "Players", "Winner", "Rounds"), show="headings")
+        self.tree.heading("Date/Time", text="Date/Time")
+        self.tree.column("Date/Time", width=150, anchor="w")
+        self.tree.heading("Players", text="Players")
+        self.tree.column("Players", width=200, anchor="w")
+        self.tree.heading("Winner", text="Winner")
+        self.tree.column("Winner", width=100, anchor="center")
+        self.tree.heading("Rounds", text="Rounds")
+        self.tree.column("Rounds", width=80, anchor="center")
         self.tree.pack(expand=True, fill="both")
         tk.Button(self, text="Back to Menu", command=lambda: self.controller.show_frame("MainMenu")).pack(pady=10)
         self.tree.bind("<Double-1>", self.on_item_double_click)
@@ -185,18 +192,30 @@ class MatchHistoryView(BaseView):
         self.tree.delete(*self.tree.get_children()) # Clear existing items
         games = json.loads(games_data)
         for game in games:
-            self.tree.insert("", "end", values=(
-                game.get("gameId", "N/A"),
+            game_id = game.get("gameId", "N/A")
+            timestamp_ms = game.get("gameEndTime", 0) # Expecting milliseconds
+            dt_object = "N/A"
+            if timestamp_ms > 0:
+                try:
+                    # Convert milliseconds to seconds for datetime.fromtimestamp
+                    dt_object = datetime.fromtimestamp(timestamp_ms / 1000).strftime("%Y-%m-%d %H:%M:%S")
+                except Exception as e:
+                    print(f"Error formatting timestamp {timestamp_ms}: {e}")
+                    dt_object = "Invalid Date"
+            
+            # gameId is used as iid (internal item id)
+            self.tree.insert("", "end", iid=game_id, values=(
+                dt_object,
                 ", ".join(game.get("players", [])),
                 game.get("overallWinner", "N/A"),
                 game.get("totalRounds", "N/A")
             ))
 
     def on_item_double_click(self, event):
-        item = self.tree.selection()
-        if not item: return
-        game_id = self.tree.item(item[0], "values")[0]
-        if game_id and game_id != "N/A":
+        selected_item_iid = self.tree.selection()
+        if not selected_item_iid: return
+        game_id = selected_item_iid[0] # game_id is the iid
+        if game_id and game_id != "N/A": # Ensure game_id is valid
             self.controller.show_match_details(game_id)
 
     def show_details_popup(self, details_data):

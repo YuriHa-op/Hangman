@@ -21,11 +21,12 @@ public class MatchResultDAO {
     public void saveMatchResult(MultiplayerGameState.MatchResult result) {
         try (Connection conn = getConnection()) {
             // Insert into games
-            String insertGame = "INSERT INTO games (game_id, total_rounds, overall_winner) VALUES (?, ?, ?)";
+            String insertGame = "INSERT INTO games (game_id, total_rounds, overall_winner, game_end_time) VALUES (?, ?, ?, ?)";
             try (PreparedStatement ps = conn.prepareStatement(insertGame)) {
                 ps.setString(1, result.gameId);
                 ps.setInt(2, result.totalRounds);
                 ps.setString(3, result.overallWinner);
+                ps.setTimestamp(4, new Timestamp(result.gameEndTime));
                 ps.executeUpdate();
             }
             // Insert players
@@ -62,11 +63,14 @@ public class MatchResultDAO {
         public final int totalRounds;
         public final String overallWinner;
         public final List<String> players;
-        public GameSummary(String gameId, int totalRounds, String overallWinner, List<String> players) {
+        public final long gameEndTime;
+
+        public GameSummary(String gameId, int totalRounds, String overallWinner, List<String> players, long gameEndTime) {
             this.gameId = gameId;
             this.totalRounds = totalRounds;
             this.overallWinner = overallWinner;
             this.players = players;
+            this.gameEndTime = gameEndTime;
         }
     }
     public static class GameDetails {
@@ -75,12 +79,15 @@ public class MatchResultDAO {
         public final String overallWinner;
         public final List<String> players;
         public final List<RoundInfo> rounds;
-        public GameDetails(String gameId, int totalRounds, String overallWinner, List<String> players, List<RoundInfo> rounds) {
+        public final long gameEndTime;
+
+        public GameDetails(String gameId, int totalRounds, String overallWinner, List<String> players, List<RoundInfo> rounds, long gameEndTime) {
             this.gameId = gameId;
             this.totalRounds = totalRounds;
             this.overallWinner = overallWinner;
             this.players = players;
             this.rounds = rounds;
+            this.gameEndTime = gameEndTime;
         }
     }
     public static class RoundInfo {
@@ -97,9 +104,9 @@ public class MatchResultDAO {
     // --- Fetch all games a player participated in ---
     public List<GameSummary> getGamesForPlayer(String username) {
         List<GameSummary> result = new ArrayList<>();
-        String sql = "SELECT g.game_id, g.total_rounds, g.overall_winner " +
+        String sql = "SELECT g.game_id, g.total_rounds, g.overall_winner, g.game_end_time " +
                      "FROM games g JOIN game_players gp ON g.game_id = gp.game_id " +
-                     "WHERE gp.player_name = ? ORDER BY g.game_id DESC";
+                     "WHERE gp.player_name = ? ORDER BY g.game_end_time DESC";
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
@@ -108,7 +115,9 @@ public class MatchResultDAO {
                 String gameId = rs.getString("game_id");
                 int totalRounds = rs.getInt("total_rounds");
                 String overallWinner = rs.getString("overall_winner");
-                // Fetch players for this game
+                Timestamp gameEndTimeStamp = rs.getTimestamp("game_end_time");
+                long gameEndTime = (gameEndTimeStamp != null) ? gameEndTimeStamp.getTime() : 0L;
+
                 List<String> players = new ArrayList<>();
                 try (PreparedStatement ps2 = conn.prepareStatement("SELECT player_name FROM game_players WHERE game_id = ?")) {
                     ps2.setString(1, gameId);
@@ -117,7 +126,7 @@ public class MatchResultDAO {
                         players.add(rs2.getString("player_name"));
                     }
                 }
-                result.add(new GameSummary(gameId, totalRounds, overallWinner, players));
+                result.add(new GameSummary(gameId, totalRounds, overallWinner, players, gameEndTime));
             }
         } catch (SQLException e) {
             System.err.println("Error fetching match history: " + e.getMessage());
@@ -127,18 +136,21 @@ public class MatchResultDAO {
 
     // --- Fetch details for a specific game ---
     public GameDetails getGameDetails(String gameId) {
-        String sqlGame = "SELECT total_rounds, overall_winner FROM games WHERE game_id = ?";
+        String sqlGame = "SELECT total_rounds, overall_winner, game_end_time FROM games WHERE game_id = ?";
         String sqlPlayers = "SELECT player_name FROM game_players WHERE game_id = ?";
         String sqlRounds = "SELECT round_number, word, winner FROM rounds WHERE game_id = ? ORDER BY round_number ASC";
         try (Connection conn = getConnection()) {
             int totalRounds = 0;
             String overallWinner = null;
+            long gameEndTime = 0L;
             try (PreparedStatement ps = conn.prepareStatement(sqlGame)) {
                 ps.setString(1, gameId);
                 ResultSet rs = ps.executeQuery();
                 if (rs.next()) {
                     totalRounds = rs.getInt("total_rounds");
                     overallWinner = rs.getString("overall_winner");
+                    Timestamp gameEndTimeStamp = rs.getTimestamp("game_end_time");
+                    gameEndTime = (gameEndTimeStamp != null) ? gameEndTimeStamp.getTime() : 0L;
                 }
             }
             List<String> players = new ArrayList<>();
@@ -160,7 +172,7 @@ public class MatchResultDAO {
                     rounds.add(new RoundInfo(roundNumber, word, winner));
                 }
             }
-            return new GameDetails(gameId, totalRounds, overallWinner, players, rounds);
+            return new GameDetails(gameId, totalRounds, overallWinner, players, rounds, gameEndTime);
         } catch (SQLException e) {
             System.err.println("Error fetching match details: " + e.getMessage());
             return null;

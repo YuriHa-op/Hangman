@@ -135,19 +135,34 @@ public class MultiplayerGameManager {
         if (lobby == null) return false;
         MultiplayerGameState game = activeGames.get(lobby.getLobbyId());
         if (game == null) return false;
+
         // If game is finished, save result and schedule cleanup
         if (game.getGameWinner() != null) {
-            // Increment winner's win count in the database (if not already done)
-            String winner = game.getGameWinner();
-            if (winner != null && !winner.isEmpty()) {
-                int totalWins = playerManager.getTotalWins(winner);
-                playerManager.updatePlayerWins(winner, totalWins + 1);
+            // Check if the game win has already been processed
+            if (!game.isGameWinProcessed()) {
+                String winner = game.getGameWinner();
+                if (winner != null && !winner.isEmpty()) {
+                    int totalWins = playerManager.getTotalWins(winner);
+                    playerManager.updatePlayerWins(winner, totalWins + 1);
+                    game.setGameWinProcessed(true); // Mark as processed
+                    logMessage("Game win processed for " + winner + " in lobby " + lobby.getLobbyId());
+                }
+                saveMatchResultToDatabase(game.getMatchResult()); // Save match result regardless of win processing for stats
             }
-            saveMatchResultToDatabase(game.getMatchResult());
+            
             // Delay cleanup so clients can receive final state
-            scheduler.schedule(() -> cleanupGame(lobby.getLobbyId()), 5, java.util.concurrent.TimeUnit.SECONDS);
-            return false;
+            // Schedule cleanup only once using the cleanupScheduled set
+            if (!cleanupScheduled.contains(lobby.getLobbyId())) {
+                cleanupScheduled.add(lobby.getLobbyId());
+                scheduler.schedule(() -> {
+                    cleanupGame(lobby.getLobbyId());
+                    cleanupScheduled.remove(lobby.getLobbyId());
+                    logMessage("Game cleaned up for lobby " + lobby.getLobbyId());
+                }, 7, java.util.concurrent.TimeUnit.SECONDS); // Increased from 5 to 7 for more buffer
+            }
+            return false; // Game is over, no next round to start
         }
+
         boolean started = game.startNewRound();
         if (started) {
             scheduleRoundTimer(lobby.getLobbyId());
@@ -158,6 +173,12 @@ public class MultiplayerGameManager {
     // Save match result to DB (stub for now)
     private void saveMatchResultToDatabase(MultiplayerGameState.MatchResult result) {
         matchResultDAO.saveMatchResult(result);
+        logMessage("Match result saved for game ID: " + result.gameId);
+    }
+
+    // Add a simple logging method to help track processing
+    private void logMessage(String message) {
+        System.out.println("[MultiplayerGameManager] " + message);
     }
 
     public void scheduleCleanupIfGameOver(String lobbyId) {

@@ -334,8 +334,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 try {
                     Image eyeImg = new Image(getClass().getResourceAsStream("/eye.png"));
                     ImageView eyeView = new ImageView(eyeImg);
-                    eyeView.setFitWidth(18);
-                    eyeView.setFitHeight(18);
+                    eyeView.setFitWidth(28);
+                    eyeView.setFitHeight(28);
                     eyeView.setPreserveRatio(true);
                     eyeView.setStyle("-fx-cursor: hand;");
                     eyeView.setOnMouseClicked(e -> spectatorManager.setSpectatedPlayer(player));

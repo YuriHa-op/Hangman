@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `games` (
   `game_id` varchar(36) NOT NULL,
   `total_rounds` int NOT NULL,
   `overall_winner` varchar(50) DEFAULT NULL,
+  `game_end_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

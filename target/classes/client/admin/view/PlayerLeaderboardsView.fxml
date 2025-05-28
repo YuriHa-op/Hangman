@@ -8,7 +8,7 @@
       spacing="15" alignment="CENTER"
       stylesheets="@PlayersLeaderboardView.css"
       style="-fx-background-image: url('leatherboard.png'); -fx-background-size: cover;"
-      prefWidth="600" prefHeight="500">
+      prefWidth="800" prefHeight="650">
 
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
@@ -16,12 +16,22 @@
 
     <Label text="Players Leaderboard" styleClass="title-text"/>
 
-    <!-- Search bar -->
-    <HBox spacing="10" alignment="CENTER">
-        <TextField fx:id="searchField" promptText="Search players..." prefWidth="300" styleClass="search-field"/>
-        <Button text="Search" onAction="#handleSearch" styleClass="search-button"/>
+    <!-- Search and Filter bar -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Search players..." HBox.hgrow="ALWAYS" styleClass="search-field"/>
+        <Label text="Status:" styleClass="filter-label"/>
+        <ComboBox fx:id="statusFilterComboBox" prefWidth="100" styleClass="filter-combo-box"/>
+        <Label text="Sort by:" styleClass="filter-label"/>
+        <ComboBox fx:id="sortOrderComboBox" prefWidth="150" styleClass="filter-combo-box"/>
     </HBox>
 
-    <ListView fx:id="playersListView" prefHeight="400" prefWidth="500"/>
+    <ListView fx:id="playersListView" VBox.vgrow="ALWAYS" prefWidth="500"/>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Add Player" onAction="#handleAddPlayer" styleClass="admin-button"/>
+        <Button text="Update Player" onAction="#handleUpdatePlayer" styleClass="admin-button"/>
+        <Button text="Delete Player" onAction="#handleDeletePlayer" styleClass="admin-button"/>
+    </HBox>
+
     <Button text="Back" onAction="#handleBack" styleClass="admin-button"/>
 </VBox>
