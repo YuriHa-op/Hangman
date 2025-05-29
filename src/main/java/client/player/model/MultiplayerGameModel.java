@@ -162,7 +162,8 @@ public class MultiplayerGameModel {
 
     public boolean makeGuess(char letter) {
         try {
-            return gameService.sendMultiplayerGuess(username, letter);
+            GameModule.Bool result = gameService.sendMultiplayerGuess(username, letter);
+            return result.value() == GameModule.Bool.BOOL_TRUE.value();
         } catch (Exception e) {
             System.err.println("Error making guess: " + e.getMessage());
             return false;
@@ -187,7 +188,8 @@ public class MultiplayerGameModel {
 
     public boolean startNextRound() {
         try {
-            return gameService.startMultiplayerNextRound(username);
+            GameModule.Bool result = gameService.startMultiplayerNextRound(username);
+            return result.value() == GameModule.Bool.BOOL_TRUE.value();
         } catch (Exception e) {
             System.err.println("Error starting next multiplayer round: " + e.getMessage());
             return false;

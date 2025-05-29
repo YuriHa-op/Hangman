@@ -1,6 +1,7 @@
 package client.admin.controller;
 
     import client.admin.model.WordManagementModel;
+    import GameModule.Bool;
     import javafx.collections.FXCollections;
     import javafx.collections.ObservableList;
     import javafx.fxml.FXML;
@@ -112,7 +113,7 @@ package client.admin.controller;
         public void handleAddWord() {
             String newWord = newWordField.getText().trim();
             try {
-                if (model.addWord(newWord)) {
+                if (model.addWord(newWord) == Bool.BOOL_TRUE) {
                     if (outputCallback != null) {
                         outputCallback.accept("Added word: " + newWord);
                     }
@@ -163,7 +164,7 @@ package client.admin.controller;
             String newWord = updatedWordField.getText().trim();
 
             try {
-                if (model.updateWord(oldWord, newWord)) {
+                if (model.updateWord(oldWord, newWord) == Bool.BOOL_TRUE) {
                     if (outputCallback != null) {
                         outputCallback.accept("Updated word from '" + oldWord + "' to '" + newWord + "'");
                     }
@@ -211,7 +212,7 @@ package client.admin.controller;
         public void handleDeleteWord() {
             String wordToDelete = wordToDeleteLabel.getText();
             try {
-                if (model.deleteWord(wordToDelete)) {
+                if (model.deleteWord(wordToDelete) == Bool.BOOL_TRUE) {
                     if (outputCallback != null) {
                         outputCallback.accept("Deleted word: " + wordToDelete);
                     }

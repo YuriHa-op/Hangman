@@ -294,6 +294,7 @@ class MultiplayerGameView(BaseView):
     def on_show(self):
         self.set_status("")
         self.controller.start_multiplayer_game_poll()
+        self.close_afk_dialog() # Ensure any lingering dialog is closed on show
 
     def update_display(self, word, timer, round_text, status, players, scores, pov_username, guesses_map, actual_words_map, can_truly_guess, is_user_done_guessing_for_spectate, interaction_over_for_pov):
         self.word_var.set(word)
@@ -384,6 +385,121 @@ class MultiplayerGameView(BaseView):
     def back_to_menu(self):
         self.controller.handle_back_to_menu_from_mp_game()
 
+    def show_afk_dialog(self, on_yes_callback, on_timeout_callback, countdown_seconds=10):
+        if hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists():
+            return # Already showing
+
+        self.afk_popup = tk.Toplevel(self.master)
+        self.afk_popup.title("Still There?")
+        self.afk_popup.attributes("-topmost", True)
+        
+        # Calculate position relative to the main window center
+        master_x = self.master.winfo_x()
+        master_y = self.master.winfo_y()
+        master_width = self.master.winfo_width()
+        master_height = self.master.winfo_height()
+        popup_width = 300
+        popup_height = 150
+        pos_x = master_x + (master_width // 2) - (popup_width // 2)
+        pos_y = master_y + (master_height // 2) - (popup_height // 2)
+        self.afk_popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
+        self.afk_popup.resizable(False, False)
+
+        tk.Label(self.afk_popup, text="Are you still in the game?", font=("Arial", 14)).pack(pady=10)
+        self.afk_countdown_label = tk.Label(self.afk_popup, text=f"Closing in: {countdown_seconds}s", font=("Arial", 12))
+        self.afk_countdown_label.pack(pady=5)
+
+        self.afk_yes_button = tk.Button(self.afk_popup, text="Yes, I'm here!", command=lambda: [
+            self.afk_yes_button.config(state=tk.DISABLED, text="Processing..."), # Immediate feedback
+            on_yes_callback() # Call controller action
+            # self.close_afk_dialog(was_answered=True) # REMOVE THIS - Controller will close based on state
+        ])
+        self.afk_yes_button.pack(pady=10)
+
+        self.afk_popup.protocol("WM_DELETE_WINDOW", lambda: [on_timeout_callback(), self.close_afk_dialog(was_closed_by_user=True)])
+        self.afk_popup.grab_set() # Make it modal
+
+        self._afk_dialog_countdown_timer(countdown_seconds, on_timeout_callback)
+
+    def _afk_dialog_countdown_timer(self, seconds_left, on_timeout_callback):
+        if not (hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists()):
+            return
+
+        if seconds_left > 0:
+            if hasattr(self, 'afk_countdown_label') and self.afk_countdown_label and self.afk_countdown_label.winfo_exists():
+                self.afk_countdown_label.config(text=f"Closing in: {seconds_left}s")
+            
+            if hasattr(self, 'afk_timer_id') and self.afk_timer_id is not None:
+                 self.master.after_cancel(self.afk_timer_id)
+            self.afk_timer_id = self.master.after(1000, lambda: self._afk_dialog_countdown_timer(seconds_left - 1, on_timeout_callback))
+        else:
+            # Timeout - Dialog stays open, content changes, button becomes "Try Next Round?"
+            if hasattr(self, 'afk_countdown_label') and self.afk_countdown_label and self.afk_countdown_label.winfo_exists():
+                self.afk_countdown_label.config(text="Timer expired. Still here?")
+            if hasattr(self, 'afk_yes_button') and self.afk_yes_button and self.afk_yes_button.winfo_exists():
+                self.afk_yes_button.config(text="Try Next Round?", state=tk.NORMAL) # Keep button active
+            
+            # Call timeout callback (for controller cooldown etc.), but dialog remains open
+            if on_timeout_callback: # Ensure callback exists
+                on_timeout_callback()
+            # Do NOT call self.close_afk_dialog() here anymore.
+            # It will be closed externally by the controller based on game state changes.
+
+    def close_afk_dialog(self, was_answered=False, was_timed_out=False, was_closed_by_user=False):
+        if hasattr(self, 'afk_timer_id') and self.afk_timer_id:
+            self.master.after_cancel(self.afk_timer_id)
+            self.afk_timer_id = None
+        if hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists():
+            self.afk_popup.grab_release()
+            self.afk_popup.destroy()
+        
+        # Nullify attributes to allow them to be recreated cleanly
+        self.afk_popup = None 
+        self.afk_countdown_label = None
+        self.afk_yes_button = None
+        # The controller will manage its state flags based on the callbacks.
+
+    def is_afk_dialog_showing(self):
+        return hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists()
+
+    def show_game_cleaned_up_dialog(self, on_ok_callback):
+        # Close any other popups this view might have (like AFK dialog)
+        if hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists():
+            self.close_afk_dialog()
+
+        if hasattr(self, 'cleanup_popup') and self.cleanup_popup and self.cleanup_popup.winfo_exists():
+            return # Already showing
+
+        self.cleanup_popup = tk.Toplevel(self.master)
+        self.cleanup_popup.title("Game Over")
+        self.cleanup_popup.attributes("-topmost", True)
+
+        master_x = self.master.winfo_x()
+        master_y = self.master.winfo_y()
+        master_width = self.master.winfo_width()
+        master_height = self.master.winfo_height()
+        popup_width = 350 # Slightly wider for message
+        popup_height = 150
+        pos_x = master_x + (master_width // 2) - (popup_width // 2)
+        pos_y = master_y + (master_height // 2) - (popup_height // 2)
+        self.cleanup_popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
+        self.cleanup_popup.resizable(False, False)
+
+        tk.Label(self.cleanup_popup, text="The game session was closed\ndue to inactivity.", font=("Arial", 14)).pack(pady=20)
+        
+        ok_button = tk.Button(self.cleanup_popup, text="OK", command=lambda: [
+            self.cleanup_popup.destroy(),
+            setattr(self, 'cleanup_popup', None), # Clean up attribute
+            on_ok_callback()
+        ])
+        ok_button.pack(pady=10)
+        self.cleanup_popup.protocol("WM_DELETE_WINDOW", lambda: [
+            self.cleanup_popup.destroy(),
+            setattr(self, 'cleanup_popup', None),
+            on_ok_callback()
+        ])
+        self.cleanup_popup.grab_set()
+
 class SinglePlayerGameView(BaseView):
     def __init__(self, master, controller):
         super().__init__(master, controller)
@@ -391,13 +507,27 @@ class SinglePlayerGameView(BaseView):
         self.timer_var = tk.StringVar()
         self.incorrect_var = tk.StringVar()
         self.status_var = tk.StringVar()
+        self.score_var = tk.StringVar() # For Score: 0/3
+        self.round_var = tk.StringVar() # For Round: 1/3
         self.keyboard_buttons = {}
         self.popup = None
+        self.game_over_popup = None # To manage game over dialog
 
-        tk.Label(self, text="Single Player Game", font=("Arial", 20)).pack(pady=10)
-        tk.Label(self, textvariable=self.word_var, font=("Consolas", 32)).pack(pady=10)
-        tk.Label(self, textvariable=self.timer_var, font=("Arial", 18)).pack(pady=5)
-        tk.Label(self, textvariable=self.incorrect_var, font=("Arial", 14)).pack(pady=5)
+        tk.Label(self, text="1v1 Hangman Challenge", font=("Arial", 20)).pack(pady=10) # Title updated
+        
+        # Frame for top info (Word and Timer)
+        top_info_frame = tk.Frame(self)
+        top_info_frame.pack(pady=5)
+        tk.Label(top_info_frame, textvariable=self.word_var, font=("Consolas", 32)).pack(side=tk.LEFT, padx=20)
+        tk.Label(top_info_frame, textvariable=self.timer_var, font=("Arial", 18)).pack(side=tk.LEFT, padx=20)
+
+        # Frame for game stats (Round, Score, Incorrect)
+        stats_frame = tk.Frame(self)
+        stats_frame.pack(pady=5)
+        tk.Label(stats_frame, textvariable=self.round_var, font=("Arial", 16)).pack(side=tk.LEFT, padx=10)
+        tk.Label(stats_frame, textvariable=self.score_var, font=("Arial", 16)).pack(side=tk.LEFT, padx=10) # Score Label
+        tk.Label(stats_frame, textvariable=self.incorrect_var, font=("Arial", 14)).pack(side=tk.LEFT, padx=10)
+        
         self.status_display_label = tk.Label(self, textvariable=self.status_var, font=("Arial", 16), fg="blue")
         self.status_display_label.pack(pady=5)
 
@@ -417,11 +547,13 @@ class SinglePlayerGameView(BaseView):
     def on_show(self):
         self.controller.start_single_player_game()
 
-    def update_display(self, masked_word, timer_text, incorrect_text, status_text, attempted_letters, current_word, round_over, game_over):
+    def update_display(self, masked_word, timer_text, incorrect_text, status_text, player_wins, current_round_num, attempted_letters, current_word, round_over, game_over):
         self.word_var.set(masked_word)
         self.timer_var.set(timer_text)
         self.incorrect_var.set(incorrect_text)
         self.status_var.set(status_text)
+        self.score_var.set(f"Score: {player_wins}/3") 
+        self.round_var.set(f"Round: {current_round_num + 1}") # Rounds are 0-indexed from server, display as 1-indexed. Removed "/3"
         # Pass all necessary info to update_keyboard
         self.update_keyboard(attempted_letters, current_word, round_over or game_over)
 
@@ -490,6 +622,42 @@ class SinglePlayerGameView(BaseView):
             if self.popup and self.popup.winfo_exists(): self.popup.destroy()
             self.popup = None
             callback() # Notify controller
+
+    def show_sp_game_over_dialog(self, result_text, on_ok_callback):
+        if self.game_over_popup and self.game_over_popup.winfo_exists():
+            self.game_over_popup.destroy()
+
+        self.game_over_popup = tk.Toplevel(self.master)
+        self.game_over_popup.title("Game Over")
+        
+        # Simple dialog, can be styled more later if needed
+        # Calculate position relative to the main window center
+        master_x = self.master.winfo_x()
+        master_y = self.master.winfo_y()
+        master_width = self.master.winfo_width()
+        master_height = self.master.winfo_height()
+        popup_width = 300
+        popup_height = 150
+        pos_x = master_x + (master_width // 2) - (popup_width // 2)
+        pos_y = master_y + (master_height // 2) - (popup_height // 2)
+        self.game_over_popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
+        self.game_over_popup.resizable(False, False)
+        self.game_over_popup.attributes("-topmost", True) # Make it appear on top
+
+        tk.Label(self.game_over_popup, text=result_text, font=("Arial", 18), pady=20).pack()
+        ok_button = tk.Button(self.game_over_popup, text="OK", command=lambda: [
+            self.game_over_popup.destroy(),
+            setattr(self, 'game_over_popup', None),
+            on_ok_callback()
+        ], width=10)
+        ok_button.pack(pady=10)
+
+        self.game_over_popup.protocol("WM_DELETE_WINDOW", lambda: [
+            self.game_over_popup.destroy(),
+            setattr(self, 'game_over_popup', None),
+            on_ok_callback()
+        ])
+        self.game_over_popup.grab_set() # Make it modal
 
     def back_to_menu(self):
         self.controller.handle_back_to_menu_from_sp_game()

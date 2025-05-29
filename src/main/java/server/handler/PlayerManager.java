@@ -3,6 +3,8 @@ package server.handler;
 import java.sql.*;
 import client.admin.model.SystemStatisticsDTO;
 import client.admin.model.LeaderboardEntryDTO;
+import GameModule.Bool;
+import GameModule.AlreadyLoggedInException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +17,7 @@ public class PlayerManager {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
 
-    public boolean login(String username, String password) throws GameModule.AlreadyLoggedInException {
+    public Bool login(String username, String password) throws GameModule.AlreadyLoggedInException {
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -34,12 +36,12 @@ public class PlayerManager {
                     updatePs.setString(1, username);
                     updatePs.executeUpdate();
                 }
-                return true;
+                return Bool.BOOL_TRUE;
             }
-            return false;
+            return Bool.BOOL_FALSE;
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
+            return Bool.BOOL_FALSE;
         } finally {
             try { if (rs != null) rs.close(); } catch (Exception ignored) {}
             try { if (ps != null) ps.close(); } catch (Exception ignored) {}
@@ -58,30 +60,30 @@ public class PlayerManager {
         }
     }
 
-    public boolean createPlayer(String username, String password) {
+    public Bool createPlayer(String username, String password) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "INSERT INTO players (username, password) VALUES (?, ?)")) {
             ps.setString(1, username);
             ps.setString(2, password);
             ps.executeUpdate();
-            return true;
+            return Bool.BOOL_TRUE;
         } catch (SQLException e) {
             System.err.println("Database error creating player: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
     }
 
-    public boolean deletePlayer(String username) {
+    public Bool deletePlayer(String username) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "DELETE FROM players WHERE TRIM(LOWER(username)) = ?")) {
             ps.setString(1, username.trim().toLowerCase());
             int rowsAffected = ps.executeUpdate();
-            return rowsAffected > 0;
+            return rowsAffected > 0 ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
         } catch (SQLException e) {
             System.err.println("Database error deleting player: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
     }
 
@@ -106,59 +108,59 @@ public class PlayerManager {
         return playersList.toString();
     }
 
-    public boolean updatePlayerPassword(String username, String newPassword) {
+    public Bool updatePlayerPassword(String username, String newPassword) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "UPDATE players SET password = ? WHERE username = ?")) {
             ps.setString(1, newPassword);
             ps.setString(2, username);
             int rowsAffected = ps.executeUpdate();
-            return rowsAffected > 0;
+            return rowsAffected > 0 ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
         } catch (SQLException e) {
             System.err.println("Database error updating password: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
     }
 
-    public boolean updatePlayerUsername(String username, String newUsername) {
+    public Bool updatePlayerUsername(String username, String newUsername) {
         try (Connection conn = getConnection()) {
             PreparedStatement checkPs = conn.prepareStatement(
                     "SELECT * FROM players WHERE TRIM(LOWER(username)) = ?");
             checkPs.setString(1, username.trim().toLowerCase());
             ResultSet rs = checkPs.executeQuery();
             if (!rs.next()) {
-                return false;
+                return Bool.BOOL_FALSE;
             }
             checkPs = conn.prepareStatement(
                     "SELECT * FROM players WHERE TRIM(LOWER(username)) = ?");
             checkPs.setString(1, newUsername.trim().toLowerCase());
             rs = checkPs.executeQuery();
             if (rs.next()) {
-                return false;
+                return Bool.BOOL_FALSE;
             }
             PreparedStatement ps = conn.prepareStatement(
                     "UPDATE players SET username = ? WHERE TRIM(LOWER(username)) = ?");
             ps.setString(1, newUsername.trim());
             ps.setString(2, username.trim().toLowerCase());
             int rowsAffected = ps.executeUpdate();
-            return rowsAffected > 0;
+            return rowsAffected > 0 ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
         } catch (SQLException e) {
             System.err.println("Database error updating username: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
     }
 
-    public boolean updatePlayerWins(String username, int wins) {
+    public Bool updatePlayerWins(String username, int wins) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "UPDATE players SET wins = ? WHERE username = ?")) {
             ps.setInt(1, wins);
             ps.setString(2, username);
             int rowsAffected = ps.executeUpdate();
-            return rowsAffected > 0;
+            return rowsAffected > 0 ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
         } catch (SQLException e) {
             System.err.println("Database error updating wins: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
     }
 
@@ -205,17 +207,17 @@ public class PlayerManager {
         return waitingTime;
     }
 
-    public boolean updateSettings(int waitingTime, int roundTime) {
+    public Bool updateSettings(int waitingTime, int roundTime) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
                      "UPDATE settings SET waiting_time_seconds = ?, round_time_seconds = ? WHERE id = 1")) {
             ps.setInt(1, waitingTime);
             ps.setInt(2, roundTime);
             int rowsAffected = ps.executeUpdate();
-            return rowsAffected > 0;
+            return rowsAffected > 0 ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
         } catch (SQLException e) {
             System.err.println("Database error updating settings: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
     }
 

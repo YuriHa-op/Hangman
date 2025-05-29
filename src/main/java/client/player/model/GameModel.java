@@ -2,6 +2,7 @@ package client.player.model;
 
 import GameModule.GameService;
 import GameModule.GameStateDTO;
+import GameModule.Bool;
 
 public class GameModel {
     public interface MatchListener {
@@ -70,17 +71,11 @@ public class GameModel {
     }
 
     public boolean makeGuess(char letter, int clientRemainingTime) {
-        boolean correct = gameService.sendGuess(username, letter);
-        GameStateDTO state = gameService.getGameState(username);
-        // If the round is over after this guess, call finishRound
-        if (state.roundOver) {
-            boolean guessedWord = !state.maskedWord.contains("_");
-            finishRound(clientRemainingTime, guessedWord);
-        }
-        return correct;
+        GameModule.Bool correctBool = gameService.sendGuess(username, letter);
+        return correctBool.value() == GameModule.Bool.BOOL_TRUE.value();
     }
 
-    public void finishRound(int clientRemainingTime, boolean guessedWord) {
+    public void finishRound(int clientRemainingTime, GameModule.Bool guessedWord) {
         gameService.finishRound(username, clientRemainingTime, guessedWord);
     }
 

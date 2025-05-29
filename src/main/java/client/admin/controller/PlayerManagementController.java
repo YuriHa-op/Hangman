@@ -1,6 +1,7 @@
 package client.admin.controller;
 
 import GameModule.GameService;
+import GameModule.Bool;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
@@ -150,7 +151,7 @@ public class PlayerManagementController {
         }
 
         try {
-            boolean success = false;
+            Bool success = Bool.BOOL_FALSE;
             switch (selectedUpdateType) {
                 case "Username":
                     String newUsername = newUsernameField.getText().trim();
@@ -181,7 +182,7 @@ public class PlayerManagementController {
                     return;
             }
 
-            if (success) {
+            if (success == Bool.BOOL_TRUE) {
                 outputCallback.accept("Player updated successfully: " + existingUsername);
                 if (onSuccessfulActionCallback != null) {
                     onSuccessfulActionCallback.run();
@@ -235,8 +236,8 @@ public class PlayerManagementController {
         }
 
         try {
-            boolean success = gameService.createPlayer(username, password);
-            if (success) {
+            Bool success = gameService.createPlayer(username, password);
+            if (success == Bool.BOOL_TRUE) {
                 outputCallback.accept("Player created successfully: " + username);
                 if (onSuccessfulActionCallback != null) {
                     onSuccessfulActionCallback.run();
@@ -297,8 +298,8 @@ public class PlayerManagementController {
             }
 
             if (confirm.showAndWait().get() == yesButton) {
-                boolean success = gameService.deletePlayer(username);
-                if (success) {
+                Bool success = gameService.deletePlayer(username);
+                if (success == Bool.BOOL_TRUE) {
                     outputCallback.accept("Player deleted successfully: " + username);
                     if (onSuccessfulActionCallback != null) {
                         onSuccessfulActionCallback.run();

@@ -7,16 +7,16 @@ import javafx.util.Duration;
 public class GameStatePoller {
     private Timeline pollTimer;
     private Runnable pollAction;
-    private int intervalSeconds;
+    private int intervalMillis;
 
-    public GameStatePoller(Runnable pollAction, int intervalSeconds) {
+    public GameStatePoller(Runnable pollAction, int intervalMillis) {
         this.pollAction = pollAction;
-        this.intervalSeconds = intervalSeconds;
+        this.intervalMillis = intervalMillis;
     }
 
     public void start() {
         stop();
-        pollTimer = new Timeline(new KeyFrame(Duration.seconds(intervalSeconds), e -> pollAction.run()));
+        pollTimer = new Timeline(new KeyFrame(Duration.millis(intervalMillis), e -> pollAction.run()));
         pollTimer.setCycleCount(Timeline.INDEFINITE);
         pollTimer.play();
     }

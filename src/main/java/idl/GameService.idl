@@ -3,6 +3,8 @@ module GameModule {
         string message;
     };
 
+    enum Bool { BOOL_FALSE, BOOL_TRUE };
+
     typedef sequence<string> StringSeq;
 
     struct GameStateDTO {
@@ -11,8 +13,8 @@ module GameModule {
         long currentRound;
         long totalRounds;
         long playerWins;
-        boolean roundOver;
-        boolean gameOver;
+        Bool roundOver;
+        Bool gameOver;
         string sessionResult;
         long remainingTime;
         string roundWinner;
@@ -36,22 +38,23 @@ module GameModule {
     typedef sequence<LeaderboardEntryDTO> LeaderboardEntrySeq;
 
     interface GameService {
-        boolean login(in string username, in string password)
+        //client
+        Bool login(in string username, in string password)
                     raises (AlreadyLoggedInException);
         void logout(in string username);
         string startGame(in string username);
-        boolean sendGuess(in string username, in char letter);
-        void finishRound(in string username, in long clientRemainingTime, in boolean guessedWord);
+        Bool sendGuess(in string username, in char letter);
+        void finishRound(in string username, in long clientRemainingTime, in Bool guessedWord);
         string viewLeaderboard();
         string getMaskedWord(in string username);
 
         // Admin
-        boolean createPlayer(in string username, in string password);
-        boolean deletePlayer(in string username);
-        boolean updatePlayerPassword(in string username, in string newPassword);
-        boolean updateSettings(in long waitingTime, in long roundTime);
-        boolean updatePlayerUsername(in string username, in string newUsername);
-        boolean updatePlayerWins(in string username, in long wins);
+        Bool createPlayer(in string username, in string password);
+        Bool deletePlayer(in string username);
+        Bool updatePlayerPassword(in string username, in string newPassword);
+        Bool updateSettings(in long waitingTime, in long roundTime);
+        Bool updatePlayerUsername(in string username, in string newUsername);
+        Bool updatePlayerWins(in string username, in long wins);
         string viewPlayers();
 
         //server
@@ -62,9 +65,9 @@ module GameModule {
         void endGameSession(in string username);
         long getCurrentRound(in string username);
         long getPlayerWins(in string username);
-        boolean startNewRound(in string username);
-        boolean isRoundOver(in string username);
-        boolean isGameSessionOver(in string username);
+        Bool startNewRound(in string username);
+        Bool isRoundOver(in string username);
+        Bool isGameSessionOver(in string username);
         string getGameSessionResult(in string username);
         GameStateDTO getGameState(in string username);
 
@@ -72,9 +75,9 @@ module GameModule {
         void cleanupPlayerSession(in string username);
 
         // Admin word management
-        boolean addWord(in string word);
-        boolean updateWord(in string oldWord, in string newWord);
-        boolean deleteWord(in string word);
+        Bool addWord(in string word);
+        Bool updateWord(in string oldWord, in string newWord);
+        Bool deleteWord(in string word);
         StringSeq getAllWords();
 
         SystemStatisticsDTO getSystemStatistics();
@@ -83,8 +86,8 @@ module GameModule {
         // Multiplayer mode
         string startMultiplayerGame(in string username);
         string getMultiplayerLobbyState(in string username);
-        boolean sendMultiplayerGuess(in string username, in char letter);
-        boolean startMultiplayerNextRound(in string username);
+        Bool sendMultiplayerGuess(in string username, in char letter);
+        Bool startMultiplayerNextRound(in string username);
 
         // Match history (returns JSON)
         string getMatchHistory(in string username);

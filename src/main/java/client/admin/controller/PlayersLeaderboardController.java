@@ -396,7 +396,7 @@ public class PlayersLeaderboardController {
 
             for (Player player : selectedPlayers) {
                 try {
-                    if (gameService.deletePlayer(player.getUsername())) {
+                    if (gameService.deletePlayer(player.getUsername()) == GameModule.Bool.BOOL_TRUE) {
                         successfullyDeletedUsernames.add(player.getUsername());
                     } else {
                         failedToDeleteUsernames.add(player.getUsername() + " (failed by service)");

@@ -38,6 +38,15 @@ _0_GameModule._tc_AlreadyLoggedInException = omniORB.tcInternal.createTypeCode(_
 omniORB.registerType(AlreadyLoggedInException._NP_RepositoryId, _0_GameModule._d_AlreadyLoggedInException, _0_GameModule._tc_AlreadyLoggedInException)
 del AlreadyLoggedInException
 
+# enum Bool
+_0_GameModule.BOOL_FALSE = omniORB.EnumItem("BOOL_FALSE", 0)
+_0_GameModule.BOOL_TRUE = omniORB.EnumItem("BOOL_TRUE", 1)
+_0_GameModule.Bool = omniORB.Enum("IDL:GameModule/Bool:1.0", (_0_GameModule.BOOL_FALSE, _0_GameModule.BOOL_TRUE,))
+
+_0_GameModule._d_Bool  = (omniORB.tcInternal.tv_enum, _0_GameModule.Bool._NP_RepositoryId, "Bool", _0_GameModule.Bool._items)
+_0_GameModule._tc_Bool = omniORB.tcInternal.createTypeCode(_0_GameModule._d_Bool)
+omniORB.registerType(_0_GameModule.Bool._NP_RepositoryId, _0_GameModule._d_Bool, _0_GameModule._tc_Bool)
+
 # typedef ... StringSeq
 class StringSeq:
     _NP_RepositoryId = "IDL:GameModule/StringSeq:1.0"
@@ -69,7 +78,7 @@ class GameStateDTO (omniORB.StructBase):
         self.finishedTime = finishedTime
 
 _0_GameModule.GameStateDTO = GameStateDTO
-_0_GameModule._d_GameStateDTO  = (omniORB.tcInternal.tv_struct, GameStateDTO, GameStateDTO._NP_RepositoryId, "GameStateDTO", "maskedWord", (omniORB.tcInternal.tv_string,0), "incorrectGuesses", omniORB.tcInternal.tv_long, "currentRound", omniORB.tcInternal.tv_long, "totalRounds", omniORB.tcInternal.tv_long, "playerWins", omniORB.tcInternal.tv_long, "roundOver", omniORB.tcInternal.tv_boolean, "gameOver", omniORB.tcInternal.tv_boolean, "sessionResult", (omniORB.tcInternal.tv_string,0), "remainingTime", omniORB.tcInternal.tv_long, "roundWinner", (omniORB.tcInternal.tv_string,0), "finishedTime", omniORB.tcInternal.tv_long)
+_0_GameModule._d_GameStateDTO  = (omniORB.tcInternal.tv_struct, GameStateDTO, GameStateDTO._NP_RepositoryId, "GameStateDTO", "maskedWord", (omniORB.tcInternal.tv_string,0), "incorrectGuesses", omniORB.tcInternal.tv_long, "currentRound", omniORB.tcInternal.tv_long, "totalRounds", omniORB.tcInternal.tv_long, "playerWins", omniORB.tcInternal.tv_long, "roundOver", omniORB.typeMapping["IDL:GameModule/Bool:1.0"], "gameOver", omniORB.typeMapping["IDL:GameModule/Bool:1.0"], "sessionResult", (omniORB.tcInternal.tv_string,0), "remainingTime", omniORB.tcInternal.tv_long, "roundWinner", (omniORB.tcInternal.tv_string,0), "finishedTime", omniORB.tcInternal.tv_long)
 _0_GameModule._tc_GameStateDTO = omniORB.tcInternal.createTypeCode(_0_GameModule._d_GameStateDTO)
 omniORB.registerType(GameStateDTO._NP_RepositoryId, _0_GameModule._d_GameStateDTO, _0_GameModule._tc_GameStateDTO)
 del GameStateDTO
@@ -138,19 +147,19 @@ _0_GameModule._tc_GameService = omniORB.tcInternal.createTypeCode(_0_GameModule.
 omniORB.registerType(GameService._NP_RepositoryId, _0_GameModule._d_GameService, _0_GameModule._tc_GameService)
 
 # GameService operations and attributes
-GameService._d_login = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.tcInternal.tv_boolean, ), {_0_GameModule.AlreadyLoggedInException._NP_RepositoryId: _0_GameModule._d_AlreadyLoggedInException})
+GameService._d_login = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), {_0_GameModule.AlreadyLoggedInException._NP_RepositoryId: _0_GameModule._d_AlreadyLoggedInException})
 GameService._d_logout = (((omniORB.tcInternal.tv_string,0), ), (), None)
 GameService._d_startGame = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
-GameService._d_sendGuess = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_char), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_finishRound = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_boolean), (), None)
+GameService._d_sendGuess = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_char), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_finishRound = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_long, omniORB.typeMapping["IDL:GameModule/Bool:1.0"]), (), None)
 GameService._d_viewLeaderboard = ((), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getMaskedWord = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
-GameService._d_createPlayer = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_deletePlayer = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_updatePlayerPassword = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_updateSettings = ((omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_updatePlayerUsername = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_updatePlayerWins = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_long), (omniORB.tcInternal.tv_boolean, ), None)
+GameService._d_createPlayer = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_deletePlayer = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_updatePlayerPassword = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_updateSettings = ((omniORB.tcInternal.tv_long, omniORB.tcInternal.tv_long), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_updatePlayerUsername = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_updatePlayerWins = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_long), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
 GameService._d_viewPlayers = ((), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getRoundTime = ((), (omniORB.tcInternal.tv_long, ), None)
 GameService._d_getWaitingTime = ((), (omniORB.tcInternal.tv_long, ), None)
@@ -159,22 +168,22 @@ GameService._d_getIncorrectGuesses = (((omniORB.tcInternal.tv_string,0), ), (omn
 GameService._d_endGameSession = (((omniORB.tcInternal.tv_string,0), ), (), None)
 GameService._d_getCurrentRound = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_long, ), None)
 GameService._d_getPlayerWins = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_long, ), None)
-GameService._d_startNewRound = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_isRoundOver = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_isGameSessionOver = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
+GameService._d_startNewRound = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_isRoundOver = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_isGameSessionOver = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
 GameService._d_getGameSessionResult = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getGameState = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/GameStateDTO:1.0"], ), None)
 GameService._d_cleanupPlayerSession = (((omniORB.tcInternal.tv_string,0), ), (), None)
-GameService._d_addWord = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_updateWord = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_deleteWord = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
+GameService._d_addWord = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_updateWord = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_deleteWord = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
 GameService._d_getAllWords = ((), (omniORB.typeMapping["IDL:GameModule/StringSeq:1.0"], ), None)
 GameService._d_getSystemStatistics = ((), (omniORB.typeMapping["IDL:GameModule/SystemStatisticsDTO:1.0"], ), None)
 GameService._d_getLeaderboardEntries = ((), (omniORB.typeMapping["IDL:GameModule/LeaderboardEntrySeq:1.0"], ), None)
 GameService._d_startMultiplayerGame = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getMultiplayerLobbyState = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
-GameService._d_sendMultiplayerGuess = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_char), (omniORB.tcInternal.tv_boolean, ), None)
-GameService._d_startMultiplayerNextRound = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
+GameService._d_sendMultiplayerGuess = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_char), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
+GameService._d_startMultiplayerNextRound = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
 GameService._d_getMatchHistory = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getMatchDetails = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getSinglePlayerMatchHistory = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)

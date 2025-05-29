@@ -163,6 +163,12 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             int currentRound = state.getIntFromGameState("currentRound", 0);
             boolean roundInProgress = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundInProgress"));
             String roundWinner = state.getStringFromGameState("roundWinner", "");
+
+            // If the server indicates the round is now in progress, close any lingering AFK dialog
+            if (roundInProgress) {
+                AfkCheckDialog.closeDialog();
+            }
+
             boolean isStarted = "STARTED".equals(state.getState());
             boolean isWaiting = "WAITING".equals(state.getState());
             boolean isPlayerFinished = false;
@@ -183,21 +189,25 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             }
             updateScoresPanel(state);
 
+            // If spectating and the spectated player is now finished, or if the round itself has ended, return to own POV
+            if (povPlayer != null && !povPlayer.equals(model.getUsername())) {
+                String spectatedPlayerMaskedWord = state.getPlayerMaskedWord(povPlayer);
+                int spectatedPlayerIncorrectGuesses = state.getPlayerIncorrectGuesses(povPlayer);
+
+                boolean spectatedPlayerIndividuallyFinished = (spectatedPlayerIncorrectGuesses >= 5) ||
+                                                              (spectatedPlayerMaskedWord != null && !spectatedPlayerMaskedWord.contains("_"));
+
+                if (spectatedPlayerIndividuallyFinished || !roundInProgress) {
+                    spectatorManager.setSpectatedPlayer(model.getUsername());
+                }
+            }
+
             String pov = povPlayer != null ? povPlayer : model.getUsername();
             wordDisplay.setText(state.getPlayerMaskedWord(pov));
             int incorrectGuesses = state.getPlayerIncorrectGuesses(pov);
             updateHangmanImage(incorrectGuesses);
             lastIncorrectGuesses = incorrectGuesses;
             updateKeyboardForPOV(state, pov); // THIS IS THE PRIMARY KEYBOARD UPDATE
-
-            // If spectating and the spectated player is now finished, return to own POV
-            if (povPlayer != null && !povPlayer.equals(model.getUsername())) {
-                String masked = state.getPlayerMaskedWord(povPlayer);
-                int incorrect = state.getPlayerIncorrectGuesses(povPlayer);
-                if ((incorrect >= 5) || (masked != null && !masked.contains("_"))) {
-                    spectatorManager.setSpectatedPlayer(model.getUsername());
-                }
-            }
 
             String sessionResult = state.getStringFromGameState("sessionResult", "");
             boolean gameOver = "WIN".equals(sessionResult) || "LOSE".equals(sessionResult);
@@ -261,8 +271,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                     } else {
                         showRoundWinnerBanner("No one won this round.", null, false);
                         // Potentially show AFK dialog if conditions met
-                        if (!gameOver && !AfkCheckDialog.isShowing() && !afkDialogCooldownActive.get()) {
-                            System.out.println("No round winner, considering AFK dialog.");
+                        if (!gameOver && gameTimerHelper != null && gameTimerHelper.hasTimedUp() && !AfkCheckDialog.isShowing() && !afkDialogCooldownActive.get()) {
+                            System.out.println("No round winner AND timer has run out, considering AFK dialog.");
                             AfkCheckDialog.show(stage,
                                 () -> { // onYesClicked
                                     System.out.println("AFK Dialog: Yes clicked. Attempting to start next round.");
@@ -288,7 +298,11 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
             // Stop timer if round is not in progress
             if (!roundInProgress && gameTimerHelper != null) {
-                gameTimerHelper.stopRoundTimer();
+                if (!gameTimerHelper.hasTimedUp()) { // If timer hasn't naturally timed out, but server says round over
+                    gameTimerHelper.stopRoundTimer(); // Stop it visually
+                    timerLabel.setText("0"); // And ensure label is 0
+                }
+                new animatefx.animation.Shake(timerLabel).play(); // Add shake animation
             }
         });
     }

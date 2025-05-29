@@ -8,8 +8,8 @@ public class GameStateDTO implements Serializable {
     public int currentRound;
     public int totalRounds;
     public int playerWins;
-    public boolean roundOver;
-    public boolean gameOver;
+    public GameModule.Bool roundOver;
+    public GameModule.Bool gameOver;
     public String sessionResult; // "WIN", "LOSE", "DRAW", "ONGOING", etc.
     public int remainingTime;
     public String roundWinner; // Usernam

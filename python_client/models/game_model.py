@@ -43,16 +43,29 @@ class GameModel:
 
     def login(self, username, password):
         try:
-            if self.game_service.login(username, password):
+            # Assuming GameModule.Bool maps to an enum with members BOOL_TRUE, BOOL_FALSE
+            # or integer constants where BOOL_TRUE might be 1.
+            # For omniidl, it's typically GameModule.BOOL_TRUE for enums.
+            result = self.game_service.login(username, password)
+            if result == GameModule.BOOL_TRUE: # Compare with GameModule.BOOL_TRUE
                 self.username = username
                 return True
             return False
         except GameModule.AlreadyLoggedInException as e:
             # It's better to let the controller handle UI-specific error messages
             raise e # Re-raise the exception
+        # It's good practice to also handle potential CORBA system exceptions
+        except CORBA.SystemException as e:
+            print(f"CORBA SystemException during login: {e}")
+            return False # Or raise a custom exception
 
     def create_player(self, username, password):
-        return self.game_service.createPlayer(username, password)
+        try:
+            result = self.game_service.createPlayer(username, password) # createPlayer returns Bool
+            return result == GameModule.BOOL_TRUE # Compare with GameModule.BOOL_TRUE
+        except CORBA.SystemException as e:
+            print(f"CORBA SystemException during create_player: {e}")
+            return False # Or raise a custom exception
 
     def logout(self):
         if self.username:
@@ -89,17 +102,38 @@ class GameModel:
 
     def send_guess(self, guess):
         if not self.username:
-            return False # Or raise error
-        return self.game_service.sendGuess(self.username, guess)
+            # print("[DEBUG] send_guess: No username, returning False")
+            return False
+        try:
+            # print(f"[DEBUG SP CLIENT] Attempting to send guess: username='{self.username}', letter='{guess}' (type: {type(guess)})")
+            result_corba_bool = self.game_service.sendGuess(self.username, guess)
+            # print(f"[DEBUG SP CLIENT] Raw response from server sendGuess: {result_corba_bool} (type: {type(result_corba_bool)})")
+            
+            bool_true_val = GameModule.BOOL_TRUE
+            # print(f"[DEBUG SP CLIENT] GameModule.BOOL_TRUE is: {bool_true_val} (type: {type(bool_true_val)})")
+            
+            is_correct_guess = (result_corba_bool == bool_true_val)
+            # print(f"[DEBUG SP CLIENT] Comparison (result_corba_bool == GameModule.BOOL_TRUE): {is_correct_guess}")
+            
+            return is_correct_guess
+        except Exception as e:
+            # print(f"[ERROR SP CLIENT] Exception in send_guess: {e}")
+            import traceback
+            traceback.print_exc() 
+            return False 
 
     def finish_round(self, remaining_time, guessed_word):
         if self.username:
-            self.game_service.finishRound(self.username, remaining_time, guessed_word)
+            # Convert Python boolean to GameModule.Bool
+            guessed_word_bool = GameModule.BOOL_TRUE if guessed_word else GameModule.BOOL_FALSE
+            self.game_service.finishRound(self.username, remaining_time, guessed_word_bool)
 
     def start_new_round(self):
         if not self.username:
             return False
-        return self.game_service.startNewRound(self.username)
+        # Convert GameModule.Bool to Python boolean
+        result = self.game_service.startNewRound(self.username)
+        return result == GameModule.BOOL_TRUE
 
     def view_leaderboard(self):
         return self.game_service.viewLeaderboard()
@@ -153,11 +187,16 @@ class GameModel:
     def send_multiplayer_guess(self, guess):
         if not self.username:
             return False
-        return self.game_service.sendMultiplayerGuess(self.username, guess)
+        # Convert GameModule.Bool to Python boolean
+        result = self.game_service.sendMultiplayerGuess(self.username, guess)
+        return result == GameModule.BOOL_TRUE
 
     def start_multiplayer_next_round(self):
         if self.username:
-            self.master.game_service.startMultiplayerNextRound(self.username)
+            # Convert GameModule.Bool to Python boolean
+            result = self.game_service.startMultiplayerNextRound(self.username)
+            return result == GameModule.BOOL_TRUE
+        return False
 
     # Utility to get current username
     def get_username(self):

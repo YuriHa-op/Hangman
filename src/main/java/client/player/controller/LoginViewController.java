@@ -1,7 +1,9 @@
 package client.player.controller;
 
 import client.player.model.LoginModel;
-import GameModule.GameService; // ✅ Added import
+import GameModule.GameService;
+import GameModule.Bool;
+import GameModule.AlreadyLoggedInException;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -20,7 +22,7 @@ public class LoginViewController {
     @FXML private Button retryButton;
 
     private LoginModel model;
-    private GameService gameService; //  Added field
+    private GameService gameService;
     private Stage stage;
     private Runnable showLoginViewAgain;
 
@@ -32,7 +34,7 @@ public class LoginViewController {
 
     public void setModel(LoginModel model) {
         this.model = model;
-        this.gameService = model.getGameService(); //  Initialize gameService from model
+        this.gameService = model.getGameService();
     }
 
     public void setStage(Stage stage) {
@@ -54,8 +56,8 @@ public class LoginViewController {
         }
 
         try {
-            boolean success = gameService.login(username, password);
-            if (success) {
+            GameModule.Bool success = gameService.login(username, password);
+            if (success == GameModule.Bool.BOOL_TRUE) {
                 setStatus("Login successful!", false);
                 // Launch HomeView and close login window
                 javafx.application.Platform.runLater(() -> {

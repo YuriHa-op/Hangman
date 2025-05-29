@@ -9,23 +9,25 @@ public class MultiplayerGameState {
     private final Map<String, Integer> playerScores;
     private final Map<String, StringBuilder> playerProgress;
     private final Map<String, Set<Character>> playerGuesses;
+    private final Map<String, Integer> playerIncorrectGuesses;
     private final Map<String, Long> playerFinishTimes;
     private final Map<String, Integer> playerMisses;
-    private final Map<String, Integer> playerWinStreaks; // Added for win streaks
+    private final Map<String, Integer> playerWinStreaks;
+    private final Map<String, String> playerCurrentWords;
     private String currentWord;
     private int currentRound;
     private boolean roundInProgress;
-    private long roundStartTime;
+    private volatile long roundStartTime;
     private final int roundTimeSeconds;
     private final WordManager wordManager;
-    private final Map<Integer, String> roundWinners = new HashMap<>(); // round -> winner username
-    private final Map<String, Integer> playerRoundWins = new HashMap<>(); // player -> rounds won
+    private final Map<Integer, String> roundWinners = new HashMap<>();
+    private final Map<String, Integer> playerRoundWins;
     private String gameWinner = null;
     private final List<RoundResult> roundResults = new ArrayList<>();
     private final String gameId = UUID.randomUUID().toString();
-    private final List<String> matchWords = new ArrayList<>(); // Shuffled list of words for this match
-    private boolean gameWinProcessed = false; // Flag to ensure game win is processed only once
-    private boolean roundPotentiallyStalled = false; // NEW: Flag for stall condition
+    private final List<String> matchWords = new ArrayList<>();
+    private boolean gameWinProcessed = false;
+    private boolean roundPotentiallyStalled = false;
 
     public MultiplayerGameState(String lobbyId, List<String> players, WordManager wordManager, int roundTimeSeconds) {
         this.lobbyId = lobbyId;
@@ -35,20 +37,21 @@ public class MultiplayerGameState {
         this.playerScores = new ConcurrentHashMap<>();
         this.playerProgress = new ConcurrentHashMap<>();
         this.playerGuesses = new ConcurrentHashMap<>();
+        this.playerIncorrectGuesses = new ConcurrentHashMap<>();
         this.playerFinishTimes = new ConcurrentHashMap<>();
         this.playerMisses = new ConcurrentHashMap<>();
         this.currentRound = -1;
         this.roundInProgress = false;
-        this.playerWinStreaks = new ConcurrentHashMap<>(); // Initialize win streaks
+        this.playerWinStreaks = new ConcurrentHashMap<>();
+        this.playerRoundWins = new ConcurrentHashMap<>();
+        this.playerCurrentWords = new ConcurrentHashMap<>();
         
-        // Initialize player scores, guesses, and misses
         for (String player : players) {
             playerScores.put(player, 0);
             playerGuesses.put(player, new HashSet<>());
             playerMisses.put(player, 0);
-            playerWinStreaks.put(player, 0); // Initialize streak to 0
+            playerWinStreaks.put(player, 0);
         }
-        // Initialize shuffled word list for this match
         List<String> allWords = new ArrayList<>(wordManager.getWords());
         Collections.shuffle(allWords);
         matchWords.addAll(allWords);
@@ -58,7 +61,7 @@ public class MultiplayerGameState {
         if (roundInProgress) return false;
         
         currentRound++;
-        roundPotentiallyStalled = false; // Reset stall flag for new round
+        roundPotentiallyStalled = false;
         
         currentWord = selectNewWord();
         
@@ -70,7 +73,6 @@ public class MultiplayerGameState {
         roundInProgress = true;
         roundStartTime = System.currentTimeMillis();
         
-        // Reset player progress, guesses, and misses for new round
         for (String player : players) {
             StringBuilder maskedWord = new StringBuilder();
             for (int i = 0; i < currentWord.length(); i++) {
@@ -95,7 +97,6 @@ public class MultiplayerGameState {
 
     public synchronized boolean makeGuess(String username, char letter) {
         if (!roundInProgress || !players.contains(username)) return false;
-        // Prevent further guesses if player is finished (guessed word or 5 misses)
         if (isPlayerFinished(username)) return false;
         
         Set<Character> guesses = playerGuesses.get(username);
@@ -115,24 +116,20 @@ public class MultiplayerGameState {
         if (!correct) {
             int misses = playerMisses.getOrDefault(username, 0) + 1;
             playerMisses.put(username, misses);
-            // If player reaches 5 misses, mark as finished
             if (misses >= 5) {
                 playerFinishTimes.putIfAbsent(username, System.currentTimeMillis());
             }
         }
 
-        // Check if player has completed the word
         if (!progress.toString().contains("_")) {
             playerFinishTimes.putIfAbsent(username, System.currentTimeMillis());
         }
 
-        // Always check round completion after a guess
         checkRoundCompletion();
         return correct;
     }
 
     private void checkRoundCompletion() {
-        // Check if all players have finished (guessed word or 5 misses) or time is up
         boolean allFinished = players.stream().allMatch(p -> 
             playerFinishTimes.containsKey(p) || 
             playerMisses.getOrDefault(p, 0) >= 5 || 
@@ -147,7 +144,6 @@ public class MultiplayerGameState {
         if (!roundInProgress) return;
         roundInProgress = false;
 
-        // Find players who completed the word (guessed all letters)
         List<Map.Entry<String, Long>> finishers = new ArrayList<>();
         for (String player : players) {
             StringBuilder progress = playerProgress.get(player);
@@ -159,46 +155,38 @@ public class MultiplayerGameState {
             }
         }
 
-        // Sort by finish time
         finishers.sort(Map.Entry.comparingByValue());
 
-        String actualRoundWinner = ""; // Renamed to avoid conflict
+        String actualRoundWinner = "";
         if (!finishers.isEmpty()) {
             String winner = finishers.get(0).getKey();
             roundWinners.put(currentRound, winner);
-            // Increment round wins
             int wins = playerRoundWins.getOrDefault(winner, 0) + 1;
             playerRoundWins.put(winner, wins);
-            // Increment score (for UI)
-            playerScores.put(winner, wins); // Keep scores in sync with round wins
-            // Check for game winner (first to 3 round wins)
+            playerScores.put(winner, wins);
             if (wins >= 3 && gameWinner == null) {
                 gameWinner = winner;
             }
             actualRoundWinner = winner;
         } else {
-            // No winner for this round
             roundWinners.put(currentRound, "");
         }
 
-        // Update win streaks
         if (!actualRoundWinner.isEmpty()) {
             for (String player : players) {
                 if (player.equals(actualRoundWinner)) {
                     playerWinStreaks.put(player, playerWinStreaks.getOrDefault(player, 0) + 1);
                 } else {
-                    playerWinStreaks.put(player, 0); // Reset streak for others
+                    playerWinStreaks.put(player, 0);
                 }
             }
         } else {
-            // No winner, reset all streaks
             for (String player : players) {
                 playerWinStreaks.put(player, 0);
             }
-            roundPotentiallyStalled = true; // Set stall flag if no round winner
+            roundPotentiallyStalled = true;
         }
 
-        // Track round result for DB
         roundResults.add(new RoundResult(currentRound + 1, currentWord, actualRoundWinner));
     }
 
@@ -252,7 +240,6 @@ public class MultiplayerGameState {
         return playerMisses.getOrDefault(username, 0);
     }
 
-    // Add a method to check if a player is finished (guessed word or 5 misses)
     public boolean isPlayerFinished(String username) {
         return playerFinishTimes.containsKey(username) ||
                playerMisses.getOrDefault(username, 0) >= 5 ||
@@ -271,7 +258,6 @@ public class MultiplayerGameState {
         return playerRoundWins.getOrDefault(username, 0);
     }
 
-    // --- Add for match result tracking ---
     public static class RoundResult {
         public final int roundNumber;
         public final String word;
@@ -300,7 +286,6 @@ public class MultiplayerGameState {
         }
     }
 
-    // --- Add method to get match result for DB ---
     public MatchResult getMatchResult() {
         return new MatchResult(
             gameId,
@@ -312,14 +297,12 @@ public class MultiplayerGameState {
         );
     }
 
-    // Add a method to force end the round if time is up
     public synchronized void forceEndRound() {
         if (roundInProgress) {
             endRound();
         }
     }
 
-    // Getter and Setter for gameWinProcessed
     public synchronized boolean isGameWinProcessed() {
         return gameWinProcessed;
     }
@@ -328,7 +311,6 @@ public class MultiplayerGameState {
         this.gameWinProcessed = gameWinProcessed;
     }
 
-    // For spectate mode: get all players' masked words
     public Map<String, String> getAllMaskedWords() {
         Map<String, String> map = new HashMap<>();
         for (String player : players) {
@@ -337,7 +319,6 @@ public class MultiplayerGameState {
         return map;
     }
 
-    // For spectate mode: get all players' incorrect guesses
     public Map<String, Integer> getAllIncorrectGuesses() {
         Map<String, Integer> map = new HashMap<>();
         for (String player : players) {
@@ -346,7 +327,6 @@ public class MultiplayerGameState {
         return map;
     }
 
-    // For spectate mode: get all players' guessed letters
     public Map<String, Set<Character>> getAllPlayerGuesses() {
         Map<String, Set<Character>> map = new HashMap<>();
         for (String player : players) {
@@ -355,7 +335,6 @@ public class MultiplayerGameState {
         return map;
     }
 
-    // For spectate mode: get the current word for all players (same word for all in this round)
     public Map<String, String> getAllCurrentWords() {
         Map<String, String> map = new HashMap<>();
         for (String player : players) {
@@ -364,12 +343,11 @@ public class MultiplayerGameState {
         return map;
     }
 
-    // Getter for playerWinStreaks
     public Map<String, Integer> getPlayerWinStreaks() {
         return new HashMap<>(playerWinStreaks);
     }
 
-    public boolean isRoundPotentiallyStalled() { // NEW: Getter for the flag
+    public boolean isRoundPotentiallyStalled() {
         return roundPotentiallyStalled;
     }
 } 

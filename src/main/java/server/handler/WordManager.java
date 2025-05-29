@@ -1,5 +1,6 @@
 package server.handler;
 
+import GameModule.Bool;
 import java.io.*;
 import java.util.*;
 
@@ -26,25 +27,25 @@ public class WordManager {
     }
 
 
-    public synchronized boolean addWord(String word) {
-        if (word == null || word.trim().isEmpty()) return false;
+    public synchronized Bool addWord(String word) {
+        if (word == null || word.trim().isEmpty()) return Bool.BOOL_FALSE;
         String trimmed = word.trim().toLowerCase();
-        if (words.contains(trimmed)) return false;
+        if (words.contains(trimmed)) return Bool.BOOL_FALSE;
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("words.txt", true))) {
             writer.write(trimmed);
             writer.newLine();
             words.add(trimmed);
-            return true;
+            return Bool.BOOL_TRUE;
         } catch (IOException e) {
             System.err.println("Error adding word: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
     }
 
-    public synchronized boolean updateWord(String oldWord, String newWord) {
-        if (oldWord == null || newWord == null || newWord.trim().isEmpty()) return false;
+    public synchronized Bool updateWord(String oldWord, String newWord) {
+        if (oldWord == null || newWord == null || newWord.trim().isEmpty()) return Bool.BOOL_FALSE;
         String trimmedNew = newWord.trim().toLowerCase();
-        if (!words.contains(oldWord) || (words.contains(trimmedNew) && !oldWord.equals(trimmedNew))) return false;
+        if (!words.contains(oldWord) || (words.contains(trimmedNew) && !oldWord.equals(trimmedNew))) return Bool.BOOL_FALSE;
         List<String> updatedWords = new ArrayList<>();
         for (String w : words) {
             updatedWords.add(w.equals(oldWord) ? trimmedNew : w);
@@ -56,14 +57,14 @@ public class WordManager {
             }
         } catch (IOException e) {
             System.err.println("Error updating word: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
         words = updatedWords;
-        return true;
+        return Bool.BOOL_TRUE;
     }
 
-    public synchronized boolean deleteWord(String word) {
-        if (word == null || !words.contains(word)) return false;
+    public synchronized Bool deleteWord(String word) {
+        if (word == null || !words.contains(word)) return Bool.BOOL_FALSE;
         words.remove(word);
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("words.txt"))) {
             for (String w : words) {
@@ -72,9 +73,9 @@ public class WordManager {
             }
         } catch (IOException e) {
             System.err.println("Error deleting word: " + e.getMessage());
-            return false;
+            return Bool.BOOL_FALSE;
         }
-        return true;
+        return Bool.BOOL_TRUE;
     }
 
 } 

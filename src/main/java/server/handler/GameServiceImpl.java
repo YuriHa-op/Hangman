@@ -1,6 +1,8 @@
 package server.handler;
 
 import GameModule.GameServicePOA;
+import GameModule.Bool;
+import GameModule.AlreadyLoggedInException;
 import java.util.function.Consumer;
 import server.handler.GameManager;
 import server.handler.PlayerManager;
@@ -72,7 +74,7 @@ public class GameServiceImpl extends GameServicePOA {
 
 
     @Override
-    public boolean login(String username, String password) throws GameModule.AlreadyLoggedInException {
+    public Bool login(String username, String password) throws GameModule.AlreadyLoggedInException {
         return playerManager.login(username, password);
     }
 
@@ -81,7 +83,7 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public boolean sendGuess(String username, char letter) {
+    public Bool sendGuess(String username, char letter) {
         return gameManager.sendGuess(username, letter);
     }
 
@@ -104,12 +106,12 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public boolean createPlayer(String username, String password) {
+    public Bool createPlayer(String username, String password) {
         return playerManager.createPlayer(username, password);
     }
 
     @Override
-    public boolean deletePlayer(String username) {
+    public Bool deletePlayer(String username) {
         return playerManager.deletePlayer(username);
     }
 
@@ -123,12 +125,12 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public boolean updatePlayerPassword(String username, String newPassword) {
+    public Bool updatePlayerPassword(String username, String newPassword) {
         return playerManager.updatePlayerPassword(username, newPassword);
     }
 
     @Override
-    public boolean updateSettings(int waitingTime, int roundTime) {
+    public Bool updateSettings(int waitingTime, int roundTime) {
         return playerManager.updateSettings(waitingTime, roundTime);
     }
 
@@ -137,12 +139,12 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public boolean updatePlayerUsername(String username, String newUsername) {
+    public Bool updatePlayerUsername(String username, String newUsername) {
         return playerManager.updatePlayerUsername(username, newUsername);
     }
 
     @Override
-    public boolean updatePlayerWins(String username, int wins) {
+    public Bool updatePlayerWins(String username, int wins) {
         return playerManager.updatePlayerWins(username, wins);
     }
 
@@ -182,18 +184,18 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public boolean startNewRound(String username) {
-        return gameManager.startNewRound(username);
+    public Bool startNewRound(String username) {
+        return gameManager.startNewRound(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
-    public boolean isRoundOver(String username) {
-        return gameManager.isRoundOver(username);
+    public Bool isRoundOver(String username) {
+        return gameManager.isRoundOver(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
-    public boolean isGameSessionOver(String username) {
-        return gameManager.isGameSessionOver(username);
+    public Bool isGameSessionOver(String username) {
+        return gameManager.isGameSessionOver(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     public boolean isGameSessionWinner(String username) {
@@ -223,22 +225,22 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public void finishRound(String username, int clientRemainingTime, boolean guessedWord) {
-        gameManager.finishRound(username, (long)clientRemainingTime, guessedWord);
+    public void finishRound(String username, int clientRemainingTime, Bool guessedWord) {
+        gameManager.finishRound(username, clientRemainingTime, guessedWord);
     }
 
     @Override
-    public boolean addWord(String word) {
+    public Bool addWord(String word) {
         return wordManager.addWord(word);
     }
 
     @Override
-    public boolean updateWord(String oldWord, String newWord) {
+    public Bool updateWord(String oldWord, String newWord) {
         return wordManager.updateWord(oldWord, newWord);
     }
 
     @Override
-    public boolean deleteWord(String word) {
+    public Bool deleteWord(String word) {
         return wordManager.deleteWord(word);
     }
 
@@ -450,13 +452,13 @@ public class GameServiceImpl extends GameServicePOA {
         return sb.toString();
     }
 
-    public boolean sendMultiplayerGuess(String username, char letter) {
-        return multiplayerGameManager.makeGuess(username, letter);
+    public Bool sendMultiplayerGuess(String username, char letter) {
+        return multiplayerGameManager.makeGuess(username, letter) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     // Expose a method to start the next round in multiplayer
-    public boolean startMultiplayerNextRound(String username) {
-        return multiplayerGameManager.startNextRound(username);
+    public Bool startMultiplayerNextRound(String username) {
+        return multiplayerGameManager.startNextRound(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     // --- Match History Service Methods ---

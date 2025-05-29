@@ -31,6 +31,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.shape.Rectangle;
 import java.util.Random;
 import client.player.helper.ConfettiHelper;
+import GameModule.Bool;
 
 public class GameViewController implements GameModel.MatchListener {
     // Magic string constants
@@ -85,6 +86,10 @@ public class GameViewController implements GameModel.MatchListener {
     private int lastPlayerWins = 0; // Track previous playerWins for confetti trigger
     private boolean nextRoundStarted = false;
 
+    // Variables to track displayed state for animations and updates
+    private String lastDisplayedMaskedWord = "";
+    private int lastDisplayedIncorrectGuesses = -1;
+
     public void setStage(Stage stage) {
         this.stage = stage;
     }
@@ -112,7 +117,7 @@ public class GameViewController implements GameModel.MatchListener {
         if (scoreLabel != null) scoreLabel.setText("Words Guessed: 0");
 
         keyboardHelper = new KeyboardHelper(keyboardGrid, this::handleKeyPress);
-        gameStatePoller = new GameStatePoller(this::updateUI, 1); // poll every 2 seconds
+        gameStatePoller = new GameStatePoller(this::updateUI, 250); // poll every 250 milliseconds
     }
 
     public void setModel(GameModel model) {
@@ -177,6 +182,10 @@ public class GameViewController implements GameModel.MatchListener {
         resetKeyboard();
         gameOutput.clear();
 
+        // Reset displayed state trackers
+        this.lastDisplayedMaskedWord = "";
+        this.lastDisplayedIncorrectGuesses = -1;
+
         try {
             model.startNewGame();
             GameStateDTO state = model.getGameState();
@@ -205,6 +214,11 @@ public class GameViewController implements GameModel.MatchListener {
         GameStateDTO state = model.getGameState();
         wordDisplay.setText(state.maskedWord);
         updateHangmanImage(state.incorrectGuesses);
+
+        // Update displayed state trackers when resuming
+        this.lastDisplayedMaskedWord = state.maskedWord;
+        this.lastDisplayedIncorrectGuesses = state.incorrectGuesses;
+
         keyboardGrid.setVisible(true);
         stopTimerIfRunning();
         gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
@@ -213,35 +227,31 @@ public class GameViewController implements GameModel.MatchListener {
 
     @FXML
     private void handleKeyPress(ActionEvent event) {
-        GameStateDTO state = model.getGameState();
-        if (model == null || state.gameOver || state.roundOver) {
-            return;
+        GameStateDTO currentStateBeforeGuess = model.getGameState(); // Get state *before* guess for checks
+        if (model == null || currentStateBeforeGuess.gameOver.value() == GameModule.Bool.BOOL_TRUE.value() || currentStateBeforeGuess.roundOver.value() == GameModule.Bool.BOOL_TRUE.value()) {
+            return; // Don't process guess if round/game already marked over by current model state
         }
+
         Button clickedButton = (Button) event.getSource();
         String letter = clickedButton.getText().toLowerCase();
         try {
-            int clientRemainingTime = (gameTimerHelper != null) ? gameTimerHelper.getRemainingTime() : 0;
-            boolean correct = model.makeGuess(letter.charAt(0), clientRemainingTime);
+            // model.makeGuess now only needs the letter. clientRemainingTime is not used by this path.
+            boolean correct = model.makeGuess(letter.charAt(0), 0);
+
             new Pulse(clickedButton).play();
             if (correct) {
                 clickedButton.getStyleClass().add("correct");
-                animateCorrectGuess();
+                // animateCorrectGuess(); // Removed: wordDisplay updated by poller via updateUI
             } else {
                 clickedButton.getStyleClass().add("incorrect");
             }
             clickedButton.setDisable(true);
-            GameStateDTO newState = model.getGameState();
-            updateHangmanImage(newState.incorrectGuesses);
-            updateUI();
-            // If the round is over after this guess, call finishRound if not already called
-            if (newState.roundOver && !timeUpHandled) {
-                boolean guessedWord = !newState.maskedWord.contains("_");
-                model.finishRound(clientRemainingTime, guessedWord);
-                timeUpHandled = true;
-                handleGameOver(newState);
-                // Force UI update to show round result immediately
-                updateUI();
-            }
+
+            // Removed direct model.getGameState(), updateUI(), and model.finishRound() calls.
+            // The GameStatePoller will handle fetching the updated state and refreshing the UI.
+            // The server-side sendGuess is expected to call finishRound if appropriate.
+            // Timeouts are handled by GameTimerHelper -> handleTimeUp -> model.finishRound.
+
         } catch (Exception e) {
             System.err.println("Error handling key press: " + e.getMessage());
             e.printStackTrace();
@@ -357,8 +367,9 @@ public class GameViewController implements GameModel.MatchListener {
         if (timeUpHandled) return;
         timeUpHandled = true;
         gameOutput.appendText("Time's up! You didn't guess the word in time.\n");
-        if (model != null) {
-            model.finishRound(0, false);
+        GameStateDTO state = model.getGameState(); // Get current state to check if already over
+        if (model != null && (state == null || state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value())) {
+            model.finishRound(0, GameModule.Bool.BOOL_FALSE);
             updateUI();
         }
     }
@@ -402,7 +413,7 @@ public class GameViewController implements GameModel.MatchListener {
     public void onReturned() {
         updateUI();
         GameStateDTO state = model.getGameState();
-        if (!state.gameOver && state.maskedWord != null && !state.maskedWord.isEmpty() && !WAITING_FOR_MATCH.equals(state.maskedWord)) {
+        if (state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value() && state.maskedWord != null && !state.maskedWord.isEmpty() && !WAITING_FOR_MATCH.equals(state.maskedWord)) {
             keyboardGrid.setVisible(true);
             stopTimerIfRunning();
             gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
@@ -438,21 +449,50 @@ public class GameViewController implements GameModel.MatchListener {
 
     private void updateUI() {
         GameStateDTO state = model.getGameState();
+        if (state == null) return; // Should not happen, but good guard
+
+        // Handle waiting for match separately
         if (isWaitingForMatch(state)) {
             handleWaitingForMatchUI();
+            // Ensure last displayed states are reset or reflect waiting state if needed
+            this.lastDisplayedMaskedWord = WAITING_FOR_MATCH;
+            this.lastDisplayedIncorrectGuesses = 0;
             return;
         }
+
+        // Word display and animation update
+        if (state.maskedWord != null && !state.maskedWord.equals(this.lastDisplayedMaskedWord)) {
+            if (didCorrectLetterGetRevealed(this.lastDisplayedMaskedWord, state.maskedWord)) {
+                wordDisplay.setText(state.maskedWord);
+                GameViewHelper.animateWordDisplay(wordDisplay);
+            } else {
+                wordDisplay.setText(state.maskedWord);
+            }
+            this.lastDisplayedMaskedWord = state.maskedWord;
+        } else if (state.maskedWord != null && wordDisplay.getText().isEmpty()) {
+            // Initial population if wordDisplay is empty and we have a masked word
+            wordDisplay.setText(state.maskedWord);
+            this.lastDisplayedMaskedWord = state.maskedWord;
+        }
+
+        // Hangman image update
+        if (state.incorrectGuesses != this.lastDisplayedIncorrectGuesses) {
+            updateHangmanImage(state.incorrectGuesses);
+            this.lastDisplayedIncorrectGuesses = state.incorrectGuesses;
+        }
+
+        // Remaining UI update logic from original method
         if (shouldHandleTimeUp(state)) {
-            handleTimeUp();
+            handleTimeUp(); // This calls finishRound and implicitly triggers poller for new state
         }
         if (shouldShowGameOverDialog(state)) {
             if (root != null) root.setOpacity(1.0);
             handleGameOverDialog(state);
             keyboardGrid.setVisible(false);
-            return;
+            return; // Game over dialog shown, further UI updates might be irrelevant or handled by dialog
         }
-        if (state.roundOver && !state.gameOver) {
-            stopTimerIfRunning();
+        if (state.roundOver.value() == GameModule.Bool.BOOL_TRUE.value() && state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value()) {
+            stopTimerIfRunning(); // Stop timer if round is over but game is not
         }
         updateScoreLabel(state);
         triggerConfettiIfNeeded(state);
@@ -471,7 +511,9 @@ public class GameViewController implements GameModel.MatchListener {
     }
 
     private boolean shouldHandleTimeUp(GameStateDTO state) {
-        return state.remainingTime <= 0 && !timeUpHandled && !state.roundOver && !state.gameOver;
+        return state.remainingTime <= 0 && !timeUpHandled && 
+               state.roundOver.value() == GameModule.Bool.BOOL_FALSE.value() && 
+               state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value();
     }
 
     private boolean shouldShowGameOverDialog(GameStateDTO state) {
@@ -483,14 +525,35 @@ public class GameViewController implements GameModel.MatchListener {
     }
 
     private void triggerConfettiIfNeeded(GameStateDTO state) {
-        if (!state.gameOver && state.playerWins > lastPlayerWins) {
+        if (state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value() && state.playerWins > lastPlayerWins) {
             ConfettiHelper.showConfetti(root);
         }
         lastPlayerWins = state.playerWins;
     }
 
+    private boolean didCorrectLetterGetRevealed(String oldWord, String newWord) {
+        if (oldWord == null || newWord == null || oldWord.length() != newWord.length()) {
+            return false; // Cannot compare or not a simple reveal
+        }
+        int oldUnderscores = 0;
+        for (char c : oldWord.toCharArray()) {
+            if (c == '_') {
+                oldUnderscores++;
+            }
+        }
+        int newUnderscores = 0;
+        for (char c : newWord.toCharArray()) {
+            if (c == '_') {
+                newUnderscores++;
+            }
+        }
+        // A correct letter was revealed if the number of underscores decreased
+        // and the new word is not empty (i.e., not an initial state or error)
+        return newUnderscores < oldUnderscores && !newWord.trim().isEmpty();
+    }
+
     private void showRoundWinnerIfNeeded(GameStateDTO state) {
-        if (state.roundOver && !state.gameOver && state.roundWinner != null && !state.roundWinner.isEmpty()) {
+        if (state.roundOver.value() == GameModule.Bool.BOOL_TRUE.value() && state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value() && state.roundWinner != null && !state.roundWinner.isEmpty()) {
             int roundNum = state.currentRound;
             if (lastRoundWinnerShown != roundNum) {
                 String opponent = state.roundWinner.equals(username) ? "your opponent" : state.roundWinner;
@@ -499,7 +562,7 @@ public class GameViewController implements GameModel.MatchListener {
                 gameOutput.setScrollTop(Double.MAX_VALUE);
                 lastRoundWinnerShown = roundNum;
             }
-        } else if (state.roundOver && !state.gameOver && (state.roundWinner == null || state.roundWinner.isEmpty())) {
+        } else if (state.roundOver.value() == GameModule.Bool.BOOL_TRUE.value() && state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value() && (state.roundWinner == null || state.roundWinner.isEmpty())) {
             GameViewHelper.showNoRoundWinner(gameOutput);
             gameOutput.setScrollTop(Double.MAX_VALUE);
         }
@@ -507,7 +570,7 @@ public class GameViewController implements GameModel.MatchListener {
 
     private void autoStartNextRoundIfNeeded(GameStateDTO state) {
         // Only auto-start next round if session is still ONGOING
-        if (state.roundOver && !state.gameOver && ONGOING.equals(state.sessionResult) && !nextRoundStarted) {
+        if (state.roundOver.value() == GameModule.Bool.BOOL_TRUE.value() && state.gameOver.value() == GameModule.Bool.BOOL_FALSE.value() && ONGOING.equals(state.sessionResult) && !nextRoundStarted) {
             nextRoundStarted = true;
             stopTimerIfRunning();
             // Explode round UI elements instead of fading out root
@@ -521,7 +584,8 @@ public class GameViewController implements GameModel.MatchListener {
                     handleGameOverDialog(latestState);
                     return;
                 }
-                boolean started = model.getGameService().startNewRound(model.getUsername());
+                GameModule.Bool startedResult = model.getGameService().startNewRound(model.getUsername());
+                boolean started = startedResult.value() == GameModule.Bool.BOOL_TRUE.value();
                 if (started) {
                     nextRoundStarted = false;
                     GameStateDTO newState = model.getGameState();

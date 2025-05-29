@@ -125,9 +125,9 @@ public class SystemStatisticsController {
             }
 
             // Update settings using the gameService
-            boolean success = gameService.updateSettings(waitingTime, roundTime);
+            GameModule.Bool success = gameService.updateSettings(waitingTime, roundTime);
 
-            if (success) {
+            if (success == GameModule.Bool.BOOL_TRUE) {
                 currentSettings.setWaitingTimeSeconds(waitingTime);
                 currentSettings.setRoundTimeSeconds(roundTime);
                 outputCallback.accept("Game settings updated successfully");

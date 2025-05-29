@@ -2,6 +2,8 @@ package client.player.model;
 
 import GameModule.GameService;
 import GameModule.GameServiceHelper;
+import GameModule.Bool;
+import GameModule.AlreadyLoggedInException;
 import org.omg.CORBA.ORB;
 
 public class LoginModel {
@@ -37,9 +39,9 @@ public class LoginModel {
         return gameService;
     }
 
-    public boolean login(String username, String password) throws GameModule.AlreadyLoggedInException {
+    public Bool login(String username, String password) throws GameModule.AlreadyLoggedInException {
         try {
-            return gameService.login(username, password); // Send plain password
+            return gameService.login(username, password);
         } catch (GameModule.AlreadyLoggedInException e) {
             throw e;
         } catch (Exception e) {
