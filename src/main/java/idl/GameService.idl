@@ -65,6 +65,7 @@ module GameModule {
         boolean startNewRound(in string username);
         boolean isRoundOver(in string username);
         boolean isGameSessionOver(in string username);
+        string getGameSessionResult(in string username);
         GameStateDTO getGameState(in string username);
 
         // Explicit cleanup after game session ends
@@ -86,7 +87,11 @@ module GameModule {
         boolean startMultiplayerNextRound(in string username);
 
         // Match history (returns JSON)
-        string getMatchHistory(in string username); // JSON array of GameSummary
-        string getMatchDetails(in string gameId);   // JSON GameDetails
+        string getMatchHistory(in string username);
+        string getMatchDetails(in string gameId);
+
+        // Single Player Match History
+        string getSinglePlayerMatchHistory(in string username);
+        string getSinglePlayerMatchDetails(in string gameId);
     };
 };

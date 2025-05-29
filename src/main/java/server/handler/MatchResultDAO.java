@@ -1,5 +1,8 @@
 package server.handler;
 
+import server.dto.MultiplayerGameDetailsDTO;
+import server.dto.MultiplayerRoundInfoDTO;
+import server.dto.MultiplayerGameSummaryDTO;
 import java.sql.*;
 import java.util.*;
 
@@ -57,53 +60,12 @@ public class MatchResultDAO {
         }
     }
 
-    // --- Match History Data Classes ---
-    public static class GameSummary {
-        public final String gameId;
-        public final int totalRounds;
-        public final String overallWinner;
-        public final List<String> players;
-        public final long gameEndTime;
-
-        public GameSummary(String gameId, int totalRounds, String overallWinner, List<String> players, long gameEndTime) {
-            this.gameId = gameId;
-            this.totalRounds = totalRounds;
-            this.overallWinner = overallWinner;
-            this.players = players;
-            this.gameEndTime = gameEndTime;
-        }
-    }
-    public static class GameDetails {
-        public final String gameId;
-        public final int totalRounds;
-        public final String overallWinner;
-        public final List<String> players;
-        public final List<RoundInfo> rounds;
-        public final long gameEndTime;
-
-        public GameDetails(String gameId, int totalRounds, String overallWinner, List<String> players, List<RoundInfo> rounds, long gameEndTime) {
-            this.gameId = gameId;
-            this.totalRounds = totalRounds;
-            this.overallWinner = overallWinner;
-            this.players = players;
-            this.rounds = rounds;
-            this.gameEndTime = gameEndTime;
-        }
-    }
-    public static class RoundInfo {
-        public final int roundNumber;
-        public final String word;
-        public final String winner;
-        public RoundInfo(int roundNumber, String word, String winner) {
-            this.roundNumber = roundNumber;
-            this.word = word;
-            this.winner = winner;
-        }
-    }
+    // Old inner DTOs (GameSummary, GameDetails, RoundInfo) are removed from here.
+    // They are now replaced by DTOs in the server.dto package.
 
     // --- Fetch all games a player participated in ---
-    public List<GameSummary> getGamesForPlayer(String username) {
-        List<GameSummary> result = new ArrayList<>();
+    public List<MultiplayerGameSummaryDTO> getGamesForPlayer(String username) {
+        List<MultiplayerGameSummaryDTO> result = new ArrayList<>();
         String sql = "SELECT g.game_id, g.total_rounds, g.overall_winner, g.game_end_time " +
                      "FROM games g JOIN game_players gp ON g.game_id = gp.game_id " +
                      "WHERE gp.player_name = ? ORDER BY g.game_end_time DESC";
@@ -126,7 +88,7 @@ public class MatchResultDAO {
                         players.add(rs2.getString("player_name"));
                     }
                 }
-                result.add(new GameSummary(gameId, totalRounds, overallWinner, players, gameEndTime));
+                result.add(new MultiplayerGameSummaryDTO(gameId, totalRounds, overallWinner, players, gameEndTime));
             }
         } catch (SQLException e) {
             System.err.println("Error fetching match history: " + e.getMessage());
@@ -135,7 +97,7 @@ public class MatchResultDAO {
     }
 
     // --- Fetch details for a specific game ---
-    public GameDetails getGameDetails(String gameId) {
+    public MultiplayerGameDetailsDTO getGameDetails(String gameId) {
         String sqlGame = "SELECT total_rounds, overall_winner, game_end_time FROM games WHERE game_id = ?";
         String sqlPlayers = "SELECT player_name FROM game_players WHERE game_id = ?";
         String sqlRounds = "SELECT round_number, word, winner FROM rounds WHERE game_id = ? ORDER BY round_number ASC";
@@ -161,7 +123,7 @@ public class MatchResultDAO {
                     players.add(rs.getString("player_name"));
                 }
             }
-            List<RoundInfo> rounds = new ArrayList<>();
+            List<MultiplayerRoundInfoDTO> rounds = new ArrayList<>();
             try (PreparedStatement ps = conn.prepareStatement(sqlRounds)) {
                 ps.setString(1, gameId);
                 ResultSet rs = ps.executeQuery();
@@ -169,10 +131,10 @@ public class MatchResultDAO {
                     int roundNumber = rs.getInt("round_number");
                     String word = rs.getString("word");
                     String winner = rs.getString("winner");
-                    rounds.add(new RoundInfo(roundNumber, word, winner));
+                    rounds.add(new MultiplayerRoundInfoDTO(roundNumber, word, winner));
                 }
             }
-            return new GameDetails(gameId, totalRounds, overallWinner, players, rounds, gameEndTime);
+            return new MultiplayerGameDetailsDTO(gameId, totalRounds, overallWinner, players, rounds, gameEndTime);
         } catch (SQLException e) {
             System.err.println("Error fetching match details: " + e.getMessage());
             return null;

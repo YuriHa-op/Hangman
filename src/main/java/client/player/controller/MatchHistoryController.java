@@ -12,6 +12,9 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 import javafx.util.Callback;
+import server.dto.MultiplayerGameSummaryDTO;
+import server.dto.SPSinglePlayerGameSummaryDTO;
+
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -27,6 +30,7 @@ public class MatchHistoryController {
     @FXML private TableColumn<MatchSummary, String> colRounds;
     @FXML private TableColumn<MatchSummary, Void> colDetails;
     @FXML private Button closeButton;
+    @FXML private ComboBox<String> historyTypeComboBox;
 
     private Stage stage;
     private GameService gameService;
@@ -50,24 +54,52 @@ public class MatchHistoryController {
         colRounds.setCellValueFactory(cellData -> cellData.getValue().roundsProperty());
         addDetailsButtonToTable();
         historyTable.setItems(matchData);
+
+        historyTypeComboBox.setItems(FXCollections.observableArrayList("Multiplayer Matches", "1v1 Matches"));
+        historyTypeComboBox.setValue("Multiplayer Matches"); // Default selection
+        historyTypeComboBox.setOnAction(event -> loadSelectedHistory());
+
         if (closeButton != null) {
             closeButton.setOnAction(e -> handleBackToMenu());
         }
+        // Load initial history (defaulting to Multiplayer)
+        loadSelectedHistory();
     }
 
-    public void loadHistory() {
+    private void loadSelectedHistory() {
+        String selectedType = historyTypeComboBox.getValue();
+        if ("1v1 Matches".equals(selectedType)) {
+            loadHistory("singleplayer");
+        } else {
+            loadHistory("multiplayer");
+        }
+    }
+
+    public void loadHistory(String mode) {
         new Thread(() -> {
             try {
-                String json = gameService.getMatchHistory(username);
-                Type listType = new TypeToken<List<GameSummary>>(){}.getType();
-                List<GameSummary> summaries = gson.fromJson(json, listType);
-                List<MatchSummary> rows = summaries.stream().map(MatchSummary::fromGameSummary).collect(Collectors.toList());
-                Platform.runLater(() -> {
-                    matchData.setAll(rows);
-                });
+                String json;
+                Type listType;
+                if ("singleplayer".equals(mode)) {
+                    json = gameService.getSinglePlayerMatchHistory(username);
+                    listType = new TypeToken<List<SPSinglePlayerGameSummaryDTO>>(){}.getType();
+                    List<SPSinglePlayerGameSummaryDTO> spSummaries = gson.fromJson(json, listType);
+                    List<MatchSummary> rows = spSummaries.stream().map(MatchSummary::fromSPSinglePlayerGameSummary).collect(Collectors.toList());
+                    Platform.runLater(() -> matchData.setAll(rows));
+                } else { // multiplayer
+                    json = gameService.getMatchHistory(username);
+                    listType = new TypeToken<List<MultiplayerGameSummaryDTO>>(){}.getType();
+                    List<MultiplayerGameSummaryDTO> summaries = gson.fromJson(json, listType);
+                    List<MatchSummary> rows = summaries.stream().map(MatchSummary::fromMultiplayerGameSummary).collect(Collectors.toList());
+                    Platform.runLater(() -> matchData.setAll(rows));
+                }
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     matchData.clear();
+                    // Consider showing an error alert
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to load " + mode + " match history: " + e.getMessage());
+                    alert.initOwner(stage);
+                    alert.showAndWait();
                 });
             }
         }).start();
@@ -80,7 +112,7 @@ public class MatchHistoryController {
                 return new TableCell<MatchSummary, Void>() {
                     private final Button btn = new Button("Details");
                     {
-                        // btn.getStyleClass().add("details-button"); // Temporarily commented out for testing
+                        btn.getStyleClass().add("details-button");
                         btn.setOnAction((event) -> {
                             MatchSummary data = getTableView().getItems().get(getIndex());
                             showMatchDetailsDialog(data.getGameId());
@@ -101,11 +133,20 @@ public class MatchHistoryController {
     }
 
     private void showMatchDetailsDialog(String gameId) {
+        String selectedType = historyTypeComboBox.getValue();
+        String mode = "1v1 Matches".equals(selectedType) ? "singleplayer" : "multiplayer";
+
         new Thread(() -> {
             try {
-                String json = gameService.getMatchDetails(gameId);
+                String json;
+                if ("singleplayer".equals(mode)) {
+                    json = gameService.getSinglePlayerMatchDetails(gameId);
+                } else { // multiplayer
+                    json = gameService.getMatchDetails(gameId);
+                }
                 Platform.runLater(() -> {
-                    MatchDetailsDialogController.showDialog(stage, json);
+                    // Assuming MatchDetailsDialogController can handle both types or we adapt it
+                    MatchDetailsDialogController.showDialog(stage, json, mode); // Pass mode to dialog
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
@@ -152,19 +193,19 @@ public class MatchHistoryController {
         public String getDateTime() { return dateTime.get(); }
         public SimpleStringProperty dateTimeProperty() { return dateTime; }
 
-        public static MatchSummary fromGameSummary(GameSummary g) {
+        public static MatchSummary fromMultiplayerGameSummary(MultiplayerGameSummaryDTO g) {
             String players = String.join(", ", g.players);
             String winner = g.overallWinner != null ? g.overallWinner : "";
             String rounds = String.valueOf(g.totalRounds);
             return new MatchSummary(g.gameId, players, winner, rounds, g.gameEndTime);
         }
-    }
-    // --- Data class for JSON parsing ---
-    public static class GameSummary {
-        public String gameId;
-        public int totalRounds;
-        public String overallWinner;
-        public List<String> players;
-        public long gameEndTime;
+
+        public static MatchSummary fromSPSinglePlayerGameSummary(SPSinglePlayerGameSummaryDTO g) {
+            String players = String.join(", ", g.players);
+            String winner = g.overallWinner != null ? g.overallWinner : "";
+            String rounds = String.valueOf(g.totalRounds);
+            // Ensure gameId is non-null, default to empty string if necessary
+            return new MatchSummary(g.gameId != null ? g.gameId : "", players, winner, rounds, g.gameEndTime);
+        }
     }
 } 

@@ -8,6 +8,7 @@ import server.handler.WordManager;
 import server.handler.MultiplayerGameManager;
 import server.handler.MultiplayerLobby;
 import server.handler.MultiplayerGameState;
+import server.handler.SinglePlayerMatchResultDAO;
 
 import java.sql.*;
 import java.util.*;
@@ -33,6 +34,11 @@ public class GameServiceImpl extends GameServicePOA {
         "root",
         ""
     );
+    private final SinglePlayerMatchResultDAO singlePlayerMatchResultDAO = new SinglePlayerMatchResultDAO(
+        "jdbc:mysql://localhost:3306/game",
+        "root",
+        ""
+    );
     private final Gson gson = new Gson();
 
                 //put this hotdog in you GameServiceImpl
@@ -42,7 +48,7 @@ public class GameServiceImpl extends GameServicePOA {
     public GameServiceImpl() {
         this.wordManager = new WordManager();
         this.playerManager = new PlayerManager();
-        this.gameManager = new GameManager(wordManager, playerManager);
+        this.gameManager = new GameManager(wordManager, playerManager, singlePlayerMatchResultDAO);
         // Initialize multiplayer manager
         int waitingTime = playerManager.getWaitingTime();
         int minPlayers = 2;
@@ -455,12 +461,23 @@ public class GameServiceImpl extends GameServicePOA {
 
     // --- Match History Service Methods ---
     public String getMatchHistory(String username) {
-        java.util.List<MatchResultDAO.GameSummary> games = matchResultDAO.getGamesForPlayer(username);
+        java.util.List<server.dto.MultiplayerGameSummaryDTO> games = matchResultDAO.getGamesForPlayer(username);
         return gson.toJson(games);
     }
 
     public String getMatchDetails(String gameId) {
-        MatchResultDAO.GameDetails details = matchResultDAO.getGameDetails(gameId);
+        server.dto.MultiplayerGameDetailsDTO details = matchResultDAO.getGameDetails(gameId);
+        return gson.toJson(details);
+    }
+
+    // --- Single Player Match History Service Methods ---
+    public String getSinglePlayerMatchHistory(String username) {
+        List<server.dto.SPSinglePlayerGameSummaryDTO> games = singlePlayerMatchResultDAO.getGamesForPlayer(username);
+        return gson.toJson(games);
+    }
+
+    public String getSinglePlayerMatchDetails(String gameId) {
+        server.dto.SPSinglePlayerGameDetailsDTO details = singlePlayerMatchResultDAO.getGameDetails(gameId);
         return gson.toJson(details);
     }
 

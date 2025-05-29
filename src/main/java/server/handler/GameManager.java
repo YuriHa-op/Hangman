@@ -4,11 +4,14 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.sql.*;
 import server.dto.GameStateDTO;
+import server.dto.SPSinglePlayerRoundInfoDTO;
+import java.util.UUID;
 
 public class GameManager {
     private final WordManager wordManager;
     private final PlayerManager playerManager;
     private Consumer<String> logCallback;
+    private final SinglePlayerMatchResultDAO singlePlayerMatchResultDAO;
 
     // Game state fields
     private Map<String, String> activeGames = new HashMap<>();
@@ -27,9 +30,15 @@ public class GameManager {
     private Map<String, Map<Integer, Boolean>> roundGuessedWord = new HashMap<>();
     private Map<String, Map<Integer, String>> lastRoundWinner = new HashMap<>();
 
-    public GameManager(WordManager wordManager, PlayerManager playerManager) {
+    // For 1v1 Match History
+    private Map<String, String> playerGameSessionIds = new HashMap<>();
+    private Map<String, List<SPSinglePlayerRoundInfoDTO>> gameSessionRounds = new HashMap<>();
+    private Map<String, Boolean> gameSessionHistorySaved = new HashMap<>();
+
+    public GameManager(WordManager wordManager, PlayerManager playerManager, SinglePlayerMatchResultDAO singlePlayerMatchResultDAO) {
         this.wordManager = wordManager;
         this.playerManager = playerManager;
+        this.singlePlayerMatchResultDAO = singlePlayerMatchResultDAO;
     }
 
     public void setLogCallback(Consumer<String> callback) {
@@ -107,6 +116,12 @@ public class GameManager {
         waitingPlayers.remove(username);
         String matchedPlayer = findWaitingPlayer();
         if (matchedPlayer != null && !matchedPlayer.equals(username)) {
+            // Generate a unique game ID for this 1v1 match session
+            String gameSessionId = UUID.randomUUID().toString();
+            playerGameSessionIds.put(username, gameSessionId);
+            playerGameSessionIds.put(matchedPlayer, gameSessionId);
+            gameSessionRounds.put(gameSessionId, new ArrayList<>());
+
             // Generate a large shuffled list of unique words for this match
             List<String> allWords = new ArrayList<>(wordManager.getWords());
             Collections.shuffle(allWords);
@@ -203,67 +218,133 @@ public class GameManager {
 
     private void determineRoundWinner(String username, int round) {
         String opponent = matchedPlayers.get(username);
-        // Prevent double counting
+
         if (lastRoundWinner.getOrDefault(username, Collections.emptyMap()).containsKey(round)) {
             System.out.println("[DEBUG] determineRoundWinner: winner already set for round " + round);
             return;
         }
         System.out.println("[DEBUG] determineRoundWinner called for " + username + " vs " + opponent + " round=" + round);
         if (opponent == null) return;
+
         boolean playerGuessed = roundGuessedWord.getOrDefault(username, Collections.emptyMap()).getOrDefault(round, false);
         boolean opponentGuessed = roundGuessedWord.getOrDefault(opponent, Collections.emptyMap()).getOrDefault(round, false);
         System.out.println("[DEBUG] playerGuessed=" + playerGuessed + ", opponentGuessed=" + opponentGuessed);
-        if (!(roundFinished.getOrDefault(username, Collections.emptyMap()).getOrDefault(round, false) && roundFinished.getOrDefault(opponent, Collections.emptyMap()).getOrDefault(round, false))) {
+
+        if (!(roundFinished.getOrDefault(username, Collections.emptyMap()).getOrDefault(round, false) &&
+              roundFinished.getOrDefault(opponent, Collections.emptyMap()).getOrDefault(round, false))) {
             System.out.println("[DEBUG] determineRoundWinner: not both finished");
             return; // Wait until both are finished
         }
-        String winner = null;
+
+        String roundWinner = null; // This will store the winner of the current round
         if (playerGuessed && opponentGuessed) {
             long playerTime = roundFinishTime.getOrDefault(username, Collections.emptyMap()).getOrDefault(round, Long.MIN_VALUE);
             long opponentTime = roundFinishTime.getOrDefault(opponent, Collections.emptyMap()).getOrDefault(round, Long.MIN_VALUE);
             System.out.println("[DEBUG] Both guessed: " + username + " time=" + playerTime + ", " + opponent + " time=" + opponentTime);
             if (playerTime > opponentTime) {
-                incrementRoundWin(username);
-                winner = username;
+                roundWinner = username;
             } else if (opponentTime > playerTime) {
-                incrementRoundWin(opponent);
-                winner = opponent;
+                roundWinner = opponent;
             }
-            // If equal, no one wins (tie)
+            // If equal, roundWinner remains null (tie for the round)
         } else if (playerGuessed) {
-            incrementRoundWin(username);
-            winner = username;
+            roundWinner = username;
         } else if (opponentGuessed) {
-            incrementRoundWin(opponent);
-            winner = opponent;
+            roundWinner = opponent;
         }
-        // else: no one wins
-        System.out.println("[DEBUG] Winner for this round: " + winner);
-        lastRoundWinner.computeIfAbsent(username, k -> new HashMap<>()).put(round, winner);
-        lastRoundWinner.computeIfAbsent(opponent, k -> new HashMap<>()).put(round, winner);
+        // else: no one won this specific round, roundWinner remains null.
+
+        System.out.println("[DEBUG] Winner for this round (determined): " + roundWinner);
+
+        // Log round result for match history FIRST
+        String gameSessionId = playerGameSessionIds.get(username); // gameSessionId is same for both players
+        if (gameSessionId != null && gameSessionRounds.containsKey(gameSessionId)) {
+            String wordForRound = activeGames.getOrDefault(username, ""); // Get word for current round (it's the same for both)
+            // Ensure we get the correct word based on the 'round' index from the shared list if available
+            if (playerWords.containsKey(username) && playerWords.get(username).size() > round) {
+                 wordForRound = playerWords.get(username).get(round);
+            }
+
+            gameSessionRounds.get(gameSessionId).add(
+                new SPSinglePlayerRoundInfoDTO(round + 1, wordForRound, roundWinner) // Use determined roundWinner
+            );
+            System.out.println("[DEBUG] Logged round " + (round + 1) + " for game " + gameSessionId + " with winner " + roundWinner + ". Total rounds in list now: " + gameSessionRounds.get(gameSessionId).size());
+        }
+
+        // Update the lastRoundWinner map for getGameState()
+        // This ensures client knows who won the round even if game doesn't end here.
+        lastRoundWinner.computeIfAbsent(username, k -> new HashMap<>()).put(round, roundWinner);
+        lastRoundWinner.computeIfAbsent(opponent, k -> new HashMap<>()).put(round, roundWinner);
+
+        // Now, if there was a winner for this specific round, increment their overall game wins.
+        // incrementRoundWin might trigger saveGameSessionHistory if this round win leads to a game win.
+        if (roundWinner != null) {
+            incrementRoundWin(roundWinner);
+        }
     }
 
     private void incrementRoundWin(String username) {
         int wins = playerWins.getOrDefault(username, 0) + 1;
         playerWins.put(username, wins);
         System.out.println("[DEBUG] incrementRoundWin: " + username + " now has " + wins + " wins");
-        // Check for game session win
+
         String opponent = matchedPlayers.get(username);
         int opponentWins = opponent != null ? playerWins.getOrDefault(opponent, 0) : 0;
+        boolean gameJustEnded = false;
+        String gameSessionId = playerGameSessionIds.get(username);
+        String gameWinner = null;
+
         if (wins >= 3) {
             setGameSessionResult(username, "WIN");
             if (opponent != null) {
                 setGameSessionResult(opponent, "LOSE");
             }
-            // Increment total wins in the database
+            gameWinner = username;
             int totalWins = playerManager.getTotalWins(username);
             playerManager.updatePlayerWins(username, totalWins + 1);
+            gameJustEnded = true;
         } else if (opponent != null && opponentWins >= 3) {
             setGameSessionResult(opponent, "WIN");
             setGameSessionResult(username, "LOSE");
-            // Increment total wins for opponent in the database
+            gameWinner = opponent;
             int totalOpponentWins = playerManager.getTotalWins(opponent);
             playerManager.updatePlayerWins(opponent, totalOpponentWins + 1);
+            gameJustEnded = true;
+        }
+
+        if (gameJustEnded && gameSessionId != null) {
+            List<String> playersInGame = new ArrayList<>();
+            playersInGame.add(username);
+            if (opponent != null) {
+                playersInGame.add(opponent);
+            }
+            List<SPSinglePlayerRoundInfoDTO> rounds = gameSessionRounds.getOrDefault(gameSessionId, new ArrayList<>());
+            saveGameSessionHistory(gameSessionId, playersInGame, rounds, gameWinner);
+        }
+    }
+
+    private void saveGameSessionHistory(String gameSessionId, List<String> players, List<SPSinglePlayerRoundInfoDTO> rounds, String overallWinner) {
+        if (gameSessionId != null && singlePlayerMatchResultDAO != null && !gameSessionHistorySaved.getOrDefault(gameSessionId, false)) {
+            int totalRoundsPlayed = rounds.size();
+            // Ensure players list is not empty and contains valid player names
+            if (players.isEmpty() && !rounds.isEmpty()) {
+                System.err.println("[HISTORY SAVE ERROR] Players list is empty for gameSessionId: " + gameSessionId + " but rounds exist. Aborting save.");
+                return; // Or attempt to recover players if possible, though difficult here.
+            }
+
+            SinglePlayerMatchResultDAO.SinglePlayerMatchResult matchResult = new SinglePlayerMatchResultDAO.SinglePlayerMatchResult(
+                    gameSessionId,
+                    totalRoundsPlayed,
+                    overallWinner, // This should be the final determined winner of the game session
+                    players,
+                    rounds,
+                    System.currentTimeMillis()
+            );
+            singlePlayerMatchResultDAO.saveMatchResult(matchResult);
+            gameSessionHistorySaved.put(gameSessionId, true); // Mark as saved
+            System.out.println("[HISTORY] Saved 1v1 game session: " + gameSessionId + " Winner: " + overallWinner);
+        } else if (gameSessionId != null && gameSessionHistorySaved.getOrDefault(gameSessionId, false)) {
+            System.out.println("[HISTORY] 1v1 game session: " + gameSessionId + " already saved.");
         }
     }
 
@@ -280,6 +361,15 @@ public class GameManager {
         roundFinishTime.remove(username);
         roundGuessedWord.remove(username);
         lastRoundWinner.remove(username);
+
+        // Clean up 1v1 match history related data for the player
+        String gameSessionId = playerGameSessionIds.remove(username);
+        // If this is the last player associated with this gameSessionId, remove its round data and history saved flag.
+        if (gameSessionId != null && !playerGameSessionIds.containsValue(gameSessionId)) {
+            gameSessionRounds.remove(gameSessionId);
+            gameSessionHistorySaved.remove(gameSessionId); // Also clear the saved flag
+            System.out.println("[CLEANUP] Removed session data for gameId: " + gameSessionId);
+        }
     }
 
     public int getRemainingTime(String username) {
@@ -445,21 +535,66 @@ public class GameManager {
     // Add a public method to fully reset a player's session and their match
     public void endGameSession(String username) {
         String opponent = matchedPlayers.get(username);
-        // If the game is not already over, set the opponent as winner
-        if (opponent != null && !isGameSessionOver(username)) {
+        String gameSessionId = playerGameSessionIds.get(username);
+
+        if (gameSessionId == null || gameSessionHistorySaved.getOrDefault(gameSessionId, false)) {
+            // Game session doesn't exist for this player in terms of history tracking, or already saved.
+            // No history saving action needed, but proceed to mark game as over if applicable for client state.
+             if (opponent != null && !isGameSessionOver(username) && !isGameSessionOver(opponent)) {
+                // If user is leaving mid-game, ensure results are set for client state
+                setGameSessionResult(opponent, "WIN");
+                setGameSessionResult(username, "LOSE");
+             }
+            System.out.println("[DEBUG] endGameSession called for " + username + ", but gameSessionId is " + gameSessionId + " or history already saved.");
+            return; // History saving not applicable or already done.
+        }
+
+        String overallWinnerForSave = null;
+
+        // If this player is leaving a game that isn't naturally over by 3 wins
+        if (opponent != null && !isGameSessionOver(username) && !isGameSessionOver(opponent)) {
             setGameSessionResult(opponent, "WIN");
             setGameSessionResult(username, "LOSE");
-            // Optionally increment opponent's win count in the database
+            overallWinnerForSave = opponent; // The opponent won because 'username' left
+            // Optionally increment opponent's win count in the database (already handled if game ends naturally)
+            // This path is for premature exit, so we might need to ensure opponent's DB wins are updated if not already.
+            // The opponent wins by forfeiture, update their total wins.
             int totalOpponentWins = playerManager.getTotalWins(opponent);
             playerManager.updatePlayerWins(opponent, totalOpponentWins + 1);
+        } else { // Game was already decided by 3 wins, or it's a solo player scenario ending.
+            if (getGameSessionResult(username).equals("WIN")) {
+                overallWinnerForSave = username;
+            } else if (opponent != null && getGameSessionResult(opponent).equals("WIN")) {
+                overallWinnerForSave = opponent;
+            } else if (opponent == null && "WIN".equals(gameSessionResult.get(username))) {
+                overallWinnerForSave = username; // Should not happen in 1v1, but defensive
+            }
+            // if overallWinnerForSave is still null, it implies a draw or non-standard end, record as null or specific string
         }
-        // DO NOT clean up state here!
-        // Let the client see the WIN/LOSE result in getGameState.
-        // Cleanup should be triggered by a separate call (e.g., after the client returns to menu).
+
+        List<String> playersInGame = new ArrayList<>();
+        playersInGame.add(username);
+        if (opponent != null) {
+            playersInGame.add(opponent);
+        }
+
+        List<SPSinglePlayerRoundInfoDTO> rounds = gameSessionRounds.getOrDefault(gameSessionId, new ArrayList<>());
+        
+        saveGameSessionHistory(gameSessionId, playersInGame, rounds, overallWinnerForSave);
+        
+        // Note: The gameSessionResult map for clients is set here or in incrementRoundWin.
+        // The actual cleanup of in-memory state (playerGameSessionIds, gameSessionRounds, etc.)
+        // happens in cleanupPlayerSession, which is typically called after this.
     }
 
     public void cleanupPlayerSession(String username) {
+        String opponent = matchedPlayers.get(username);
         cleanupPlayerState(username);
         gameSessionResult.remove(username);
+
+        if (opponent != null) {
+            matchedPlayers.remove(opponent); // Remove opponent's mapping to this user
+        }
+        matchedPlayers.remove(username); // Remove this user's mapping
     }
 }

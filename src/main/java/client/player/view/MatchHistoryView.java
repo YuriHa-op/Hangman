@@ -24,7 +24,6 @@ public class MatchHistoryView {
             controller.setGameService(gameService);
             controller.setUsername(username);
             controller.setOnBackToMenu(onBackToMenu);
-            controller.loadHistory();
 
             // Make window draggable
             final double[] xOffset = {0};

@@ -172,6 +172,19 @@ class MatchHistoryView(BaseView):
     def __init__(self, master, controller):
         super().__init__(master, controller)
         tk.Label(self, text="Match History", font=("Arial", 20)).pack(pady=10)
+
+        # Frame for mode selection
+        mode_frame = tk.Frame(self)
+        mode_frame.pack(pady=5)
+        tk.Label(mode_frame, text="Select History Type:").pack(side=tk.LEFT, padx=5)
+        self.history_type_var = tk.StringVar()
+        self.history_type_combo = ttk.Combobox(mode_frame, textvariable=self.history_type_var,
+                                               values=["Multiplayer Matches", "1v1 Matches"],
+                                               state="readonly")
+        self.history_type_combo.pack(side=tk.LEFT)
+        self.history_type_combo.bind("<<ComboboxSelected>>", self.on_history_type_change)
+        self.history_type_combo.set("Multiplayer Matches") # Default selection
+
         self.tree = ttk.Treeview(self, columns=("Date/Time", "Players", "Winner", "Rounds"), show="headings")
         self.tree.heading("Date/Time", text="Date/Time")
         self.tree.column("Date/Time", width=150, anchor="w")
@@ -186,9 +199,18 @@ class MatchHistoryView(BaseView):
         self.tree.bind("<Double-1>", self.on_item_double_click)
 
     def on_show(self):
-        self.controller.load_match_history()
+        # Load history based on current combobox selection (or default if first time)
+        self.load_selected_history()
 
-    def display_match_history(self, games_data):
+    def on_history_type_change(self, event=None):
+        self.load_selected_history()
+
+    def load_selected_history(self):
+        selected_type = self.history_type_var.get()
+        mode = 'singleplayer' if selected_type == "1v1 Matches" else 'multiplayer'
+        self.controller.load_match_history(mode)
+
+    def display_match_history(self, games_data, mode): # Mode passed to confirm what was loaded
         self.tree.delete(*self.tree.get_children()) # Clear existing items
         games = json.loads(games_data)
         for game in games:
@@ -216,7 +238,9 @@ class MatchHistoryView(BaseView):
         if not selected_item_iid: return
         game_id = selected_item_iid[0] # game_id is the iid
         if game_id and game_id != "N/A": # Ensure game_id is valid
-            self.controller.show_match_details(game_id)
+            selected_type = self.history_type_var.get()
+            mode = 'singleplayer' if selected_type == "1v1 Matches" else 'multiplayer'
+            self.controller.show_match_details(game_id, mode)
 
     def show_details_popup(self, details_data):
         details = json.loads(details_data)

@@ -199,7 +199,7 @@ public class MultiplayerGameState {
         }
 
         // Track round result for DB
-        roundResults.add(new RoundResult(currentRound, currentWord, actualRoundWinner));
+        roundResults.add(new RoundResult(currentRound + 1, currentWord, actualRoundWinner));
     }
 
     public String getMaskedWord(String username) {
@@ -304,7 +304,7 @@ public class MultiplayerGameState {
     public MatchResult getMatchResult() {
         return new MatchResult(
             gameId,
-            currentRound,
+            currentRound + 1,
             gameWinner,
             new ArrayList<>(players),
             new ArrayList<>(roundResults),

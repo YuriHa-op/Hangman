@@ -40,6 +40,7 @@ class GameController:
         # Stop any active polling before switching frames
         self.stop_all_polling()
         self.current_view = self.app_view.frames[frame_name]
+        # No longer need to pass mode to MatchHistoryView here
         self.app_view.show_frame(frame_name)
 
     def get_username(self):
@@ -156,22 +157,28 @@ class GameController:
         self.show_frame("MainMenu")
 
     # --- MatchHistoryView Handlers ---
-    def load_match_history(self):
+    def load_match_history(self, mode='multiplayer'): # Default to multiplayer for compatibility
         history_view = self.app_view.frames.get("MatchHistory")
         try:
-            history_json = self.model.get_match_history() # Model returns JSON string
-            history_view.display_match_history(history_json)
+            if mode == 'singleplayer':
+                history_json = self.model.get_single_player_match_history()
+            else: # Default to multiplayer
+                history_json = self.model.get_match_history() # Existing multiplayer history
+            history_view.display_match_history(history_json, mode)
         except Exception as e:
-            print(f"Error loading match history: {e}")
+            print(f"Error loading {mode} match history: {e}")
             # Optionally show error in view
 
-    def show_match_details(self, game_id):
+    def show_match_details(self, game_id, mode='multiplayer'):
         history_view = self.app_view.frames.get("MatchHistory")
         try:
-            details_json = self.model.get_match_details(game_id) # Model returns JSON string
+            if mode == 'singleplayer':
+                details_json = self.model.get_single_player_match_details(game_id)
+            else:
+                details_json = self.model.get_match_details(game_id)
             history_view.show_details_popup(details_json)
         except Exception as e:
-            print(f"Error loading match details: {e}")
+            print(f"Error loading {mode} match details: {e}")
             # Optionally show error in view or popup
 
     # --- MultiplayerGameView Handlers ---

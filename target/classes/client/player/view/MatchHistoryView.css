@@ -53,19 +53,21 @@
 
 .details-button {
     -fx-background-color: #42bd97;
-    -fx-text-fill: #222;
+    -fx-text-fill: #ffffff;
     -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;
     -fx-font-size: 14px;
     -fx-border-radius: 6px;
     -fx-background-radius: 6px;
     -fx-cursor: hand;
     -fx-font-weight: bold;
-    -fx-padding: 4 12 4 12;
+    -fx-padding: 6px 14px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 0, 2);
 }
 
 .details-button:hover {
     -fx-background-color: #ffd600;
-    -fx-text-fill: #222;
+    -fx-text-fill: #222222;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 8, 0, 0, 3);
 }
 
 /* Table cell text color for normal, hover, and selected states */
@@ -87,4 +89,41 @@
     -fx-background-color: #222;
     -fx-text-fill: #ffdd00;
     -fx-font-weight: bold;
+}
+
+.history-type-label {
+    -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;
+    -fx-font-size: 16px;
+    -fx-text-fill: black; /* Black text color */
+    -fx-font-weight: bold;
+}
+
+.history-type-combo-box {
+    -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: #5e5e5e; /* Dark grey background */
+    -fx-text-fill: white; /* White text */
+    -fx-border-color: #2b2b2b; /* Darker border */
+    -fx-border-width: 2px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 5px 10px;
+    -fx-pref-width: 200px; /* Give it a decent width */
+}
+
+.history-type-combo-box .list-cell {
+    -fx-background-color: #5e5e5e;
+    -fx-text-fill: white;
+    -fx-font-family: 'Minecraftia', 'Arial Black', sans-serif;
+    -fx-font-size: 14px;
+}
+
+.history-type-combo-box .list-cell:filled:selected,
+.history-type-combo-box .list-cell:filled:hover {
+    -fx-background-color: #42bd97; /* Accent color for selection/hover */
+    -fx-text-fill: #222; /* Darker text for selected/hovered item */
+}
+
+.history-type-combo-box .arrow {
+    -fx-background-color: #42bd97; /* Accent color for the arrow */
 } 

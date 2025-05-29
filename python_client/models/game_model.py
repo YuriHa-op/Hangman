@@ -127,6 +127,17 @@ class GameModel:
     def get_match_details(self, game_id):
         return self.game_service.getMatchDetails(game_id)
 
+    # --- Single Player Match History Methods ---
+    def get_single_player_match_history(self):
+        if not self.username:
+            return "[]" # Return empty JSON array string
+        # Assuming the CORBA GameService object will have this method after IDL update and recompilation
+        return self.game_service.getSinglePlayerMatchHistory(self.username)
+
+    def get_single_player_match_details(self, game_id):
+        # Assuming the CORBA GameService object will have this method
+        return self.game_service.getSinglePlayerMatchDetails(game_id)
+
     # --- Multiplayer specific methods ---
     def start_multiplayer_game(self):
         if self.username:

@@ -162,6 +162,7 @@ GameService._d_getPlayerWins = (((omniORB.tcInternal.tv_string,0), ), (omniORB.t
 GameService._d_startNewRound = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
 GameService._d_isRoundOver = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
 GameService._d_isGameSessionOver = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
+GameService._d_getGameSessionResult = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getGameState = (((omniORB.tcInternal.tv_string,0), ), (omniORB.typeMapping["IDL:GameModule/GameStateDTO:1.0"], ), None)
 GameService._d_cleanupPlayerSession = (((omniORB.tcInternal.tv_string,0), ), (), None)
 GameService._d_addWord = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
@@ -176,6 +177,8 @@ GameService._d_sendMultiplayerGuess = (((omniORB.tcInternal.tv_string,0), omniOR
 GameService._d_startMultiplayerNextRound = (((omniORB.tcInternal.tv_string,0), ), (omniORB.tcInternal.tv_boolean, ), None)
 GameService._d_getMatchHistory = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_getMatchDetails = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
+GameService._d_getSinglePlayerMatchHistory = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
+GameService._d_getSinglePlayerMatchDetails = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 
 # GameService object reference
 class _objref_GameService (CORBA.Object):
@@ -256,6 +259,9 @@ class _objref_GameService (CORBA.Object):
     def isGameSessionOver(self, *args):
         return self._obj.invoke("isGameSessionOver", _0_GameModule.GameService._d_isGameSessionOver, args)
 
+    def getGameSessionResult(self, *args):
+        return self._obj.invoke("getGameSessionResult", _0_GameModule.GameService._d_getGameSessionResult, args)
+
     def getGameState(self, *args):
         return self._obj.invoke("getGameState", _0_GameModule.GameService._d_getGameState, args)
 
@@ -298,6 +304,12 @@ class _objref_GameService (CORBA.Object):
     def getMatchDetails(self, *args):
         return self._obj.invoke("getMatchDetails", _0_GameModule.GameService._d_getMatchDetails, args)
 
+    def getSinglePlayerMatchHistory(self, *args):
+        return self._obj.invoke("getSinglePlayerMatchHistory", _0_GameModule.GameService._d_getSinglePlayerMatchHistory, args)
+
+    def getSinglePlayerMatchDetails(self, *args):
+        return self._obj.invoke("getSinglePlayerMatchDetails", _0_GameModule.GameService._d_getSinglePlayerMatchDetails, args)
+
 omniORB.registerObjref(GameService._NP_RepositoryId, _objref_GameService)
 _0_GameModule._objref_GameService = _objref_GameService
 del GameService, _objref_GameService
@@ -308,7 +320,7 @@ class GameService (PortableServer.Servant):
     _NP_RepositoryId = _0_GameModule.GameService._NP_RepositoryId
 
 
-    _omni_op_d = {"login": _0_GameModule.GameService._d_login, "logout": _0_GameModule.GameService._d_logout, "startGame": _0_GameModule.GameService._d_startGame, "sendGuess": _0_GameModule.GameService._d_sendGuess, "finishRound": _0_GameModule.GameService._d_finishRound, "viewLeaderboard": _0_GameModule.GameService._d_viewLeaderboard, "getMaskedWord": _0_GameModule.GameService._d_getMaskedWord, "createPlayer": _0_GameModule.GameService._d_createPlayer, "deletePlayer": _0_GameModule.GameService._d_deletePlayer, "updatePlayerPassword": _0_GameModule.GameService._d_updatePlayerPassword, "updateSettings": _0_GameModule.GameService._d_updateSettings, "updatePlayerUsername": _0_GameModule.GameService._d_updatePlayerUsername, "updatePlayerWins": _0_GameModule.GameService._d_updatePlayerWins, "viewPlayers": _0_GameModule.GameService._d_viewPlayers, "getRoundTime": _0_GameModule.GameService._d_getRoundTime, "getWaitingTime": _0_GameModule.GameService._d_getWaitingTime, "getRemainingTime": _0_GameModule.GameService._d_getRemainingTime, "getIncorrectGuesses": _0_GameModule.GameService._d_getIncorrectGuesses, "endGameSession": _0_GameModule.GameService._d_endGameSession, "getCurrentRound": _0_GameModule.GameService._d_getCurrentRound, "getPlayerWins": _0_GameModule.GameService._d_getPlayerWins, "startNewRound": _0_GameModule.GameService._d_startNewRound, "isRoundOver": _0_GameModule.GameService._d_isRoundOver, "isGameSessionOver": _0_GameModule.GameService._d_isGameSessionOver, "getGameState": _0_GameModule.GameService._d_getGameState, "cleanupPlayerSession": _0_GameModule.GameService._d_cleanupPlayerSession, "addWord": _0_GameModule.GameService._d_addWord, "updateWord": _0_GameModule.GameService._d_updateWord, "deleteWord": _0_GameModule.GameService._d_deleteWord, "getAllWords": _0_GameModule.GameService._d_getAllWords, "getSystemStatistics": _0_GameModule.GameService._d_getSystemStatistics, "getLeaderboardEntries": _0_GameModule.GameService._d_getLeaderboardEntries, "startMultiplayerGame": _0_GameModule.GameService._d_startMultiplayerGame, "getMultiplayerLobbyState": _0_GameModule.GameService._d_getMultiplayerLobbyState, "sendMultiplayerGuess": _0_GameModule.GameService._d_sendMultiplayerGuess, "startMultiplayerNextRound": _0_GameModule.GameService._d_startMultiplayerNextRound, "getMatchHistory": _0_GameModule.GameService._d_getMatchHistory, "getMatchDetails": _0_GameModule.GameService._d_getMatchDetails}
+    _omni_op_d = {"login": _0_GameModule.GameService._d_login, "logout": _0_GameModule.GameService._d_logout, "startGame": _0_GameModule.GameService._d_startGame, "sendGuess": _0_GameModule.GameService._d_sendGuess, "finishRound": _0_GameModule.GameService._d_finishRound, "viewLeaderboard": _0_GameModule.GameService._d_viewLeaderboard, "getMaskedWord": _0_GameModule.GameService._d_getMaskedWord, "createPlayer": _0_GameModule.GameService._d_createPlayer, "deletePlayer": _0_GameModule.GameService._d_deletePlayer, "updatePlayerPassword": _0_GameModule.GameService._d_updatePlayerPassword, "updateSettings": _0_GameModule.GameService._d_updateSettings, "updatePlayerUsername": _0_GameModule.GameService._d_updatePlayerUsername, "updatePlayerWins": _0_GameModule.GameService._d_updatePlayerWins, "viewPlayers": _0_GameModule.GameService._d_viewPlayers, "getRoundTime": _0_GameModule.GameService._d_getRoundTime, "getWaitingTime": _0_GameModule.GameService._d_getWaitingTime, "getRemainingTime": _0_GameModule.GameService._d_getRemainingTime, "getIncorrectGuesses": _0_GameModule.GameService._d_getIncorrectGuesses, "endGameSession": _0_GameModule.GameService._d_endGameSession, "getCurrentRound": _0_GameModule.GameService._d_getCurrentRound, "getPlayerWins": _0_GameModule.GameService._d_getPlayerWins, "startNewRound": _0_GameModule.GameService._d_startNewRound, "isRoundOver": _0_GameModule.GameService._d_isRoundOver, "isGameSessionOver": _0_GameModule.GameService._d_isGameSessionOver, "getGameSessionResult": _0_GameModule.GameService._d_getGameSessionResult, "getGameState": _0_GameModule.GameService._d_getGameState, "cleanupPlayerSession": _0_GameModule.GameService._d_cleanupPlayerSession, "addWord": _0_GameModule.GameService._d_addWord, "updateWord": _0_GameModule.GameService._d_updateWord, "deleteWord": _0_GameModule.GameService._d_deleteWord, "getAllWords": _0_GameModule.GameService._d_getAllWords, "getSystemStatistics": _0_GameModule.GameService._d_getSystemStatistics, "getLeaderboardEntries": _0_GameModule.GameService._d_getLeaderboardEntries, "startMultiplayerGame": _0_GameModule.GameService._d_startMultiplayerGame, "getMultiplayerLobbyState": _0_GameModule.GameService._d_getMultiplayerLobbyState, "sendMultiplayerGuess": _0_GameModule.GameService._d_sendMultiplayerGuess, "startMultiplayerNextRound": _0_GameModule.GameService._d_startMultiplayerNextRound, "getMatchHistory": _0_GameModule.GameService._d_getMatchHistory, "getMatchDetails": _0_GameModule.GameService._d_getMatchDetails, "getSinglePlayerMatchHistory": _0_GameModule.GameService._d_getSinglePlayerMatchHistory, "getSinglePlayerMatchDetails": _0_GameModule.GameService._d_getSinglePlayerMatchDetails}
 
 GameService._omni_skeleton = GameService
 _0_GameModule__POA.GameService = GameService
