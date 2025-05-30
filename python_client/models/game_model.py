@@ -220,7 +220,14 @@ class GameModel:
          return self.lobby_state.get("state", "UNKNOWN") if self.lobby_state else "UNKNOWN"
 
     def get_mp_game_state_data(self):
-        return self.lobby_state.get("gameState", {}) if self.lobby_state else {}
+        if not self.lobby_state: # If lobby_state itself is None or empty
+            return {}
+        game_state_from_lobby = self.lobby_state.get("gameState") # This could be a dict or None (from JSON null)
+        # Ensure that if "gameState" was present but 'null' in JSON (parsed as None),
+        # or if "gameState" was missing, we return an empty dict.
+        if isinstance(game_state_from_lobby, dict):
+            return game_state_from_lobby
+        return {} # Default to empty dict if gameState is not a dict (e.g., it was null)
 
     def get_mp_masked_words(self):
         game_data = self.get_mp_game_state_data()
