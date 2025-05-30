@@ -69,6 +69,9 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private long lastAfkDialogShownTime = 0;
     private AtomicBoolean afkDialogCooldownActive = new AtomicBoolean(false);
     private Timeline afkDialogCooldownTimer;
+    private Timeline afkPreCheckDelayTimer; // Timer for the 2-second delay before showing AFK dialog
+    private int roundAtAfkCheckStart = -1; // To store round number when AFK check delay starts
+    private boolean afkDialogDelayTimerActive = false; // Flag to indicate if the 2s pre-check delay is active
 
     @FXML
     public void initialize() {
@@ -93,6 +96,10 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             System.out.println("AFK Dialog cooldown finished.");
         }));
         afkDialogCooldownTimer.setCycleCount(1); // Run once per start
+
+        // Initialize AFK Pre-Check Delay Timer
+        afkPreCheckDelayTimer = new Timeline();
+        afkPreCheckDelayTimer.setCycleCount(1);
     }
 
     private void setupLobbyPolling() {
@@ -165,8 +172,12 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             String roundWinner = state.getStringFromGameState("roundWinner", "");
 
             // If the server indicates the round is now in progress, close any lingering AFK dialog
+            // and cancel any pending AFK dialog show attempts
             if (roundInProgress) {
-                AfkCheckDialog.closeDialog();
+                AfkCheckDialog.closeDialog(); // Closes the primary AFK dialog
+                AfkCheckDialog.closeLastChanceDialog(); // Closes the "Last Chance" dialog if it's open
+                if (afkPreCheckDelayTimer != null) afkPreCheckDelayTimer.stop();
+                afkDialogDelayTimerActive = false; // Reset flag if round starts
             }
 
             boolean isStarted = "STARTED".equals(state.getState());
@@ -191,13 +202,12 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
             // If spectating and the spectated player is now finished, or if the round itself has ended, return to own POV
             if (povPlayer != null && !povPlayer.equals(model.getUsername())) {
-                String spectatedPlayerMaskedWord = state.getPlayerMaskedWord(povPlayer);
-                int spectatedPlayerIncorrectGuesses = state.getPlayerIncorrectGuesses(povPlayer);
-
-                boolean spectatedPlayerIndividuallyFinished = (spectatedPlayerIncorrectGuesses >= 5) ||
-                                                              (spectatedPlayerMaskedWord != null && !spectatedPlayerMaskedWord.contains("_"));
-
-                if (spectatedPlayerIndividuallyFinished || !roundInProgress) {
+                // Determine if the spectated player has finished the round based on their word progress or incorrect guesses
+                boolean spectatedPlayerFinishedRound = isUserDoneGuessing(state, povPlayer);
+                
+                // If the spectated player has finished their round, or if the round is no longer in progress for everyone, return POV to self.
+                if (spectatedPlayerFinishedRound || !roundInProgress) {
+                    System.out.println("[Spectator] POV return triggered for " + povPlayer + ". Reason: spectatedPlayerFinished=" + spectatedPlayerFinishedRound + ", roundInProgress=" + roundInProgress + ". Returning to " + model.getUsername());
                     spectatorManager.setSpectatedPlayer(model.getUsername());
                 }
             }
@@ -241,6 +251,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 roundLabel.setText("Lobby");
                 roundWinnerBanner.setVisible(false);
                 AfkCheckDialog.closeDialog(); // Close if waiting for players
+                AfkCheckDialog.closeLastChanceDialog(); // Also ensure last chance is closed if we regress to waiting
             } else if (isStarted) {
                 roundLabel.setText("Round: " + (state.getIntFromGameState("currentRound", 0) + 1));
                 boolean roundOver = incorrectGuesses >= 5 || !state.getStringFromGameState("maskedWord", "_").contains("_");
@@ -264,27 +275,73 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                         if (isPlayerWinner) {
                             showRoundWinnerBanner("You won this round!", "#4CAF50", true);
                             AfkCheckDialog.closeDialog(); // Close dialog if there's a winner
+                            AfkCheckDialog.closeLastChanceDialog(); // Also close last chance
+                            if (afkPreCheckDelayTimer != null) afkPreCheckDelayTimer.stop(); // Stop pending AFK check
+                            afkDialogDelayTimerActive = false; // Reset flag
                         } else {
                             showRoundWinnerBanner(roundWinner + " won this round!", "#4CAF50", false);
                             AfkCheckDialog.closeDialog(); // Close dialog if there's a winner
+                            AfkCheckDialog.closeLastChanceDialog(); // Also close last chance
+                            if (afkPreCheckDelayTimer != null) afkPreCheckDelayTimer.stop(); // Stop pending AFK check
+                            afkDialogDelayTimerActive = false; // Reset flag
                         }
                     } else {
                         showRoundWinnerBanner("No one won this round.", null, false);
                         // Potentially show AFK dialog if conditions met
-                        if (!gameOver && gameTimerHelper != null && gameTimerHelper.hasTimedUp() && !AfkCheckDialog.isShowing() && !afkDialogCooldownActive.get()) {
-                            System.out.println("No round winner AND timer has run out, considering AFK dialog.");
-                            AfkCheckDialog.show(stage,
-                                () -> { // onYesClicked
-                                    System.out.println("AFK Dialog: Yes clicked. Attempting to start next round.");
-                                    model.startNextRound(); // Tell server to start next round
-                                    startAfkDialogCooldown();
-                                },
-                                () -> { // onTimedOut
-                                    System.out.println("AFK Dialog: Timed out.");
-                                    startAfkDialogCooldown(); // Start cooldown even on timeout
-                                    // Server-side stall check will handle game cleanup if needed
-                                }
+                        if (!gameOver && !AfkCheckDialog.isShowing() && !afkDialogCooldownActive.get() && !afkDialogDelayTimerActive) {
+                            System.out.println("No round winner, initiating AFK dialog sequence. Current Round: " + currentRound);
+                            roundAtAfkCheckStart = currentRound; // Capture current round
+                            afkDialogDelayTimerActive = true; // Set flag that delay timer is now active
+
+                            // Stop any existing pre-check timer (should not be necessary if logic is correct, but safe)
+                            // if (afkPreCheckDelayTimer != null) afkPreCheckDelayTimer.stop(); 
+
+                            afkPreCheckDelayTimer.getKeyFrames().setAll(
+                                new KeyFrame(Duration.seconds(4), e -> { // Changed to 4 seconds
+                                    afkDialogDelayTimerActive = false; // Timer has fired, reset the flag
+
+                                    // Re-check if dialog is already showing or cooldown is active,
+                                    // as these states might have changed during the 4s delay.
+                                    if (AfkCheckDialog.isShowing() || afkDialogCooldownActive.get()) {
+                                        System.out.println("AFK Dialog show cancelled (dialog already showing or cooldown active post-delay).");
+                                        return;
+                                    }
+
+                                    int latestRoundFromServer = state.getIntFromGameState("currentRound", 0);
+                                    boolean latestRoundInProgress = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundInProgress"));
+
+                                    if (roundAtAfkCheckStart == latestRoundFromServer && !latestRoundInProgress) {
+                                        System.out.println("AFK Pre-check delay ended. Round is still " + roundAtAfkCheckStart + " and not in progress. Showing AFK dialog.");
+                                        AfkCheckDialog.show(stage,
+                                            () -> { // onYesClicked
+                                                System.out.println("AFK Dialog: Yes clicked. Attempting to start next round.");
+                                                model.startNextRound();
+                                                startAfkDialogCooldown();
+                                                AfkCheckDialog.closeDialog();
+                                            },
+                                            () -> { // onTimedOut for the *original* AFK Dialog
+                                                System.out.println("AFK Dialog: Timed out. Preparing for Last Chance Dialog.");
+                                                startAfkDialogCooldown(); // Start cooldown as usual
+                                                
+                                                // Call method to show the new "Last Chance" dialog
+                                                // This method will be created in AfkCheckDialog.java
+                                                AfkCheckDialog.showLastChanceDialog(stage,
+                                                    () -> { // onLastChanceClicked for the NEW dialog
+                                                        System.out.println("Last Chance Dialog: Button clicked. Attempting to start next round.");
+                                                        model.startNextRound();
+                                                        // Cooldown is already started when original AFK timed out, 
+                                                        // or we can start another one if desired, but let's stick to one for now.
+                                                        // If model.startNextRound() fails and leads to another stall, the cycle will repeat.
+                                                    }
+                                                );
+                                            }
+                                        );
+                                    } else {
+                                        System.out.println("AFK Dialog show cancelled. Round changed or is in progress. Was " + roundAtAfkCheckStart + ", now " + latestRoundFromServer + ", inProgress: " + latestRoundInProgress);
+                                    }
+                                })
                             );
+                            afkPreCheckDelayTimer.playFromStart();
                         }
                     }
                 } else if (isPlayerFinished) {
@@ -298,10 +355,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
             // Stop timer if round is not in progress
             if (!roundInProgress && gameTimerHelper != null) {
-                if (!gameTimerHelper.hasTimedUp()) { // If timer hasn't naturally timed out, but server says round over
-                    gameTimerHelper.stopRoundTimer(); // Stop it visually
-                    timerLabel.setText("0"); // And ensure label is 0
-                }
+                gameTimerHelper.stopRoundTimer();
+                timerLabel.setText("0"); // Explicitly set timer to 0 when server ends round
                 new animatefx.animation.Shake(timerLabel).play(); // Add shake animation
             }
         });
@@ -536,9 +591,14 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             gameTimerHelper = null;
         }
         AfkCheckDialog.closeDialog(); // Ensure dialog is closed when polling stops
+        AfkCheckDialog.closeLastChanceDialog(); // Ensure last chance dialog is also closed
         if (afkDialogCooldownTimer != null) { // Stop cooldown timer
             afkDialogCooldownTimer.stop();
         }
+        if (afkPreCheckDelayTimer != null) { // Stop pre-check delay timer
+            afkPreCheckDelayTimer.stop();
+        }
+        afkDialogDelayTimerActive = false; // Reset flag here as well
         new ArrayList<>(activeAnimations.keySet()).forEach(this::stopFieryGlowAnimation);
         activeAnimations.clear(); 
     }
@@ -615,9 +675,9 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private void onSpectatedPlayerChanged(String playerName) {
         this.povPlayer = playerName;
         showSpectateTransition(playerName);
-        if (model != null) {
-            model.updateLobbyState();
-        }
+        // if (model != null) {
+        //     model.updateLobbyState(); // Removing this to let the current onLobbyUpdate cycle handle the refresh
+        // }
     }
 
     private void showSpectateTransition(String playerName) {

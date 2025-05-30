@@ -459,13 +459,18 @@ class MultiplayerGameView(BaseView):
         self.afk_yes_button = None
         # The controller will manage its state flags based on the callbacks.
 
+        # Attribute for the new "Last Chance" dialog
+        self.last_chance_popup = None
+
     def is_afk_dialog_showing(self):
         return hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists()
 
     def show_game_cleaned_up_dialog(self, on_ok_callback):
-        # Close any other popups this view might have (like AFK dialog)
+        # Close any other popups this view might have
         if hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists():
             self.close_afk_dialog()
+        if hasattr(self, 'last_chance_popup') and self.last_chance_popup and self.last_chance_popup.winfo_exists():
+            self.close_last_chance_dialog() # Ensure this is closed too
 
         if hasattr(self, 'cleanup_popup') and self.cleanup_popup and self.cleanup_popup.winfo_exists():
             return # Already showing
@@ -499,6 +504,52 @@ class MultiplayerGameView(BaseView):
             on_ok_callback()
         ])
         self.cleanup_popup.grab_set()
+
+    # New method to show the "Last Chance" dialog
+    def show_last_chance_dialog(self, on_last_chance_callback):
+        if hasattr(self, 'last_chance_popup') and self.last_chance_popup and self.last_chance_popup.winfo_exists():
+            return # Already showing
+
+        # Ensure other popups (like AFK) are closed first
+        if hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists():
+            self.close_afk_dialog()
+
+        self.last_chance_popup = tk.Toplevel(self.master)
+        self.last_chance_popup.title("Game Stalled")
+        self.last_chance_popup.attributes("-topmost", True)
+
+        master_x = self.master.winfo_x()
+        master_y = self.master.winfo_y()
+        master_width = self.master.winfo_width()
+        master_height = self.master.winfo_height()
+        popup_width = 380 # Wider for longer text
+        popup_height = 180 # Taller for two lines of text + button
+        pos_x = master_x + (master_width // 2) - (popup_width // 2)
+        pos_y = master_y + (master_height // 2) - (popup_height // 2)
+        self.last_chance_popup.geometry(f"{popup_width}x{popup_height}+{pos_x}+{pos_y}")
+        self.last_chance_popup.resizable(False, False)
+
+        msg_label = tk.Label(self.last_chance_popup, 
+                             text="Server may be cleaning up the game due to inactivity.", 
+                             font=("Arial", 12), wraplength=popup_width-40)
+        msg_label.pack(pady=(20, 10))
+
+        last_chance_button = tk.Button(self.last_chance_popup, text="Try Next Round (Last Chance)", 
+                                       font=("Arial", 12, "bold"), bg="#e67e22", fg="white",
+                                       command=lambda: [
+                                           self.close_last_chance_dialog(), # Close immediately
+                                           on_last_chance_callback() # Then call controller action
+                                       ])
+        last_chance_button.pack(pady=10)
+
+        self.last_chance_popup.protocol("WM_DELETE_WINDOW", self.close_last_chance_dialog) # Also close on X
+        self.last_chance_popup.grab_set()
+
+    def close_last_chance_dialog(self):
+        if hasattr(self, 'last_chance_popup') and self.last_chance_popup and self.last_chance_popup.winfo_exists():
+            self.last_chance_popup.grab_release()
+            self.last_chance_popup.destroy()
+        self.last_chance_popup = None
 
 class SinglePlayerGameView(BaseView):
     def __init__(self, master, controller):

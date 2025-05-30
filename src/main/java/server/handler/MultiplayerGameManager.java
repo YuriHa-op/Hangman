@@ -46,7 +46,14 @@ public class MultiplayerGameManager {
         newLobby.addPlayer(username);
         activeLobbies.put(lobbyId, newLobby);
         // Schedule lobby start after queue time
-        scheduler.schedule(() -> startLobbyIfReady(lobbyId), queueTimeSeconds, TimeUnit.SECONDS);
+        scheduler.schedule(() -> {
+            try {
+                startLobbyIfReady(lobbyId);
+            } catch (Throwable t) {
+                logMessage("ERROR in scheduled startLobbyIfReady for lobby " + lobbyId + ": " + t.getMessage());
+                // Consider further error handling, e.g., cleaning up the lobby
+            }
+        }, queueTimeSeconds, TimeUnit.SECONDS);
         return newLobby;
     }
 
@@ -163,9 +170,13 @@ public class MultiplayerGameManager {
             if (!cleanupScheduled.contains(lobby.getLobbyId())) {
                 cleanupScheduled.add(lobby.getLobbyId());
                 scheduler.schedule(() -> {
-                    cleanupGame(lobby.getLobbyId());
-                    cleanupScheduled.remove(lobby.getLobbyId());
-                    logMessage("Game cleaned up for lobby " + lobby.getLobbyId());
+                    try {
+                        cleanupGame(lobby.getLobbyId());
+                        cleanupScheduled.remove(lobby.getLobbyId());
+                        logMessage("Game cleaned up for lobby " + lobby.getLobbyId());
+                    } catch (Throwable t) {
+                        logMessage("ERROR in scheduled cleanupGame (game over path) for lobby " + lobby.getLobbyId() + ": " + t.getMessage());
+                    }
                 }, 7, java.util.concurrent.TimeUnit.SECONDS); // Increased from 5 to 7 for more buffer
             }
             return false; // Game is over, no next round to start
@@ -201,8 +212,12 @@ public class MultiplayerGameManager {
             // Save result, update DB, etc. if needed
             saveMatchResultToDatabase(game.getMatchResult());
             scheduler.schedule(() -> {
-                cleanupGame(lobbyId);
-                cleanupScheduled.remove(lobbyId);
+                try {
+                    cleanupGame(lobbyId);
+                    cleanupScheduled.remove(lobbyId);
+                } catch (Throwable t) {
+                    logMessage("ERROR in scheduled cleanupGame (scheduleCleanupIfGameOver) for lobby " + lobbyId + ": " + t.getMessage());
+                }
             }, 7, TimeUnit.SECONDS); // 7 seconds for clients to poll result
         }
     }
@@ -212,12 +227,16 @@ public class MultiplayerGameManager {
         ScheduledFuture<?> prev = roundTimers.remove(lobbyId);
         if (prev != null) prev.cancel(false);
         ScheduledFuture<?> future = scheduler.schedule(() -> {
-            MultiplayerGameState state = activeGames.get(lobbyId);
-            if (state != null) {
-                state.forceEndRound();
-                if (state.isRoundPotentiallyStalled()) {
-                    scheduleStallCheckTimer(lobbyId);
+            try {
+                MultiplayerGameState state = activeGames.get(lobbyId);
+                if (state != null) {
+                    state.forceEndRound();
+                    if (state.isRoundPotentiallyStalled()) {
+                        scheduleStallCheckTimer(lobbyId);
+                    }
                 }
+            } catch (Throwable t) {
+                logMessage("ERROR in scheduleRoundTimer task for lobby " + lobbyId + ": " + t.getMessage());
             }
         }, playerManager.getRoundTime(), TimeUnit.SECONDS);
         roundTimers.put(lobbyId, future);
@@ -232,8 +251,12 @@ public class MultiplayerGameManager {
         logMessage("Scheduling stall check for lobby: " + lobbyId);
         cancelStallCheckTimer(lobbyId);
         ScheduledFuture<?> future = scheduler.schedule(() -> {
-            logMessage("Stall check triggered for lobby: " + lobbyId + ". Cleaning up game.");
-            cleanupGame(lobbyId);
+            try {
+                logMessage("Stall check triggered for lobby: " + lobbyId + ". Cleaning up game.");
+                cleanupGame(lobbyId);
+            } catch (Throwable t) {
+                logMessage("ERROR in stall check timer task for lobby " + lobbyId + ": " + t.getMessage());
+            }
         }, STALL_CHECK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         stallCheckTimers.put(lobbyId, future);
     }

@@ -24,6 +24,11 @@ class GameController:
         self.afk_dialog_cooldown_until = 0
         self.AFK_DIALOG_COOLDOWN_SECONDS = 20 # Cooldown period for AFK dialog
 
+        # New attributes for 4-second pre-AFK delay
+        self.afk_pre_check_delay_active = False
+        self.afk_pre_check_timer_id = None
+        self.round_at_afk_check_start = -1
+
         # Flags for single-player game state management
         self.game_session_cleaned_up = False
         self.sp_client_timeout_sent_for_round = {} # Tracks if client sent timeout for a round_num
@@ -211,7 +216,41 @@ class GameController:
                 # Model's get_multiplayer_lobby_state refreshes self.model.lobby_state
                 _ = self.model.get_multiplayer_lobby_state() # Fetches and updates model internal state
 
+                lobby_status_current = self.model.get_lobby_status_state() # Get current lobby status
+
+                # Check for server cleanup indication (e.g., NOMATCH after game was running)
+                # This assumes that if a game was ONGOING and suddenly becomes NOMATCH, it was server-cleaned.
+                if hasattr(self, '_mp_game_was_ongoing') and self._mp_game_was_ongoing and lobby_status_current == "NOMATCH":
+                    # print("GAME CONTROLLER: Detected potential server cleanup (NOMATCH after ongoing).")
+                    self.polling_active = False
+                    self.app_view.after(0, mp_game_view.close_afk_dialog)
+                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
+                    self.app_view.after(0, lambda: mp_game_view.show_game_cleaned_up_dialog(
+                        on_ok_callback=lambda: self.show_frame("MainMenu")
+                    ))
+                    if not cleaned_up_session:
+                        try: self.model.cleanup_player_session() # Ensure client-side session flags are cleared
+                        except Exception: pass
+                        cleaned_up_session = True
+                    break # Exit polling loop
+
+                self._mp_game_was_ongoing = (lobby_status_current == "STARTED" or self.model.get_mp_session_result() == "ONGOING")
+
                 players = self.model.get_lobby_players()
+                if not players and self._mp_game_was_ongoing: # Another heuristic for server cleanup
+                    # print("GAME CONTROLLER: Detected potential server cleanup (no players after ongoing).")
+                    self.polling_active = False
+                    self.app_view.after(0, mp_game_view.close_afk_dialog)
+                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
+                    self.app_view.after(0, lambda: mp_game_view.show_game_cleaned_up_dialog(
+                        on_ok_callback=lambda: self.show_frame("MainMenu")
+                    ))
+                    if not cleaned_up_session:
+                        try: self.model.cleanup_player_session() 
+                        except Exception: pass
+                        cleaned_up_session = True
+                    break
+
                 if self.spectating_player and self.spectating_player not in players:
                     self.spectating_player = None # Player left, return to self view
 
@@ -275,12 +314,17 @@ class GameController:
                         if not game_winner and session_result == "ONGOING" and \
                            remaining_time <= 0 and \
                            not self.afk_dialog_active and \
+                           not self.afk_pre_check_delay_active and \
                            time.time() > self.afk_dialog_cooldown_until:
-                            self.afk_dialog_active = True # Set flag before showing
-                            self.app_view.after(0, lambda: mp_game_view.show_afk_dialog(
-                                on_yes_callback=self._handle_afk_yes,
-                                on_timeout_callback=self._handle_afk_timeout
-                            ))
+                            
+                            self.round_at_afk_check_start = current_round
+                            self.afk_pre_check_delay_active = True
+                            # Cancel previous timer if any, though logic should prevent overlap
+                            if self.afk_pre_check_timer_id:
+                                self.app_view.after_cancel(self.afk_pre_check_timer_id)
+                            
+                            # print(f"GAME CONTROLLER: Initiating 4s pre-AFK check. Current round: {current_round}")
+                            self.afk_pre_check_timer_id = self.app_view.after(4000, self._trigger_first_afk_dialog_if_conditions_met)
                     
                     # If game is not over, server should auto start next round, or client needs to trigger
                     if not game_winner and session_result == "ONGOING":
@@ -289,15 +333,42 @@ class GameController:
                         if round_winner: # If there was a winner, implies server will/should start next round
                              # Potentially model.start_multiplayer_next_round() if client needs to trigger it
                              # and there wasn't an AFK dialog active to do it.
-                             pass
-                elif round_in_progress and self.afk_dialog_active: # Round started while AFK dialog was up
-                    self.app_view.after(0, mp_game_view.close_afk_dialog)
-                    self.afk_dialog_active = False
+                            # Let's try triggering it if this client sees the state first.
+                            # This could lead to multiple calls, but server should handle that idempotently.
+                            try:
+                                # print(f"GAME CONTROLLER: Round winner {round_winner}, attempting to start next round.")
+                                self.model.start_multiplayer_next_round()
+                            except Exception as e_snr:
+                                # print(f"Error attempting to start next round after round win: {e_snr}")
+                                pass # Non-critical if server also does it
+                        # No explicit call to start_multiplayer_next_round here if NO round_winner, 
+                        # because that's handled by the AFK dialog flow.
+                elif round_in_progress and (self.afk_dialog_active or self.afk_pre_check_delay_active): # Round started while AFK dialog or pre-check was up
+                    if self.afk_dialog_active:
+                        self.app_view.after(0, mp_game_view.close_afk_dialog)
+                        self.afk_dialog_active = False
+                    # Also close last chance dialog if it was somehow open and round started
+                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
+                    if self.afk_pre_check_delay_active:
+                        if self.afk_pre_check_timer_id:
+                            self.app_view.after_cancel(self.afk_pre_check_timer_id)
+                            self.afk_pre_check_timer_id = None
+                        self.afk_pre_check_delay_active = False
+                        # print("GAME CONTROLLER: Pre-AFK check cancelled because round started.")
                 
                 if game_winner:
                     if self.afk_dialog_active: # Game ended while AFK dialog was up
                         self.app_view.after(0, mp_game_view.close_afk_dialog)
                         self.afk_dialog_active = False
+                    # Also close last chance dialog if it was somehow open and game ended
+                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
+                    if self.afk_pre_check_delay_active: # Game ended while pre-check was active
+                        if self.afk_pre_check_timer_id:
+                            self.app_view.after_cancel(self.afk_pre_check_timer_id)
+                            self.afk_pre_check_timer_id = None
+                        self.afk_pre_check_delay_active = False
+                        # print("GAME CONTROLLER: Pre-AFK check cancelled because game ended.")
+
                     if not cleaned_up_session:
                         try:
                             self.model.end_game_session() # General end session
@@ -348,6 +419,22 @@ class GameController:
                 self.app_view.after(2000, lambda: self.show_frame("MainMenu")) # Delay then go to menu
                 break
             time.sleep(0.25) # Polling interval (new)
+
+        # Cancel any pending pre-AFK check timer
+        if self.afk_pre_check_timer_id:
+            self.app_view.after_cancel(self.afk_pre_check_timer_id)
+            self.afk_pre_check_timer_id = None
+        self.afk_pre_check_delay_active = False
+
+        # Close any open dialogs associated with MP game view
+        mp_game_view = self.app_view.frames.get("MultiplayerGame")
+        if mp_game_view:
+            self.app_view.after(0, mp_game_view.close_afk_dialog)
+            self.app_view.after(0, mp_game_view.close_last_chance_dialog)
+
+        self.sp_polling_thread = None
+        self.mp_queue_polling_thread = None
+        self.mp_game_polling_thread = None 
 
     def handle_multiplayer_guess(self, letter):
         if self.spectating_player: return # No guesses while spectating
@@ -655,6 +742,11 @@ class GameController:
     def _handle_afk_yes(self):
         # print("AFK Dialog: Yes clicked.")
         self.afk_dialog_active = False # Dialog will be closed by its own mechanism
+        # View should close the dialog immediately on button click before this callback.
+        mp_game_view = self.app_view.frames.get("MultiplayerGame")
+        if mp_game_view and mp_game_view.is_afk_dialog_showing(): # Double check
+             self.app_view.after(0, mp_game_view.close_afk_dialog)
+
         self.afk_dialog_cooldown_until = time.time() + self.AFK_DIALOG_COOLDOWN_SECONDS
         try:
             self.model.start_multiplayer_next_round()
@@ -665,6 +757,54 @@ class GameController:
     def _handle_afk_timeout(self):
         # print("AFK Dialog: Timed out or closed by user.")
         self.afk_dialog_active = False # Dialog will be closed by its own mechanism
+        mp_game_view = self.app_view.frames.get("MultiplayerGame")
+        if mp_game_view and mp_game_view.is_afk_dialog_showing(): # Double check
+            self.app_view.after(0, mp_game_view.close_afk_dialog)
+
         self.afk_dialog_cooldown_until = time.time() + self.AFK_DIALOG_COOLDOWN_SECONDS
-        # Server-side stall check should handle game cleanup if player is truly AFK.
-        # Client does not explicitly end game here; relies on server timeout or next poll finding game ended. 
+        
+        # print("GAME CONTROLLER: First AFK dialog timed out. Triggering Last Chance dialog.")
+        if mp_game_view: # Ensure view exists
+            self.app_view.after(0, lambda: mp_game_view.show_last_chance_dialog(
+                on_last_chance_callback=self._handle_last_chance_yes
+            ))
+
+    # New method to be called after the 4s delay
+    def _trigger_first_afk_dialog_if_conditions_met(self):
+        self.afk_pre_check_timer_id = None # Timer has fired
+        self.afk_pre_check_delay_active = False
+        mp_game_view = self.app_view.frames.get("MultiplayerGame")
+
+        current_server_round = self.model.get_mp_current_round()
+        is_round_still_in_progress = self.model.is_mp_round_in_progress()
+        current_game_winner = self.model.get_mp_game_winner()
+        current_session_result = self.model.get_mp_session_result()
+
+        # print(f"GAME CONTROLLER: 4s pre-AFK check ended. Stored round: {self.round_at_afk_check_start}, Current server round: {current_server_round}, Round in progress: {is_round_still_in_progress}")
+
+        if not current_game_winner and current_session_result == "ONGOING" and \
+           self.round_at_afk_check_start == current_server_round and \
+           not is_round_still_in_progress and \
+           not self.afk_dialog_active and \
+           time.time() > self.afk_dialog_cooldown_until:
+            
+            # print("GAME CONTROLLER: Conditions met after 4s delay. Showing first AFK dialog.")
+            self.afk_dialog_active = True 
+            if mp_game_view:
+                self.app_view.after(0, lambda: mp_game_view.show_afk_dialog(
+                    on_yes_callback=self._handle_afk_yes,
+                    on_timeout_callback=self._handle_afk_timeout
+                ))
+        else:
+            # print("GAME CONTROLLER: Conditions NOT met after 4s delay, or AFK dialog already active. Not showing first AFK dialog.")
+            pass # Explicitly do nothing
+
+    # New method for the "Last Chance" dialog's button
+    def _handle_last_chance_yes(self):
+        # print("GAME CONTROLLER: Last Chance Dialog - Yes clicked.")
+        try:
+            self.model.start_multiplayer_next_round()
+        except Exception as e:
+            mp_game_view = self.app_view.frames.get("MultiplayerGame")
+            if mp_game_view:
+                 self.app_view.after(0, lambda err_e=e: mp_game_view.set_status(f"Error starting next round: {str(err_e)}", "red")) 
