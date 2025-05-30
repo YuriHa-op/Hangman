@@ -445,6 +445,18 @@ public class GameServiceImpl extends GameServicePOA {
             sb.append("}");
             // ***** END playerWinStreaks *****
 
+            // ***** ADDING allPlayerFinishTimes HERE *****
+            sb.append(",\"allPlayerFinishTimes\":{");
+            Map<String, Long> allPlayerFinishTimes = gameState.getAllPlayerFinishTimes(); // Assuming this method exists
+            Iterator<Map.Entry<String, Long>> pftIt = allPlayerFinishTimes.entrySet().iterator();
+            while (pftIt.hasNext()) {
+                Map.Entry<String, Long> entry = pftIt.next();
+                sb.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
+                if (pftIt.hasNext()) sb.append(",");
+            }
+            sb.append("}");
+            // ***** END allPlayerFinishTimes *****
+
             sb.append("}");
         }
         

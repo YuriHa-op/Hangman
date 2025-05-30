@@ -35,6 +35,12 @@ class GameController:
         self._last_processed_server_round_for_word_clear = -1 # Helper for sp_current_word logic
         self.current_sp_server_round_processed_for_next_attempt = -1 # Tracks if start_new_round called for an ended server round
 
+        # For multiplayer: track if this client initiated a delayed next round attempt
+        # after its player finished the current round. Keyed by round number.
+        self.my_player_finished_sent_next_round_for_round = {} 
+        self.delayed_next_round_attempt_timer_id = None
+        self.round_for_which_delayed_attempt_is_scheduled = -1 # Tracks the round for the active delayed timer
+
     def setup_frames(self):
         # Initialize all frames and add them to the app_view
         self.app_view.add_frame(LoginView, "Login")
@@ -53,6 +59,12 @@ class GameController:
     def show_frame(self, frame_name):
         # Stop any active polling before switching frames
         self.stop_all_polling()
+
+        # If the current view was MultiplayerQueueView, ensure its dialogs are closed
+        if isinstance(self.current_view, MultiplayerQueueView):
+            self.current_view.close_no_match_found_dialog()
+            # If MultiplayerQueueView had other specific dialogs, close them here too
+
         self.current_view = self.app_view.frames[frame_name]
         # No longer need to pass mode to MatchHistoryView here
         self.app_view.show_frame(frame_name)
@@ -168,6 +180,12 @@ class GameController:
     def cancel_multiplayer_queue(self):
         self.stop_all_polling()
         self.model.cleanup_player_session() # Tell model to clean up server-side if needed
+        
+        # Explicitly close the dialog if it's open
+        queue_view = self.app_view.frames.get("MultiplayerQueue")
+        if queue_view:
+            queue_view.close_no_match_found_dialog()
+
         self.show_frame("MainMenu")
 
     # --- MatchHistoryView Handlers ---
@@ -199,10 +217,9 @@ class GameController:
     def start_multiplayer_game_poll(self):
         self.stop_all_polling()
         self.polling_active = True
-        self.spectating_player = None # Reset spectate on game start
-        self.last_keyboard_state_mp = None # Reset keyboard state
-        # Initial state might already be in model.lobby_state from queue
-        # Or we might need a fresh fetch if joining mid-game (not current design)
+        self.spectating_player = None 
+        self.last_keyboard_state_mp = None 
+        
         self.mp_game_polling_thread = threading.Thread(target=self._poll_mp_game_state, daemon=True)
         self.mp_game_polling_thread.start()
 
@@ -213,245 +230,216 @@ class GameController:
 
         while self.polling_active and self.current_view == mp_game_view:
             try:
-                # Model's get_multiplayer_lobby_state refreshes self.model.lobby_state
-                _ = self.model.get_multiplayer_lobby_state() # Fetches and updates model internal state
+                previous_mp_game_was_ongoing = getattr(self, '_mp_game_was_ongoing', False)
+                _ = self.model.get_multiplayer_lobby_state() 
 
-                lobby_status_current = self.model.get_lobby_status_state() # Get current lobby status
+                # --- Fetch all relevant server states --- 
+                lobby_status_current = self.model.get_lobby_status_state()
+                current_round_server = self.model.get_mp_current_round()
+                round_in_progress_server = self.model.is_mp_round_in_progress()
+                game_winner_server = self.model.get_mp_game_winner()
+                session_result_server = self.model.get_mp_session_result()
+                round_winner_server = self.model.get_mp_round_winner()
+                
+                masked_words = self.model.get_mp_masked_words()
+                incorrect_guesses_map = self.model.get_mp_incorrect_guesses_map()
+                all_current_words = self.model.get_mp_all_current_words() 
+                player_guesses_map = self.model.get_mp_player_guesses_map() 
+                scores = self.model.get_mp_scores()
+                remaining_time = self.model.get_mp_remaining_time() 
+                player_finish_times_map = self.model.get_mp_player_finish_times() # Get the new map
+                players = self.model.get_lobby_players() # Fetch players after getting lobby state
 
-                # Check for server cleanup indication (e.g., NOMATCH after game was running)
-                # This assumes that if a game was ONGOING and suddenly becomes NOMATCH, it was server-cleaned.
-                if hasattr(self, '_mp_game_was_ongoing') and self._mp_game_was_ongoing and lobby_status_current == "NOMATCH":
-                    # print("GAME CONTROLLER: Detected potential server cleanup (NOMATCH after ongoing).")
+                # Update _mp_game_was_ongoing for the current poll iteration AFTER fetching all current states
+                self._mp_game_was_ongoing = (lobby_status_current == "STARTED" or session_result_server == "ONGOING")
+
+                # --- Initial Server Cleanup / NOMATCH checks (early exit) --- 
+                if previous_mp_game_was_ongoing and lobby_status_current == "NOMATCH":
+                    # Game cleaned up by server detection (e.g., server timed out lobby or game)
                     self.polling_active = False
+                    if self.afk_pre_check_timer_id: self.app_view.after_cancel(self.afk_pre_check_timer_id); self.afk_pre_check_timer_id = None
+                    
                     self.app_view.after(0, mp_game_view.close_afk_dialog)
-                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
-                    self.app_view.after(0, lambda: mp_game_view.show_game_cleaned_up_dialog(
-                        on_ok_callback=lambda: self.show_frame("MainMenu")
-                    ))
+                    self.app_view.after(50, mp_game_view.close_last_chance_dialog) # Small delay for last_chance close
+                    
+                    self.app_view.after(200, lambda: mp_game_view.show_game_cleaned_up_dialog(on_ok_callback=lambda: self.show_frame("MainMenu")))
                     if not cleaned_up_session:
-                        try: self.model.cleanup_player_session() # Ensure client-side session flags are cleared
-                        except Exception: pass
+                        try: self.model.cleanup_player_session(); 
+                        except Exception: pass; 
                         cleaned_up_session = True
                     break # Exit polling loop
 
-                self._mp_game_was_ongoing = (lobby_status_current == "STARTED" or self.model.get_mp_session_result() == "ONGOING")
-
-                players = self.model.get_lobby_players()
-                if not players and self._mp_game_was_ongoing: # Another heuristic for server cleanup
-                    # print("GAME CONTROLLER: Detected potential server cleanup (no players after ongoing).")
+                if not players and previous_mp_game_was_ongoing: 
+                    # Game cleaned up due to no players detected (e.g., all players left)
                     self.polling_active = False
-                    self.app_view.after(0, mp_game_view.close_afk_dialog)
-                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
-                    self.app_view.after(0, lambda: mp_game_view.show_game_cleaned_up_dialog(
-                        on_ok_callback=lambda: self.show_frame("MainMenu")
-                    ))
-                    if not cleaned_up_session:
-                        try: self.model.cleanup_player_session() 
-                        except Exception: pass
-                        cleaned_up_session = True
-                    break
+                    if self.afk_pre_check_timer_id: self.app_view.after_cancel(self.afk_pre_check_timer_id); self.afk_pre_check_timer_id = None
 
+                    self.app_view.after(0, mp_game_view.close_afk_dialog)
+                    self.app_view.after(50, mp_game_view.close_last_chance_dialog) # Small delay for last_chance close
+                    
+                    self.app_view.after(200, lambda: mp_game_view.show_game_cleaned_up_dialog(on_ok_callback=lambda: self.show_frame("MainMenu")))
+                    if not cleaned_up_session:
+                        try: self.model.cleanup_player_session(); 
+                        except Exception: pass; 
+                        cleaned_up_session = True
+                    break # Exit polling loop
+
+                # --- Server state fetched, my_player_is_done_this_round calculated ---
+
+                # --- Spectator logic (pov_username determination) ---
                 if self.spectating_player and self.spectating_player not in players:
-                    self.spectating_player = None # Player left, return to self view
+                    self.spectating_player = None
 
                 pov_username = self.spectating_player if self.spectating_player else my_username
 
-                masked_words = self.model.get_mp_masked_words()
-                all_current_words = self.model.get_mp_all_current_words()
-                player_guesses_map = self.model.get_mp_player_guesses_map()
-                incorrect_guesses_map = self.model.get_mp_incorrect_guesses_map()
-                remaining_time = self.model.get_mp_remaining_time()
-                current_round = self.model.get_mp_current_round()
-                scores = self.model.get_mp_scores()
-                round_in_progress = self.model.is_mp_round_in_progress()
-                round_winner = self.model.get_mp_round_winner()
-                game_winner = self.model.get_mp_game_winner()
-                session_result = self.model.get_mp_session_result()
-
-                word_display = masked_words.get(pov_username, "_ _ _")
-                timer_display = f"Time left: {remaining_time}s"
-                round_display = f"Round: {current_round + 1}"
-                status_display = ""
-
-                # Refined logic for enabling/disabling keyboard for POV
-                pov_masked_word = masked_words.get(pov_username, "")
-                pov_incorrect_guesses = incorrect_guesses_map.get(pov_username, 0)
-                pov_is_done_guessing = (pov_incorrect_guesses >= 5) or (pov_masked_word and "_" not in pov_masked_word)
-
-                can_truly_guess = (pov_username == my_username) and \
-                                  not self.spectating_player and \
-                                  round_in_progress and \
-                                  not game_winner and \
-                                  not pov_is_done_guessing # Check if current user (my_username) is done with their word
-                
-                interaction_over_for_pov = bool(game_winner) or (not round_in_progress) or pov_is_done_guessing
-
-                # For spectate button logic (is the *actual user* done?)
-                my_actual_masked = masked_words.get(my_username, "")
-                my_actual_incorrect = incorrect_guesses_map.get(my_username, 0)
-                is_user_done_guessing_for_spectate_button = (my_actual_incorrect >= 5) or (my_actual_masked and "_" not in my_actual_masked)
-
-                # Keyboard state for the current POV
-                current_keyboard_state = (frozenset(player_guesses_map.get(pov_username, [])), all_current_words.get(pov_username, ""), current_round)
-
-                if not round_in_progress: # Round is over
-                    # If AFK dialog was shown, it should be closed by its own callbacks or by game progression
-                    # self.app_view.after(0, mp_game_view.close_afk_dialog) # Ensure it's closed if round ends for any reason
-                    # The logic below for showing AFK dialog handles the specific case of "no winner"
-
-                    if round_winner:
-                        if round_winner == my_username:
-                            status_display = "You won this round!"
-                        else:
-                            status_display = f"{round_winner} won this round."
-                        # If there's a winner, ensure AFK dialog is closed and reset flags
-                        if self.afk_dialog_active:
-                            self.app_view.after(0, mp_game_view.close_afk_dialog)
-                            self.afk_dialog_active = False
-                    else: # No round winner
-                        status_display = "No one won this round."
-                        # Potentially show AFK dialog if conditions met
-                        if not game_winner and session_result == "ONGOING" and \
-                           remaining_time <= 0 and \
-                           not self.afk_dialog_active and \
-                           not self.afk_pre_check_delay_active and \
-                           time.time() > self.afk_dialog_cooldown_until:
-                            
-                            self.round_at_afk_check_start = current_round
-                            self.afk_pre_check_delay_active = True
-                            # Cancel previous timer if any, though logic should prevent overlap
-                            if self.afk_pre_check_timer_id:
-                                self.app_view.after_cancel(self.afk_pre_check_timer_id)
-                            
-                            # print(f"GAME CONTROLLER: Initiating 4s pre-AFK check. Current round: {current_round}")
-                            self.afk_pre_check_timer_id = self.app_view.after(4000, self._trigger_first_afk_dialog_if_conditions_met)
-                    
-                    # If game is not over, server should auto start next round, or client needs to trigger
-                    if not game_winner and session_result == "ONGOING":
-                        # If AFK dialog is NOT shown (e.g. there was a winner), client might tell server to start next round
-                        # Or assume server handles it. For now, if AFK dialog is shown, its callback handles next round.
-                        if round_winner: # If there was a winner, implies server will/should start next round
-                             # Potentially model.start_multiplayer_next_round() if client needs to trigger it
-                             # and there wasn't an AFK dialog active to do it.
-                            # Let's try triggering it if this client sees the state first.
-                            # This could lead to multiple calls, but server should handle that idempotently.
-                            try:
-                                # print(f"GAME CONTROLLER: Round winner {round_winner}, attempting to start next round.")
-                                self.model.start_multiplayer_next_round()
-                            except Exception as e_snr:
-                                # print(f"Error attempting to start next round after round win: {e_snr}")
-                                pass # Non-critical if server also does it
-                        # No explicit call to start_multiplayer_next_round here if NO round_winner, 
-                        # because that's handled by the AFK dialog flow.
-                elif round_in_progress and (self.afk_dialog_active or self.afk_pre_check_delay_active): # Round started while AFK dialog or pre-check was up
-                    if self.afk_dialog_active:
-                        self.app_view.after(0, mp_game_view.close_afk_dialog)
-                        self.afk_dialog_active = False
-                    # Also close last chance dialog if it was somehow open and round started
-                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
-                    if self.afk_pre_check_delay_active:
-                        if self.afk_pre_check_timer_id:
-                            self.app_view.after_cancel(self.afk_pre_check_timer_id)
-                            self.afk_pre_check_timer_id = None
-                        self.afk_pre_check_delay_active = False
-                        # print("GAME CONTROLLER: Pre-AFK check cancelled because round started.")
-                
-                if game_winner:
-                    if self.afk_dialog_active: # Game ended while AFK dialog was up
-                        self.app_view.after(0, mp_game_view.close_afk_dialog)
-                        self.afk_dialog_active = False
-                    # Also close last chance dialog if it was somehow open and game ended
-                    self.app_view.after(0, mp_game_view.close_last_chance_dialog)
-                    if self.afk_pre_check_delay_active: # Game ended while pre-check was active
-                        if self.afk_pre_check_timer_id:
-                            self.app_view.after_cancel(self.afk_pre_check_timer_id)
-                            self.afk_pre_check_timer_id = None
-                        self.afk_pre_check_delay_active = False
-                        # print("GAME CONTROLLER: Pre-AFK check cancelled because game ended.")
-
-                    if not cleaned_up_session:
-                        try:
-                            self.model.end_game_session() # General end session
-                            self.model.cleanup_player_session() # Specific cleanup
-                        except Exception as e_clean:
-                            print(f"Error during end game cleanup: {e_clean}")
-                        cleaned_up_session = True
-                    
-                    if game_winner == my_username:
-                        status_display = "🎉 You won the game! 🎉"
-                    else:
-                        status_display = f"{game_winner} won the game."
-                    self.polling_active = False # Stop polling
-
-                # Auto-return from spectate if spectated player finished their part
                 if self.spectating_player:
                     spectated_masked = masked_words.get(self.spectating_player, "")
                     spectated_incorrect = incorrect_guesses_map.get(self.spectating_player, 0)
-                    if (spectated_incorrect >= 5) or (spectated_masked and "_" not in spectated_masked):
+                    spectated_player_guessed_word = (spectated_masked and "_" not in spectated_masked)
+                    spectated_player_exhausted_guesses = (spectated_incorrect >= 5)
+
+                    if spectated_player_guessed_word or spectated_player_exhausted_guesses or not round_in_progress_server:
                         self.spectating_player = None
-                        pov_username = my_username # Update pov for current cycle
-                        can_truly_guess = True # Re-evaluate can_truly_guess
-                        current_keyboard_state = (frozenset(player_guesses_map.get(pov_username, [])), all_current_words.get(pov_username, ""), current_round)
+                        pov_username = my_username # pov_username is now final for this poll cycle
 
-                # Schedule view update
-                self.app_view.after(0, lambda pov_u=pov_username, p_guesses_map=dict(player_guesses_map), act_words_map=dict(all_current_words), c_truly_guess=can_truly_guess, interact_over=interaction_over_for_pov: mp_game_view.update_display(
-                    word_display, timer_display, round_display, status_display,
-                    players, scores, pov_u, 
-                    p_guesses_map, act_words_map, 
-                    c_truly_guess, is_user_done_guessing_for_spectate_button, # is_user_done_guessing is for spectate button
-                    interact_over # interaction_over_for_pov for keyboard
-                ))
+                # --- pov_username is now final. Calculate all display strings and flags based on this final pov_username ---
+                word_to_display_for_pov = masked_words.get(pov_username, "_ _ _")
+                timer_display = f"Time left: {remaining_time}s" # Independent of pov_username
+                round_display = f"Round: {current_round_server + 1}" # Independent of pov_username
                 
-                # This direct call to update_keyboard might be redundant if update_display always calls it.
-                # However, it ensures keyboard updates if only keyboard-relevant state changes.
-                if current_keyboard_state != self.last_keyboard_state_mp:
-                     self.app_view.after(0, lambda pov_u=pov_username, p_guesses_map=dict(player_guesses_map), act_words_map=dict(all_current_words), c_truly_guess=can_truly_guess, interact_over=interaction_over_for_pov: 
-                        mp_game_view.update_keyboard(pov_u, p_guesses_map, act_words_map, c_truly_guess, interact_over))
-                     self.last_keyboard_state_mp = current_keyboard_state
+                # Re-calculate status_display based on final self.spectating_player status
+                status_display = ""
+                if game_winner_server or (session_result_server not in ["ONGOING", None, ""]):
+                    status_display = f"{game_winner_server} won the game." if game_winner_server else f"Game Over: {session_result_server}"
+                    if game_winner_server == my_username: status_display = "🎉 You won the game! 🎉"
+                    # polling_active and cleanup handled elsewhere for game over
+                elif round_in_progress_server:
+                    status_display = "Guess the word!" # Default for user's own POV and round in progress
+                    if pov_username == my_username and my_player_is_done_this_round: # If it's my POV and I'm done
+                        status_display = "Waiting for other players..."
+                    elif self.spectating_player: # If still spectating someone (pov_username would be spectating_player)
+                        status_display = f"Spectating {self.spectating_player}"
+                    # If pov_username is my_username, I'm not done, then status remains "Guess the word!"
+                else: # Server says round is NOT in progress (and game is not over yet)
+                    if round_winner_server:
+                        status_display = f"{round_winner_server} won this round."
+                        if round_winner_server == my_username: status_display = "You won this round!"
+                    else:
+                        status_display = "No one won this round."
+                    # AFK logic and next round attempts are handled elsewhere
 
-                if not self.polling_active: break # Exit if polling was stopped (e.g. game over)
+                # --- UI Interaction flags (calculated with final pov_username) ---
+                pov_is_done_guessing = (incorrect_guesses_map.get(pov_username, 0) >= 5) or \
+                                       (masked_words.get(pov_username, "") and "_" not in masked_words.get(pov_username, ""))
+                can_truly_guess = (pov_username == my_username) and \
+                                  (self.spectating_player is None) and \
+                                  round_in_progress_server and \
+                                  not game_winner_server and \
+                                  not my_player_is_done_this_round
+                interaction_over_for_pov = bool(game_winner_server) or \
+                                           (not round_in_progress_server and pov_username == my_username) or \
+                                           (pov_username == my_username and my_player_is_done_this_round) or \
+                                           (self.spectating_player and pov_is_done_guessing) # self.spectating_player will be None if POV returned
+
+                is_user_done_guessing_for_spectate_button = my_player_is_done_this_round or not round_in_progress_server
+
+
+                # --- UI Update Scheduling & Keyboard State ---
+                self.app_view.after(0, lambda
+                    # Capture all necessary values as they are now (final for this poll cycle)
+                    word_cap=word_to_display_for_pov,
+                    timer_cap=timer_display,
+                    round_text_cap=round_display,
+                    status_cap=status_display,
+                    players_cap=list(players),
+                    scores_cap=dict(scores),
+                    pov_username_cap=pov_username,
+                    guesses_map_cap=dict(player_guesses_map),
+                    actual_words_map_cap=dict(all_current_words),
+                    can_truly_guess_cap=can_truly_guess,
+                    is_user_done_guessing_for_spectate_cap=is_user_done_guessing_for_spectate_button,
+                    interaction_over_for_pov_cap=interaction_over_for_pov:
+                    
+                    mp_game_view.update_display(
+                        word=word_cap,
+                        timer=timer_cap,
+                        round_text=round_text_cap,
+                        status=status_cap,
+                        players=players_cap,
+                        scores=scores_cap,
+                        pov_username=pov_username_cap,
+                        guesses_map=guesses_map_cap,
+                        actual_words_map=actual_words_map_cap,
+                        can_truly_guess=can_truly_guess_cap,
+                        is_user_done_guessing_for_spectate=is_user_done_guessing_for_spectate_cap,
+                        interaction_over_for_pov=interaction_over_for_pov_cap
+                    )
+                )
+                current_keyboard_state_tuple = (
+                    pov_username,
+                    frozenset(player_guesses_map.get(pov_username, [])),
+                    all_current_words.get(pov_username, ""),
+                    can_truly_guess,
+                    interaction_over_for_pov,
+                    current_round_server
+                )
+                if current_keyboard_state_tuple != self.last_keyboard_state_mp:
+                     self.app_view.after(0, lambda 
+                        pov_u_key=pov_username, 
+                        p_guesses_key=dict(player_guesses_map), 
+                        act_words_key=dict(all_current_words), 
+                        c_truly_g_key=can_truly_guess, 
+                        interact_o_key=interaction_over_for_pov:
+                        
+                        mp_game_view.update_keyboard(
+                            pov_u_key, 
+                            p_guesses_key, 
+                            act_words_key, 
+                            c_truly_g_key, 
+                            interact_o_key
+                        )
+                     )
+                     self.last_keyboard_state_mp = current_keyboard_state_tuple
+                
+                if not self.polling_active: # Check polling_active again before sleep, if it was set to False inside loop
+                    break
 
             except Exception as e:
-                # print(f"Error polling multiplayer game state: {e}")
-                # traceback.print_exc() # For more detailed error
+                # Error handling
+                # print(f"Error in _poll_mp_game_state: {e}") # Optional: log detailed error
+                # import traceback; traceback.print_exc() # Optional: for detailed stack trace
                 self.polling_active = False
-                self.app_view.after(0, lambda: mp_game_view.set_status("Error in game. Returning to menu.", "red"))
-                self.app_view.after(2000, lambda: self.show_frame("MainMenu")) # Delay then go to menu
-                break
-            time.sleep(0.25) # Polling interval (new)
+                if mp_game_view: # Ensure view exists
+                    self.app_view.after(0, lambda: mp_game_view.set_status("Error in game. Returning to menu.", "red"))
+                    self.app_view.after(2000, lambda: self.show_frame("MainMenu")) 
+                break # Exit polling loop on error
+            time.sleep(0.25)
 
-        # Cancel any pending pre-AFK check timer
-        if self.afk_pre_check_timer_id:
-            self.app_view.after_cancel(self.afk_pre_check_timer_id)
-            self.afk_pre_check_timer_id = None
+        # --- Polling Loop Cleanup --- 
+        # Ensure all timers are cancelled
+        if self.afk_pre_check_timer_id: self.app_view.after_cancel(self.afk_pre_check_timer_id); self.afk_pre_check_timer_id = None
         self.afk_pre_check_delay_active = False
 
-        # Close any open dialogs associated with MP game view
         mp_game_view = self.app_view.frames.get("MultiplayerGame")
-        if mp_game_view:
+        if mp_game_view: # Ensure view still exists before trying to close its dialogs
             self.app_view.after(0, mp_game_view.close_afk_dialog)
             self.app_view.after(0, mp_game_view.close_last_chance_dialog)
-
-        self.sp_polling_thread = None
-        self.mp_queue_polling_thread = None
+            self.app_view.after(0, mp_game_view.close_game_cleaned_up_dialog) # If this new dialog exists
         self.mp_game_polling_thread = None 
 
     def handle_multiplayer_guess(self, letter):
-        if self.spectating_player: return # No guesses while spectating
-        if not self.polling_active: return # Game might be over
+        if self.spectating_player: return 
+        if not self.polling_active: return 
         
-        # Optimistically update UI for the guess, then confirm with next poll
-        # Or, rely on polling to update. For now, let poll handle update.
         try:
-            # correct = self.model.send_multiplayer_guess(letter.lower())
-            # mp_game_view = self.app_view.frames.get("MultiplayerGame")
-            # mp_game_view.feedback_guess_mp(letter, correct) # View needs this method
-            # The guess will change the server state, which the poll will pick up.
-            # No direct feedback needed from sendMultiplayerGuess if poll is frequent enough.
             self.model.send_multiplayer_guess(letter.lower())
-            # The next poll cycle will reflect the guess.
+            # Immediate UI feedback for the pressed key can be added here if desired,
+            # but the authoritative state comes from the next poll.
+            # For example, disable the button optimistically:
+            # mp_game_view = self.app_view.frames.get("MultiplayerGame")
+            # if mp_game_view:
+            #     mp_game_view.feedback_guess_mp_optimistic(letter) 
         except Exception as e:
-            # print(f"Error sending multiplayer guess: {e}")
             mp_game_view = self.app_view.frames.get("MultiplayerGame")
             if mp_game_view:
                 self.app_view.after(0, lambda: mp_game_view.set_status(f"Error sending guess: {e}", "red"))

@@ -264,4 +264,8 @@ class GameModel:
 
     def get_mp_session_result(self):
         game_data = self.get_mp_game_state_data()
-        return game_data.get("sessionResult", "ONGOING") 
+        return game_data.get("sessionResult", "ONGOING")
+
+    def get_mp_player_finish_times(self):
+        game_data = self.get_mp_game_state_data()
+        return game_data.get("allPlayerFinishTimes", {}) 

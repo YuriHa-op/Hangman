@@ -165,7 +165,15 @@ class MultiplayerQueueView(BaseView):
         tk.Label(self.popup, text="No Match Found", font=("Arial", 18), fg="#d32f2f").pack(pady=10)
         tk.Label(self.popup, text="No other players joined in time.\nPlease try again.", font=("Arial", 14)).pack(pady=10)
         # The controller will handle going back to menu after this dialog is closed by the user.
-        tk.Button(self.popup, text="OK", command=lambda: [self.popup.destroy(), self.controller.handle_no_match_found_dialog_ok()]).pack(pady=10)
+        tk.Button(self.popup, text="OK", command=lambda: [
+            self.popup.destroy(), 
+            setattr(self, 'popup', None), # Ensure popup attribute is cleared
+            self.controller.handle_no_match_found_dialog_ok()
+        ]).pack(pady=10)
+
+    def close_no_match_found_dialog(self):
+        if hasattr(self, 'popup') and self.popup and self.popup.winfo_exists():
+            self.popup.destroy()
         self.popup = None
 
 class MatchHistoryView(BaseView):
@@ -389,6 +397,10 @@ class MultiplayerGameView(BaseView):
         if hasattr(self, 'afk_popup') and self.afk_popup and self.afk_popup.winfo_exists():
             return # Already showing
 
+        # Ensure "Last Chance" dialog is closed if we are re-showing the primary AFK dialog
+        if hasattr(self, 'last_chance_popup') and self.last_chance_popup and self.last_chance_popup.winfo_exists():
+            self.close_last_chance_dialog()
+
         self.afk_popup = tk.Toplevel(self.master)
         self.afk_popup.title("Still There?")
         self.afk_popup.attributes("-topmost", True)
@@ -505,6 +517,13 @@ class MultiplayerGameView(BaseView):
         ])
         self.cleanup_popup.grab_set()
 
+    def close_game_cleaned_up_dialog(self):
+        if hasattr(self, 'cleanup_popup') and self.cleanup_popup and self.cleanup_popup.winfo_exists():
+            if self.cleanup_popup.grab_status(): # Check if grab is set before releasing
+                self.cleanup_popup.grab_release()
+            self.cleanup_popup.destroy()
+        self.cleanup_popup = None # Clear the attribute
+
     # New method to show the "Last Chance" dialog
     def show_last_chance_dialog(self, on_last_chance_callback):
         if hasattr(self, 'last_chance_popup') and self.last_chance_popup and self.last_chance_popup.winfo_exists():
@@ -547,7 +566,8 @@ class MultiplayerGameView(BaseView):
 
     def close_last_chance_dialog(self):
         if hasattr(self, 'last_chance_popup') and self.last_chance_popup and self.last_chance_popup.winfo_exists():
-            self.last_chance_popup.grab_release()
+            if self.last_chance_popup.grab_status(): # Check if grab is currently set
+                self.last_chance_popup.grab_release() # Ensure grab is released
             self.last_chance_popup.destroy()
         self.last_chance_popup = None
 
@@ -742,4 +762,4 @@ def show_no_match_popup_tk(): # This is the Tkinter specific version
         title="No Match Found",
         message="No opponent was found. Please try again later."
     )
-    root.destroy() 
+    root.destroy()

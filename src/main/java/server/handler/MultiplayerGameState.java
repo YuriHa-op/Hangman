@@ -350,4 +350,8 @@ public class MultiplayerGameState {
     public boolean isRoundPotentiallyStalled() {
         return roundPotentiallyStalled;
     }
+
+    public Map<String, Long> getAllPlayerFinishTimes() {
+        return new ConcurrentHashMap<>(playerFinishTimes);
+    }
 } 

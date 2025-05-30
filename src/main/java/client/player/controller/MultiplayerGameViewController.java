@@ -643,7 +643,10 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         roundWinnerBanner.setVisible(true);
         roundWinnerBanner.setOpacity(1.0);
         if (showConfetti && root != null) {
-            ConfettiHelper.showConfetti(root);
+            // Defer confetti call to ensure root pane is fully laid out
+            Platform.runLater(() -> {
+                ConfettiHelper.showConfetti(root);
+            });
         }
         if (color != null) {
             roundWinnerBanner.setStyle("-fx-font-size: 22px; -fx-font-family: 'Minecraftia'; -fx-background-color: rgba(0,0,0,0.7); -fx-padding: 8 24 8 24; -fx-background-radius: 12; -fx-border-radius: 12; -fx-border-color: #ffdd00; -fx-border-width: 2px; -fx-text-fill: " + color + ";");
