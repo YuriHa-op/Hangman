@@ -195,4 +195,14 @@ public class MultiplayerGameModel {
             return false;
         }
     }
+
+    public void playerReadyForFirstRound() {
+        if (username != null && !username.isEmpty()) {
+            try {
+                gameService.playerReadyForFirstRound(username);
+            } catch (Exception e) {
+                System.err.println("Error signaling player ready for first round: " + e.getMessage());
+            }
+        }
+    }
 } 

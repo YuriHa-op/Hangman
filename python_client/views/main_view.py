@@ -590,7 +590,9 @@ class SinglePlayerGameView(BaseView):
         top_info_frame = tk.Frame(self)
         top_info_frame.pack(pady=5)
         tk.Label(top_info_frame, textvariable=self.word_var, font=("Consolas", 32)).pack(side=tk.LEFT, padx=20)
-        tk.Label(top_info_frame, textvariable=self.timer_var, font=("Arial", 18)).pack(side=tk.LEFT, padx=20)
+        # Store the timer label widget to change its color
+        self.timer_label_widget = tk.Label(top_info_frame, textvariable=self.timer_var, font=("Arial", 18))
+        self.timer_label_widget.pack(side=tk.LEFT, padx=20)
 
         # Frame for game stats (Round, Score, Incorrect)
         stats_frame = tk.Frame(self)
@@ -618,14 +620,19 @@ class SinglePlayerGameView(BaseView):
     def on_show(self):
         self.controller.start_single_player_game()
 
-    def update_display(self, masked_word, timer_text, incorrect_text, status_text, player_wins, current_round_num, attempted_letters, current_word, round_over, game_over):
+    def update_display(self, masked_word, timer_text, incorrect_text, status_text, player_wins, current_round_num, attempted_letters, current_word, round_over, game_over, timer_color="black"):
         self.word_var.set(masked_word)
         self.timer_var.set(timer_text)
         self.incorrect_var.set(incorrect_text)
         self.status_var.set(status_text)
         self.score_var.set(f"Score: {player_wins}/3") 
-        self.round_var.set(f"Round: {current_round_num + 1}") # Rounds are 0-indexed from server, display as 1-indexed. Removed "/3"
-        # Pass all necessary info to update_keyboard
+        self.round_var.set(f"Round: {current_round_num + 1}")
+        # Apply color to timer label
+        if hasattr(self, 'timer_label_widget'): # Check if timer_label_widget exists (it should if initialized correctly)
+            self.timer_label_widget.config(fg=timer_color)
+        else: # Fallback if timer_label_widget not found (should not happen)
+            pass 
+
         self.update_keyboard(attempted_letters, current_word, round_over or game_over)
 
     def update_keyboard(self, attempted_letters, current_word_upper, disable_all):
@@ -671,11 +678,11 @@ class SinglePlayerGameView(BaseView):
         if hasattr(self, 'status_display_label'):
             self.status_display_label.config(fg=color)
 
-    def show_match_found_countdown(self, countdown_callback):
+    def show_match_found_countdown(self, countdown_callback, opponent_name="Opponent"):
         if self.popup and self.popup.winfo_exists(): self.popup.destroy()
         self.popup = tk.Toplevel(self)
         self.popup.title("Match Found")
-        label = tk.Label(self.popup, text="Match found! The game will start in 5 seconds...", font=("Arial", 16))
+        label = tk.Label(self.popup, text=f"Match found! Your opponent: {opponent_name}\nThe game will start in 5 seconds...", font=("Arial", 16))
         label.pack(padx=20, pady=20)
         self.countdown_label_popup = tk.Label(self.popup, text="5", font=("Arial", 32))
         self.countdown_label_popup.pack(pady=10)

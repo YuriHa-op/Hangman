@@ -30,11 +30,13 @@ public class GameManager {
     private Map<String, Map<Integer, Long>> roundFinishTime = new HashMap<>();
     private Map<String, Map<Integer, Boolean>> roundGuessedWord = new HashMap<>();
     private Map<String, Map<Integer, String>> lastRoundWinner = new HashMap<>();
+    private Map<String, Boolean> playersAwaitingFirstRoundStart = new HashMap<>();
 
     // For 1v1 Match History
     private Map<String, String> playerGameSessionIds = new HashMap<>();
     private Map<String, List<SPSinglePlayerRoundInfoDTO>> gameSessionRounds = new HashMap<>();
     private Map<String, Boolean> gameSessionHistorySaved = new HashMap<>();
+    private Map<String, Set<String>> gameSessionAllPlayers = new HashMap<>();
 
     public GameManager(WordManager wordManager, PlayerManager playerManager, SinglePlayerMatchResultDAO singlePlayerMatchResultDAO) {
         this.wordManager = wordManager;
@@ -181,12 +183,19 @@ public class GameManager {
         waitingPlayers.remove(player2);
         missedGuesses.put(player1, 0);
         missedGuesses.put(player2, 0);
-        roundStartTime.put(player1, System.currentTimeMillis());
-        roundStartTime.put(player2, System.currentTimeMillis());
+        playersAwaitingFirstRoundStart.put(player1, false);
+        playersAwaitingFirstRoundStart.put(player2, false);
         playerWins.put(player1, 0);
         playerWins.put(player2, 0);
         roundFinished.computeIfAbsent(player1, k -> new HashMap<>()).put(0, false);
         roundFinished.computeIfAbsent(player2, k -> new HashMap<>()).put(0, false);
+        // Track all players for this session
+        String gameSessionId = playerGameSessionIds.get(player1);
+        if (gameSessionId != null) {
+            Set<String> allPlayers = gameSessionAllPlayers.computeIfAbsent(gameSessionId, k -> new HashSet<>());
+            allPlayers.add(player1);
+            allPlayers.add(player2);
+        }
     }
 
     private String findWaitingPlayer() {
@@ -223,13 +232,66 @@ public class GameManager {
    }
 
     public void finishRound(String username, long clientRemainingTime, Bool guessedWordBool) {
-        boolean guessedWord = guessedWordBool == Bool.BOOL_TRUE;
+        // clientRemainingTime is the value passed by the caller.
+        // - If called from sendGuess after word completion/max misses:
+        //   clientRemainingTime was the server-calculated remaining time at that point.
+        //   guessedWordBool was the server-determined outcome.
+        // - If called from client (e.g., timeout):
+        //   clientRemainingTime is typically 0.
+        //   guessedWordBool is typically FALSE.
+
         int currentRound = playerRounds.getOrDefault(username, 0);
+
+        // Server's current perspective on remaining time, calculated now.
+        long serverCalculatedCurrentRemainingTime = 0;
+        if (roundStartTime.containsKey(username)) {
+            int serverRoundTimeSetting = playerManager.getRoundTime();
+            long elapsedSeconds = (System.currentTimeMillis() - roundStartTime.get(username)) / 1000;
+            serverCalculatedCurrentRemainingTime = Math.max(0, serverRoundTimeSetting - elapsedSeconds);
+        }
+
+        // Server's current perspective on whether the word is actually completed by this player
+        // Ensure playerProgress for the user is not null before checking its content.
+        StringBuilder currentProgress = playerProgress.get(username);
+        boolean actualWordCompletedOnServer = (currentProgress != null && !currentProgress.toString().contains("_"));
+
+        boolean finalGuessedOutcomeForRound;
+        long finalTimeToRecordInHistory;
+
+        if (guessedWordBool == Bool.BOOL_TRUE) {
+            // Caller (either server's sendGuess or client) claims word was guessed.
+            // Server must verify this claim against its current state.
+            if (actualWordCompletedOnServer) {
+                finalGuessedOutcomeForRound = true;
+                // Word is genuinely completed. Time should be based on server's clock from round start
+                // up to the point this finishRound is processed or the original event if from sendGuess.
+                // Using serverCalculatedCurrentRemainingTime ensures server authority at the point of this call.
+                // If sendGuess called this, clientRemainingTime was already server-authoritative at the moment of guess.
+                // To ensure maximum authority for any call to finishRound claiming TRUE:
+                finalTimeToRecordInHistory = serverCalculatedCurrentRemainingTime;
+            } else {
+                // Caller claimed TRUE, but server state says word not complete.
+                // This is a discrepancy (e.g., malicious client, or extreme race condition).
+                // Treat as "did not guess."
+                finalGuessedOutcomeForRound = false;
+                finalTimeToRecordInHistory = 0L; // No successful completion time.
+            }
+        } else {
+            // Caller states word was NOT guessed (e.g., client timeout, or server's sendGuess for max misses).
+            finalGuessedOutcomeForRound = false;
+            finalTimeToRecordInHistory = 0L; // Represents no successful completion time for winning by speed.
+        }
+
         roundFinished.computeIfAbsent(username, k -> new HashMap<>()).put(currentRound, true);
-        roundGuessedWord.computeIfAbsent(username, k -> new HashMap<>()).put(currentRound, guessedWord);
-        roundFinishTime.computeIfAbsent(username, k -> new HashMap<>()).put(currentRound, clientRemainingTime);
+        roundGuessedWord.computeIfAbsent(username, k -> new HashMap<>()).put(currentRound, finalGuessedOutcomeForRound);
+        roundFinishTime.computeIfAbsent(username, k -> new HashMap<>()).put(currentRound, finalTimeToRecordInHistory);
+
         String opponent = matchedPlayers.get(username);
-        if (opponent != null && roundFinished.containsKey(opponent) && roundFinished.get(opponent).getOrDefault(currentRound, false)) {
+        if (opponent != null &&
+            roundFinished.getOrDefault(opponent, Collections.emptyMap()).getOrDefault(currentRound, false)) {
+            // Both players have now finished the round (according to server state),
+            // attempt to determine the winner. The guard inside determineRoundWinner
+            // will prevent it from processing the win determination logic more than once per round for the pair.
             determineRoundWinner(username, currentRound);
         }
     }
@@ -349,9 +411,12 @@ public class GameManager {
     }
 
     private void saveGameSessionHistory(String gameSessionId, List<String> players, List<SPSinglePlayerRoundInfoDTO> rounds, String overallWinner) {
+        // Use all players who ever participated in this session
+        Set<String> allPlayersSet = gameSessionAllPlayers.getOrDefault(gameSessionId, new HashSet<>(players));
+        List<String> allPlayersList = new ArrayList<>(allPlayersSet);
         if (gameSessionId != null && singlePlayerMatchResultDAO != null && !gameSessionHistorySaved.getOrDefault(gameSessionId, false)) {
             int totalRoundsPlayed = rounds.size();
-            if (players.isEmpty() && !rounds.isEmpty()) {
+            if (allPlayersList.isEmpty() && !rounds.isEmpty()) {
                 System.err.println("[HISTORY SAVE ERROR] Players list is empty for gameSessionId: " + gameSessionId + " but rounds exist. Aborting save.");
                 return; 
             }
@@ -360,7 +425,7 @@ public class GameManager {
                     gameSessionId,
                     totalRoundsPlayed,
                     overallWinner, 
-                    players,
+                    allPlayersList,
                     rounds,
                     System.currentTimeMillis()
             );
@@ -388,11 +453,17 @@ public class GameManager {
         if (gameSessionId != null && !playerGameSessionIds.containsValue(gameSessionId)) {
             gameSessionRounds.remove(gameSessionId);
             gameSessionHistorySaved.remove(gameSessionId); 
+            gameSessionAllPlayers.remove(gameSessionId); // CLEANUP
         }
     }
 
     public int getRemainingTime(String username) {
         long currentTime = System.currentTimeMillis();
+
+        // If player is still waiting for the first round to officially start for both players
+        if (playersAwaitingFirstRoundStart.containsKey(username) && !roundStartTime.containsKey(username)) {
+            return playerManager.getRoundTime(); // Return full round time
+        }
 
         if (!roundStartTime.containsKey(username)) {
             return 0;
@@ -550,6 +621,7 @@ public class GameManager {
             dto.remainingTime = 0;
             dto.roundWinner = null;
             dto.finishedTime = 0;
+            dto.opponentUsername = "";
             return dto;
         }
 
@@ -570,6 +642,56 @@ public class GameManager {
             }
         }
 
+        // --- NEW: Also check and finish the round for the opponent if needed ---
+        String opponentNameForLog = matchedPlayers.get(username);
+        if (opponentNameForLog != null) {
+            int opponentCurrentRound = playerRounds.getOrDefault(opponentNameForLog, 0);
+            boolean opponentFinished = roundFinished.getOrDefault(opponentNameForLog, Collections.emptyMap())
+                                        .getOrDefault(opponentCurrentRound, false);
+            if (!opponentFinished) {
+                int opponentRemainingTime = getRemainingTime(opponentNameForLog);
+                String opponentMaskedWord = getMaskedWord(opponentNameForLog);
+                int opponentIncorrectGuesses = getIncorrectGuesses(opponentNameForLog);
+
+                boolean opponentWordGuessed = (opponentMaskedWord != null && !opponentMaskedWord.isEmpty() && !opponentMaskedWord.contains("_"));
+                boolean opponentMaxMisses = opponentIncorrectGuesses >= MAX_MISSES;
+
+                if (!opponentWordGuessed && !opponentMaxMisses && opponentRemainingTime <= 0) {
+                    finishRound(opponentNameForLog, 0, Bool.BOOL_FALSE);
+                }
+            }
+        }
+
+        // --- NEW: Auto-advance through all missed rounds for both players ---
+        List<String> bothPlayers = new ArrayList<>();
+        bothPlayers.add(username);
+        if (opponentNameForLog != null && !opponentNameForLog.equals(username)) {
+            bothPlayers.add(opponentNameForLog);
+        }
+        for (String player : bothPlayers) {
+            while (true) {
+                int currentRound = playerRounds.getOrDefault(player, 0);
+                boolean finished = roundFinished.getOrDefault(player, Collections.emptyMap()).getOrDefault(currentRound, false);
+                if (!finished) break;
+                // Calculate when this round started
+                long roundStart = roundStartTime.getOrDefault(player, 0L);
+                int roundTime = playerManager.getRoundTime();
+                long now = System.currentTimeMillis();
+                if (now - roundStart < roundTime * 1000L) break; // Not enough time for next round
+                // If game is not over, start next round and immediately finish for timeout
+                if (!isGameSessionOver(player)) {
+                    boolean started = startNewRound(player);
+                    if (started) {
+                        finishRound(player, 0, Bool.BOOL_FALSE);
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+
         String maskedWord = getMaskedWord(username);
         dto.maskedWord = (maskedWord != null) ? maskedWord : "";
         dto.incorrectGuesses = getIncorrectGuesses(username);
@@ -585,13 +707,22 @@ public class GameManager {
         
         String sessionResult = gameSessionResult.get(username);
         dto.sessionResult = (sessionResult != null) ? sessionResult : "ONGOING";
-        dto.remainingTime = getRemainingTime(username); 
+
+        // If player is awaiting first round start and timer hasn't begun, reflect full time.
+        if (playersAwaitingFirstRoundStart.containsKey(username) && !roundStartTime.containsKey(username)){
+            dto.remainingTime = playerManager.getRoundTime();
+        } else {
+            dto.remainingTime = getRemainingTime(username);
+        }
+
         dto.finishedTime = roundFinishTime.getOrDefault(username, Collections.emptyMap()).getOrDefault(currentRoundForPlayer, 0L).intValue();
         
-        String opponent = matchedPlayers.get(username);
-        if (roundOverBoolean && opponent != null &&
+        System.out.println("[DEBUG] getGameState for username='" + username + "', matchedPlayers=" + matchedPlayers);
+        dto.opponentUsername = opponentNameForLog != null ? opponentNameForLog : "";
+        System.out.println("[DEBUG] dto.opponentUsername for '" + username + "' = '" + dto.opponentUsername + "'");
+        if (roundOverBoolean && opponentNameForLog != null &&
             roundFinished.getOrDefault(username, Collections.emptyMap()).getOrDefault(currentRoundForPlayer, false) &&
-            roundFinished.getOrDefault(opponent, Collections.emptyMap()).getOrDefault(currentRoundForPlayer, false)) {
+            roundFinished.getOrDefault(opponentNameForLog, Collections.emptyMap()).getOrDefault(currentRoundForPlayer, false)) {
             String winner = lastRoundWinner.getOrDefault(username, Collections.emptyMap()).getOrDefault(currentRoundForPlayer, null);
             dto.roundWinner = (winner != null) ? winner : ""; 
         } else {
@@ -642,10 +773,38 @@ public class GameManager {
         String opponent = matchedPlayers.get(username);
         cleanupPlayerState(username);
         gameSessionResult.remove(username);
+        playersAwaitingFirstRoundStart.remove(username); // Ensure removed from waiting list
 
         if (opponent != null) {
-            matchedPlayers.remove(opponent); 
+            matchedPlayers.remove(opponent);
+            playersAwaitingFirstRoundStart.remove(opponent); // And opponent too
+            // If one player leaves during the "awaiting start" phase, the opponent should ideally be notified
+            // or put back into the general waiting pool. This logic can be complex.
+            // For now, just cleaning up their waiting status.
         }
-        matchedPlayers.remove(username); 
+        matchedPlayers.remove(username);
+    }
+
+    public synchronized void signalPlayerReadyAndPotentiallyStartFirstRound(String username) {
+        if (playersAwaitingFirstRoundStart.containsKey(username)) {
+            playersAwaitingFirstRoundStart.put(username, true);
+            String opponent = matchedPlayers.get(username);
+
+            if (opponent != null && playersAwaitingFirstRoundStart.getOrDefault(opponent, false)) {
+                // Both players are ready, start the timer for the first round
+                long startTime = System.currentTimeMillis();
+                roundStartTime.put(username, startTime);
+                roundStartTime.put(opponent, startTime);
+
+                // Remove them from the awaiting list
+                playersAwaitingFirstRoundStart.remove(username);
+                playersAwaitingFirstRoundStart.remove(opponent);
+
+                // Optional: Log or notify that the round has officially started
+                if (logCallback != null) {
+                    logCallback.accept("First round started for " + username + " and " + opponent);
+                }
+            }
+        }
     }
 }

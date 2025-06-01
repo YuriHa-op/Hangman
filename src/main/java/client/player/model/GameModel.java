@@ -84,6 +84,16 @@ public class GameModel {
         this.matchListener = listener;
     }
 
+    public void playerReadyForFirstRound() {
+        if (username != null && !username.isEmpty()) {
+            try {
+                gameService.playerReadyForFirstRound(username);
+            } catch (Exception e) {
+                System.err.println("Error signaling player ready for first round: " + e.getMessage());
+                // Optionally, notify the user or handle the error in a way that makes sense for the UI
+            }
+        }
+    }
 
     public GameService getGameService() {
         return gameService;

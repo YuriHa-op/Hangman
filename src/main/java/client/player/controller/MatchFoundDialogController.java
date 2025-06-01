@@ -52,7 +52,7 @@ public class MatchFoundDialogController {
         }
     }
 
-    public static void showDialog(Stage owner, String player1, String player2, Runnable onCountdownFinished) {
+    public static void showDialog(Stage owner, String player1, String player2, boolean isPlayer1, String player1Pfp, String player2Pfp, Runnable onCountdownFinished) {
         try {
             FXMLLoader loader = new FXMLLoader(MatchFoundDialogController.class.getResource("/client/player/view/MatchFoundDialog.fxml"));
             StackPane root = loader.load();
@@ -60,8 +60,8 @@ public class MatchFoundDialogController {
             controller.onCountdownFinished = onCountdownFinished;
             controller.player1Name.setText(player1);
             controller.player2Name.setText(player2);
-            controller.player1Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream("/client/player/view/player1.png")));
-            controller.player2Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream("/client/player/view/player2.png")));
+            controller.player1Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream(player1Pfp)));
+            controller.player2Pfp.setImage(new Image(MatchFoundDialogController.class.getResourceAsStream(player2Pfp)));
 
             Stage dialog = new Stage();
             controller.dialogStage = dialog;

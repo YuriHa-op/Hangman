@@ -198,9 +198,7 @@ public class GameServiceImpl extends GameServicePOA {
         return gameManager.isGameSessionOver(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
-    public boolean isGameSessionWinner(String username) {
-        return gameManager.isGameSessionWinner(username);
-    }
+
 
     public String getGameSessionResult(String username) {
         return gameManager.getGameSessionResult(username);
@@ -221,6 +219,7 @@ public class GameServiceImpl extends GameServicePOA {
         corbaDto.remainingTime = internal.remainingTime;
         corbaDto.roundWinner = (internal.roundWinner != null) ? internal.roundWinner : "";
         corbaDto.finishedTime = internal.finishedTime;
+        corbaDto.opponentUsername = internal.opponentUsername;
         return corbaDto;
     }
 
@@ -493,6 +492,16 @@ public class GameServiceImpl extends GameServicePOA {
     public String getSinglePlayerMatchDetails(String gameId) {
         server.dto.SPSinglePlayerGameDetailsDTO details = singlePlayerMatchResultDAO.getGameDetails(gameId);
         return gson.toJson(details);
+    }
+
+    @Override
+    public void playerReadyForFirstRound(String username) {
+        // Option 2: Route based on game mode
+        if (multiplayerGameManager != null && multiplayerGameManager.isPlayerInMultiplayer(username)) {
+            multiplayerGameManager.playerReadyForFirstRound(username);
+        } else {
+            gameManager.signalPlayerReadyAndPotentiallyStartFirstRound(username);
+        }
     }
 
 }

@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MultiplayerGameState {
     private final String lobbyId;
     private final List<String> players;
+    private final Set<String> allPlayersEver;
     private final Map<String, Integer> playerScores;
     private final Map<String, StringBuilder> playerProgress;
     private final Map<String, Set<Character>> playerGuesses;
@@ -28,10 +29,12 @@ public class MultiplayerGameState {
     private final List<String> matchWords = new ArrayList<>();
     private boolean gameWinProcessed = false;
     private boolean roundPotentiallyStalled = false;
+    private final Map<String, Boolean> playerReady = new ConcurrentHashMap<>();
 
     public MultiplayerGameState(String lobbyId, List<String> players, WordManager wordManager, int roundTimeSeconds) {
         this.lobbyId = lobbyId;
         this.players = new ArrayList<>(players);
+        this.allPlayersEver = new HashSet<>(players);
         this.wordManager = wordManager;
         this.roundTimeSeconds = roundTimeSeconds;
         this.playerScores = new ConcurrentHashMap<>();
@@ -55,6 +58,7 @@ public class MultiplayerGameState {
         List<String> allWords = new ArrayList<>(wordManager.getWords());
         Collections.shuffle(allWords);
         matchWords.addAll(allWords);
+        resetPlayerReady();
     }
 
     public synchronized boolean startNewRound() {
@@ -291,7 +295,7 @@ public class MultiplayerGameState {
             gameId,
             currentRound + 1,
             gameWinner,
-            new ArrayList<>(players),
+            new ArrayList<>(allPlayersEver),
             new ArrayList<>(roundResults),
             System.currentTimeMillis()
         );
@@ -353,5 +357,28 @@ public class MultiplayerGameState {
 
     public Map<String, Long> getAllPlayerFinishTimes() {
         return new ConcurrentHashMap<>(playerFinishTimes);
+    }
+
+    public synchronized void recordPlayerJoined(String username) {
+        allPlayersEver.add(username);
+    }
+
+    public void setPlayerReady(String username) {
+        playerReady.put(username, true);
+    }
+
+    public boolean areAllPlayersReady() {
+        for (String player : players) {
+            if (!Boolean.TRUE.equals(playerReady.get(player))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void resetPlayerReady() {
+        for (String player : players) {
+            playerReady.put(player, false);
+        }
     }
 } 

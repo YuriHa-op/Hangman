@@ -130,17 +130,25 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         resetUI();
         // model.startGame(); // DO NOT start game again, HomeViewController already did.
         // Game is already started by HomeViewController, just start polling.
-        if (lobbyPoller != null) {
-            lobbyPoller.play();
-        }
-        // showWaitingUI(); // Don't show waiting UI, expect game to be in progress or starting.
-        // Immediately poll to get the current state.
-        if (model != null) {
-            model.updateLobbyState();
-        }
+        // Instead of starting polling immediately, show match found dialog, then signal ready, then start polling
+        showMatchFoundDialogAndSignalReady();
     }
 
-   
+    private void showMatchFoundDialogAndSignalReady() {
+        // Show the match found dialog (implement this as needed)
+        // After dialog and any animation, call model.playerReadyForFirstRound(), then start polling
+        // For now, simulate with Platform.runLater (replace with actual dialog logic)
+        javafx.application.Platform.runLater(() -> {
+            // TODO: Replace with actual dialog and animation logic, then call this after they finish
+            model.playerReadyForFirstRound();
+            if (lobbyPoller != null) {
+                lobbyPoller.play();
+            }
+            if (model != null) {
+                model.updateLobbyState();
+            }
+        });
+    }
 
     private void resetUI() {
         keyboardGrid.setVisible(false);
@@ -182,16 +190,18 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
             boolean isStarted = "STARTED".equals(state.getState());
             boolean isWaiting = "WAITING".equals(state.getState());
-            boolean isPlayerFinished = false;
+            boolean isPlayerFinished = false; // This is for the current user, not necessarily the POV
             if (isStarted && state.getGameState() != null) {
                 Object finishedObj = state.getGameState().get("playerFinishTimes");
                 if (finishedObj instanceof Map) {
                     isPlayerFinished = ((Map<?,?>)finishedObj).containsKey(model.getUsername());
                 }
-                // Additional check if player is finished based on incorrect guesses or completed word
-                String pov = povPlayer != null ? povPlayer : model.getUsername(); // Use pov to check for current player
-                if (state.getPlayerIncorrectGuesses(pov) >= 5 || !state.getPlayerMaskedWord(pov).contains("_")) {
-                    isPlayerFinished = true;
+                String povForFinishedCheck = povPlayer != null ? povPlayer : model.getUsername();
+                if (state.getPlayerIncorrectGuesses(povForFinishedCheck) >= 5 || !state.getPlayerMaskedWord(povForFinishedCheck).contains("_")) {
+                    // This was a local check, isPlayerFinished for the actual user is what matters for some UI elements
+                    if (povForFinishedCheck.equals(model.getUsername())) {
+                        isPlayerFinished = true;
+                    }
                 }
             }
             if (currentRound != lastRoundNumber && roundInProgress && isStarted) {
@@ -202,22 +212,31 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
             // If spectating and the spectated player is now finished, or if the round itself has ended, return to own POV
             if (povPlayer != null && !povPlayer.equals(model.getUsername())) {
-                // Determine if the spectated player has finished the round based on their word progress or incorrect guesses
-                boolean spectatedPlayerFinishedRound = isUserDoneGuessing(state, povPlayer);
+                int povIncorrect = state.getPlayerIncorrectGuesses(povPlayer);
+                String povMasked = state.getPlayerMaskedWord(povPlayer);
+                boolean povWordGuessed = (povMasked != null && !povMasked.isEmpty() && !povMasked.contains("_")); // check for non-empty mask
+                boolean povMaxMisses = (povIncorrect >= 5);
                 
-                // If the spectated player has finished their round, or if the round is no longer in progress for everyone, return POV to self.
+                // Enhanced Debug Logging for spectator return logic
+                System.out.println(String.format("[Spectator Debug] Timestamp: %d, POV: %s, Incorrect: %d (MaxMisses: %b), Masked: '%s' (WordGuessed: %b), RoundInProgress: %b, lobbyId: %s, modelUser: %s",
+                                   System.currentTimeMillis(), povPlayer, povIncorrect, povMaxMisses, povMasked, povWordGuessed, roundInProgress, model.getLobbyId(), model.getUsername()));
+
+                boolean spectatedPlayerFinishedRound = povMaxMisses || povWordGuessed; // Re-evaluating for clarity based on logged vars
+                
                 if (spectatedPlayerFinishedRound || !roundInProgress) {
-                    System.out.println("[Spectator] POV return triggered for " + povPlayer + ". Reason: spectatedPlayerFinished=" + spectatedPlayerFinishedRound + ", roundInProgress=" + roundInProgress + ". Returning to " + model.getUsername());
+                    System.out.println("[Spectator] POV return triggered for " + povPlayer + ". Reason: spectatedPlayerFinished=" + spectatedPlayerFinishedRound + " (MaxMisses: " + povMaxMisses + ", WordGuessed: " + povWordGuessed + "), roundInProgress=" + roundInProgress + ". Returning to " + model.getUsername());
                     spectatorManager.setSpectatedPlayer(model.getUsername());
+                } else {
+                     System.out.println("[Spectator Debug] POV return NOT triggered for " + povPlayer + ". spectatedPlayerFinished=" + spectatedPlayerFinishedRound + " (MaxMisses: " + povMaxMisses + ", WordGuessed: " + povWordGuessed + "), roundInProgress=" + roundInProgress);
                 }
             }
 
-            String pov = povPlayer != null ? povPlayer : model.getUsername();
-            wordDisplay.setText(state.getPlayerMaskedWord(pov));
-            int incorrectGuesses = state.getPlayerIncorrectGuesses(pov);
-            updateHangmanImage(incorrectGuesses);
-            lastIncorrectGuesses = incorrectGuesses;
-            updateKeyboardForPOV(state, pov); // THIS IS THE PRIMARY KEYBOARD UPDATE
+            String currentActualPov = povPlayer != null ? povPlayer : model.getUsername(); // Determine the actual POV for UI updates
+            wordDisplay.setText(state.getPlayerMaskedWord(currentActualPov));
+            int incorrectGuessesForDisplay = state.getPlayerIncorrectGuesses(currentActualPov);
+            updateHangmanImage(incorrectGuessesForDisplay);
+            lastIncorrectGuesses = incorrectGuessesForDisplay; // This seems to be for the current POV
+            updateKeyboardForPOV(state, currentActualPov); 
 
             String sessionResult = state.getStringFromGameState("sessionResult", "");
             boolean gameOver = "WIN".equals(sessionResult) || "LOSE".equals(sessionResult);
@@ -239,7 +258,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 };
 
                 if ("WIN".equals(sessionResult)) {
-                    GameViewHelper.showWinCelebration(this.stage, state.getPlayerMaskedWord(pov), "You won the game!", showResultsAndGoHome);
+                    GameViewHelper.showWinCelebration(this.stage, state.getPlayerMaskedWord(currentActualPov), "You won the game!", showResultsAndGoHome);
                 } else if ("LOSE".equals(sessionResult)) {
                     GameViewHelper.showGameOverDialog(this.stage, "You lost the game.", false, showResultsAndGoHome);
                 }
@@ -254,7 +273,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 AfkCheckDialog.closeLastChanceDialog(); // Also ensure last chance is closed if we regress to waiting
             } else if (isStarted) {
                 roundLabel.setText("Round: " + (state.getIntFromGameState("currentRound", 0) + 1));
-                boolean roundOver = incorrectGuesses >= 5 || !state.getStringFromGameState("maskedWord", "_").contains("_");
+                boolean roundOver = incorrectGuessesForDisplay >= 5 || !state.getStringFromGameState("maskedWord", "_").contains("_");
                 if (roundOver || isPlayerFinished) { // Check current player's finished state
                     disableAllKeys();
                     if (!gameOver) {
@@ -353,11 +372,22 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 handleNoMatchState();
             }
 
+            int serverRemainingTime = state.getIntFromGameState("remainingTime", model.getGameService().getRoundTime());
             // Stop timer if round is not in progress
-            if (!roundInProgress && gameTimerHelper != null) {
-                gameTimerHelper.stopRoundTimer();
-                timerLabel.setText("0"); // Explicitly set timer to 0 when server ends round
-                new animatefx.animation.Shake(timerLabel).play(); // Add shake animation
+            if (!roundInProgress) {
+                if (gameTimerHelper != null) {
+                    gameTimerHelper.stopRoundTimer();
+                }
+                timerLabel.setText("0");
+                new animatefx.animation.Shake(timerLabel).play();
+            } else {
+                // Always sync the timer to the server's value
+                if (gameTimerHelper == null) {
+                    gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
+                    gameTimerHelper.startRoundTimer(model.getGameService().getRoundTime(), serverRemainingTime);
+                } else {
+                    gameTimerHelper.setTime(serverRemainingTime);
+                }
             }
         });
     }

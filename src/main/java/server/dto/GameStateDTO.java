@@ -14,4 +14,5 @@ public class GameStateDTO implements Serializable {
     public int remainingTime;
     public String roundWinner; // Usernam
     public int finishedTime; // Time left
+    public String opponentUsername; // Opponent's username for 1v1
 } 

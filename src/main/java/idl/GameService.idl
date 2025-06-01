@@ -19,6 +19,7 @@ module GameModule {
         long remainingTime;
         string roundWinner;
         long finishedTime;
+        string opponentUsername;
     };
 
     struct SystemStatisticsDTO {
@@ -96,5 +97,8 @@ module GameModule {
         // Single Player Match History
         string getSinglePlayerMatchHistory(in string username);
         string getSinglePlayerMatchDetails(in string gameId);
+
+        // Client signals ready after match found dialog for 1v1 and multiplayer
+        void playerReadyForFirstRound(in string username);
     };
 };

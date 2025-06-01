@@ -70,9 +70,14 @@ public class MultiplayerGameManager {
                 wordManager,
                 playerManager.getRoundTime()
             );
+            // Record all current players as having joined (redundant with constructor, but safe)
+            for (String player : lobby.getPlayers()) {
+                gameState.recordPlayerJoined(player);
+            }
             activeGames.put(lobbyId, gameState);
-            gameState.startNewRound();
-            scheduleRoundTimer(lobbyId);
+            // DO NOT start the round yet; wait for all players to signal ready
+            // gameState.startNewRound();
+            // scheduleRoundTimer(lobbyId);
         } else {
             // Not enough players, notify and remove lobby
             for (String player : lobby.getPlayers()) {
@@ -267,6 +272,21 @@ public class MultiplayerGameManager {
             future.cancel(false);
             logMessage("Cancelled stall check timer for lobby: " + lobbyId);
         }
+    }
+
+    public void playerReadyForFirstRound(String username) {
+        MultiplayerGameState game = getGameState(username);
+        if (game == null) return;
+        game.setPlayerReady(username);
+        if (game.getCurrentRound() == -1 && game.areAllPlayersReady()) {
+            game.resetPlayerReady(); // Optional: reset for next use
+            game.startNewRound();
+            scheduleRoundTimer(game.getLobbyId());
+        }
+    }
+
+    public boolean isPlayerInMultiplayer(String username) {
+        return getLobbyByPlayer(username) != null;
     }
 
     // Additional methods for game state, guesses, win condition, etc. will be added as needed.
