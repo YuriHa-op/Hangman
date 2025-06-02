@@ -64,7 +64,7 @@ _0_GameModule.GameStateDTO = omniORB.newEmptyClass()
 class GameStateDTO (omniORB.StructBase):
     _NP_RepositoryId = "IDL:GameModule/GameStateDTO:1.0"
 
-    def __init__(self, maskedWord, incorrectGuesses, currentRound, totalRounds, playerWins, roundOver, gameOver, sessionResult, remainingTime, roundWinner, finishedTime):
+    def __init__(self, maskedWord, incorrectGuesses, currentRound, totalRounds, playerWins, roundOver, gameOver, sessionResult, remainingTime, roundWinner, finishedTime, opponentUsername):
         self.maskedWord = maskedWord
         self.incorrectGuesses = incorrectGuesses
         self.currentRound = currentRound
@@ -76,9 +76,10 @@ class GameStateDTO (omniORB.StructBase):
         self.remainingTime = remainingTime
         self.roundWinner = roundWinner
         self.finishedTime = finishedTime
+        self.opponentUsername = opponentUsername
 
 _0_GameModule.GameStateDTO = GameStateDTO
-_0_GameModule._d_GameStateDTO  = (omniORB.tcInternal.tv_struct, GameStateDTO, GameStateDTO._NP_RepositoryId, "GameStateDTO", "maskedWord", (omniORB.tcInternal.tv_string,0), "incorrectGuesses", omniORB.tcInternal.tv_long, "currentRound", omniORB.tcInternal.tv_long, "totalRounds", omniORB.tcInternal.tv_long, "playerWins", omniORB.tcInternal.tv_long, "roundOver", omniORB.typeMapping["IDL:GameModule/Bool:1.0"], "gameOver", omniORB.typeMapping["IDL:GameModule/Bool:1.0"], "sessionResult", (omniORB.tcInternal.tv_string,0), "remainingTime", omniORB.tcInternal.tv_long, "roundWinner", (omniORB.tcInternal.tv_string,0), "finishedTime", omniORB.tcInternal.tv_long)
+_0_GameModule._d_GameStateDTO  = (omniORB.tcInternal.tv_struct, GameStateDTO, GameStateDTO._NP_RepositoryId, "GameStateDTO", "maskedWord", (omniORB.tcInternal.tv_string,0), "incorrectGuesses", omniORB.tcInternal.tv_long, "currentRound", omniORB.tcInternal.tv_long, "totalRounds", omniORB.tcInternal.tv_long, "playerWins", omniORB.tcInternal.tv_long, "roundOver", omniORB.typeMapping["IDL:GameModule/Bool:1.0"], "gameOver", omniORB.typeMapping["IDL:GameModule/Bool:1.0"], "sessionResult", (omniORB.tcInternal.tv_string,0), "remainingTime", omniORB.tcInternal.tv_long, "roundWinner", (omniORB.tcInternal.tv_string,0), "finishedTime", omniORB.tcInternal.tv_long, "opponentUsername", (omniORB.tcInternal.tv_string,0))
 _0_GameModule._tc_GameStateDTO = omniORB.tcInternal.createTypeCode(_0_GameModule._d_GameStateDTO)
 omniORB.registerType(GameStateDTO._NP_RepositoryId, _0_GameModule._d_GameStateDTO, _0_GameModule._tc_GameStateDTO)
 del GameStateDTO

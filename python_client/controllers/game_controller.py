@@ -174,7 +174,11 @@ class GameController:
 
     def _mp_queue_countdown_finished(self):
         # This is called by the view after its countdown dialog finishes
-        self.show_frame("MultiplayerGame")
+        # Signal server that this client is ready for the first round.
+        if self.model.get_username(): # Ensure username is available
+            self.model.player_ready_for_first_round()
+        
+        self.show_frame("MultiplayerGame") # Then, show the game frame (which starts polling)
 
     def handle_no_match_found_dialog_ok(self):
         # Called when user clicks OK on the "No Match Found" dialog in MultiplayerQueueView
@@ -518,9 +522,9 @@ class GameController:
                  pass 
 
             # --- NEW: Get opponent name for dialog ---
-            opponent = getattr(initial_state, 'opponentUsername', None)
-            if not opponent:
-                opponent = "Opponent"
+            opponent_name = "Opponent" # Default
+            if initial_state and hasattr(initial_state, 'opponentUsername') and initial_state.opponentUsername:
+                opponent_name = initial_state.opponentUsername
 
             if masked_word_init == 'WAITING_FOR_MATCH':
                 self.app_view.after(0, lambda: sp_game_view.set_status("Waiting for match allocation..."))
@@ -543,7 +547,7 @@ class GameController:
             
             # Match found, show countdown dialog via view.
             # The countdown_callback will now be _sp_match_dialog_finished_and_signal_ready
-            self.app_view.after(0, lambda: sp_game_view.show_match_found_countdown(self._sp_match_dialog_finished_and_signal_ready, opponent))
+            self.app_view.after(0, lambda: sp_game_view.show_match_found_countdown(self._sp_match_dialog_finished_and_signal_ready, opponent_name))
 
         except Exception as e:
             # print(f"Error starting single player game: {e}")
