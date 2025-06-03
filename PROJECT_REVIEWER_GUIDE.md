@@ -210,36 +210,37 @@ sequenceDiagram
     GameManager->>WordManager: getRandomWord()
     WordManager-->>GameManager: SECRETWORD
     GameManager->>GameManager: Initialize game (maskedWord: "________", attemptsLeft: N)
-    GameManager-->>GameService: Initial GameStateDTO (masked: "________", ...)
+    GameManager-->>GameService: Initial GameStateDTO
     GameService-->>ClientModel: GameStateDTO
-    ClientModel-->>ClientApp: Update UI (display masked word, attempts)
+    ClientModel-->>ClientApp: Update UI (masked word, attempts)
 
     loop While game in progress
         ClientApp->>ClientModel: User guesses letter 'S'
         ClientModel->>GameService: sendGuess(username, 'S')
         GameService->>GameManager: sendGuess(username, 'S')
-        GameManager->>GameManager: Process guess (update maskedWord: "S_______S", update attempts)
+        GameManager->>GameManager: Process guess (update maskedWord, attempts)
         GameManager-->>GameService: Updated GameStateDTO
         GameService-->>ClientModel: GameStateDTO
-        ClientModel-->>ClientApp: Update UI (display "S_______S")
+        ClientModel-->>ClientApp: Update UI
 
-        alt Game Won/Lost
-            GameManager->>GameManager: Determine game outcome (Win/Loss)
-            GameManager->>SP_DAO: saveMatchResult(username, outcome, score, etc.)
+        alt Game Won or Lost
+            GameManager->>GameManager: Determine outcome
+            GameManager->>SP_DAO: saveMatchResult(username, outcome, score)
             SP_DAO-->>GameManager: Confirmation
-            GameManager-->>GameService: Final GameStateDTO (gameOver=true, result="Win/Loss")
+            GameManager-->>GameService: Final GameStateDTO
             GameService-->>ClientModel: GameStateDTO
-            ClientModel-->>ClientApp: Display "You Win!" / "Game Over!"
+            ClientModel-->>ClientApp: Display result
             break
         end
     end
 
-    ClientApp->>ClientModel: User might explicitly end session (or handled by server)
+    ClientApp->>ClientModel: End session
     ClientModel->>GameService: endGameSession(username)
     GameService->>GameManager: endGameSession(username)
-    GameManager->>GameManager: Cleanup game session for player
-    GameManager-->>GameService: Confirmation (if any)
+    GameManager->>GameManager: Cleanup session
+    GameManager-->>GameService: Confirmation
     GameService-->>ClientModel: Confirmation
+
 ```
 
 ### 4.6. `server.handler.MultiplayerGameManager.java`
