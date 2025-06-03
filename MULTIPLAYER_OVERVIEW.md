@@ -34,7 +34,7 @@ graph TD
         MGM -- "Manages" --> MGS["MultiplayerGameState"]
         MGM -- "Uses" --> WM["WordManager"]
         MGM -- "Uses" --> PlayerMgr["PlayerManager"]
-        MGM -- "Uses" --> DAO_M["MatchResultDAO"] 
+        MGM -- "Uses" --> DAO_M["MatchResultDAO"]
         MGS -- "Uses" --> WM
         DAO_M -- "Interacts with" --> DB["(Game Database)"]
     end
@@ -42,18 +42,18 @@ graph TD
     CORBA_IF_Java --> S_CORBA
     CORBA_IF_Python --> S_CORBA
 
-    style JV fill:#f9f,stroke:#333,stroke-width:2px; label:"JavaFX ViewController"
-    style JM fill:#f9f,stroke:#333,stroke-width:2px; label:"JavaFX Model"
-    style PC fill:#ccf,stroke:#333,stroke-width:2px; label:"Python Controller"
-    style PM fill:#ccf,stroke:#333,stroke-width:2px; label:"Python Model"
+    style JV fill:#f9f,stroke:#333,stroke-width:2px,label:"JavaFX ViewController"
+    style JM fill:#f9f,stroke:#333,stroke-width:2px,label:"JavaFX Model"
+    style PC fill:#ccf,stroke:#333,stroke-width:2px,label:"Python Controller"
+    style PM fill:#ccf,stroke:#333,stroke-width:2px,label:"Python Model"
 
-    style GS fill:#9cf,stroke:#333,stroke-width:2px; label:"GameService Impl"
-    style MGM fill:#9cf,stroke:#333,stroke-width:2px; label:"MultiplayerGameManager"
-    style ML fill:#9cf,stroke:#333,stroke-width:2px; label:"MultiplayerLobby"
-    style MGS fill:#9cf,stroke:#333,stroke-width:2px; label:"MultiplayerGameState"
-    style DAO_M fill:#9cf,stroke:#333,stroke-width:2px; label:"MatchResultDAO"
-    style WM fill:#lightgrey,stroke:#333,stroke-width:1px; label:"WordManager"
-    style PlayerMgr fill:#lightgrey,stroke:#333,stroke-width:1px; label:"PlayerManager"
+    style GS fill:#9cf,stroke:#333,stroke-width:2px,label:"GameService Impl"
+    style MGM fill:#9cf,stroke:#333,stroke-width:2px,label:"MultiplayerGameManager"
+    style ML fill:#9cf,stroke:#333,stroke-width:2px,label:"MultiplayerLobby"
+    style MGS fill:#9cf,stroke:#333,stroke-width:2px,label:"MultiplayerGameState"
+    style DAO_M fill:#9cf,stroke:#333,stroke-width:2px,label:"MatchResultDAO"
+    style WM fill:#lightgrey,stroke:#333,stroke-width:1px,label:"WordManager"
+    style PlayerMgr fill:#lightgrey,stroke:#333,stroke-width:1px,label:"PlayerManager"
 ```
 
 **Key Components:**
