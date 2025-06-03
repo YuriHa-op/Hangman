@@ -481,34 +481,34 @@ The core logic resides in `GameController`, which calls methods on `MultiplayerG
 ```mermaid
 sequenceDiagram
     participant User
-    participant ClientApp (e.g., MainMenu, MultiplayerQueueView)
-    participant ClientGameModel (Java/Python)
-    participant GameService (CORBA Server)
+    participant ClientApp_MainMenu_MultiplayerQueueView
+    participant ClientGameModel_Java_Python
+    participant GameService_CORBA_Server
     participant MultiplayerGameManager
     participant MultiplayerLobby
     participant MultiplayerGameState
 
-    User->>ClientApp: Clicks "Join Multiplayer" / Navigates to Queue
-    ClientApp->>ClientGameModel: initiateMultiplayerGame() / start_multiplayer_game()
-    ClientGameModel->>GameService: startMultiplayerGame(username)
-    GameService->>MultiplayerGameManager: joinOrCreateLobby(username)
+    User->>ClientApp_MainMenu_MultiplayerQueueView: Clicks "Join Multiplayer" / Navigates to Queue
+    ClientApp_MainMenu_MultiplayerQueueView->>ClientGameModel_Java_Python: initiateMultiplayerGame() / start_multiplayer_game()
+    ClientGameModel_Java_Python->>GameService_CORBA_Server: startMultiplayerGame(username)
+    GameService_CORBA_Server->>MultiplayerGameManager: joinOrCreateLobby(username)
     MultiplayerGameManager->>MultiplayerLobby: new MultiplayerLobby() or find existing
     MultiplayerLobby->>MultiplayerGameManager: (Lobby instance created/found)
     MultiplayerGameManager->>MultiplayerGameManager: scheduleLobbyStartTimer(queueTimeSeconds)
-    MultiplayerGameManager-->>GameService: lobbyId (or equivalent success indication)
-    GameService-->>ClientGameModel: lobbyId (or equivalent)
-    ClientGameModel-->>ClientApp: (Polling starts or lobby ID stored)
-    ClientApp->>ClientApp: Show MultiplayerQueueView
+    MultiplayerGameManager-->>GameService_CORBA_Server: lobbyId (or equivalent success indication)
+    GameService_CORBA_Server-->>ClientGameModel_Java_Python: lobbyId (or equivalent)
+    ClientGameModel_Java_Python-->>ClientApp_MainMenu_MultiplayerQueueView: (Polling starts or lobby ID stored)
+    ClientApp_MainMenu_MultiplayerQueueView->>ClientApp_MainMenu_MultiplayerQueueView: Show MultiplayerQueueView
 
     loop Lobby Polling (e.g., every 1s)
-        ClientApp->>ClientGameModel: updateLobbyState() / get_multiplayer_lobby_state()
-        ClientGameModel->>GameService: getMultiplayerLobbyState(username)
-        GameService->>MultiplayerGameManager: getLobbyByPlayer(username) / getGameStateForPlayer()
-        MultiplayerGameManager-->>GameService: lobbyStateJSON (includes player list, queue time, status)
-        GameService-->>ClientGameModel: lobbyStateJSON
-        ClientGameModel->>ClientGameModel: Parse JSON (e.g., LobbyState obj / dict)
-        ClientGameModel-->>ClientApp: Parsed LobbyState
-        ClientApp->>ClientApp: Update MultiplayerQueueView (player count, time left)
+        ClientApp_MainMenu_MultiplayerQueueView->>ClientGameModel_Java_Python: updateLobbyState() / get_multiplayer_lobby_state()
+        ClientGameModel_Java_Python->>GameService_CORBA_Server: getMultiplayerLobbyState(username)
+        GameService_CORBA_Server->>MultiplayerGameManager: getLobbyByPlayer(username) / getGameStateForPlayer()
+        MultiplayerGameManager-->>GameService_CORBA_Server: lobbyStateJSON (includes player list, queue time, status)
+        GameService_CORBA_Server-->>ClientGameModel_Java_Python: lobbyStateJSON
+        ClientGameModel_Java_Python->>ClientGameModel_Java_Python: Parse JSON (e.g., LobbyState obj / dict)
+        ClientGameModel_Java_Python-->>ClientApp_MainMenu_MultiplayerQueueView: Parsed LobbyState
+        ClientApp_MainMenu_MultiplayerQueueView->>ClientApp_MainMenu_MultiplayerQueueView: Update MultiplayerQueueView (player count, time left)
     end
 
     MultiplayerGameManager->>MultiplayerGameManager: startLobbyIfReady(lobbyId) [Queue Timer Expires on Server]
@@ -518,11 +518,11 @@ sequenceDiagram
         MultiplayerGameManager->>MultiplayerGameState: startNewRound()
         MultiplayerGameManager->>MultiplayerGameManager: scheduleRoundTimer()
         Note over MultiplayerGameManager: Server state for this lobby becomes "STARTED".
-        Note over ClientApp: Next poll will show "STARTED", client transitions to MultiplayerGameView.
+        Note over ClientApp_MainMenu_MultiplayerQueueView: Next poll will show "STARTED", client transitions to MultiplayerGameView.
     else Lobby Not Ready (not enough players)
         MultiplayerGameManager->>MultiplayerGameManager: removeLobby(lobbyId)
         Note over MultiplayerGameManager: Server state for this lobby becomes "NOMATCH" or is removed.
-        Note over ClientApp: Next poll shows "NOMATCH", client displays "No Match Found" dialog.
+        Note over ClientApp_MainMenu_MultiplayerQueueView: Next poll shows "NOMATCH", client displays "No Match Found" dialog.
     end
 ```
 
