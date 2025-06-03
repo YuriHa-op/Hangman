@@ -342,11 +342,12 @@ This is a complex class responsible for rendering the multiplayer game UI and ha
 ```mermaid
 stateDiagram-v2
     [*] --> IDLE
-    IDLE: Normal game play / Waiting for round end (via onLobbyUpdate)
+    note right of IDLE: Normal game play / Waiting for round end (via onLobbyUpdate)
 
     IDLE --> NO_ROUND_WINNER_DETECTED: onLobbyUpdate: round ends, no winner, game ongoing
-    NO_ROUND_WINNER_DETECTED: ViewController checks conditions (no dialog, cooldown over, pre-check delay inactive).
-    NO_ROUND_WINNER_DETECTED --> AFK_PRE_CHECK_DELAY_ACTIVE : Start afkPreCheckDelayTimer (4s). afkDialogDelayTimerActive = true.
+    note right of NO_ROUND_WINNER_DETECTED: ViewController checks conditions (no dialog, cooldown over, pre-check delay inactive).
+
+    NO_ROUND_WINNER_DETECTED --> AFK_PRE_CHECK_DELAY_ACTIVE : Start afkPreCheckDelayTimer (4s)\nafkDialogDelayTimerActive = true.
 
     AFK_PRE_CHECK_DELAY_ACTIVE --> SHOW_PRIMARY_AFK_DIALOG: afkPreCheckDelayTimer expires. Conditions still met (same round, not in progress).
     AFK_PRE_CHECK_DELAY_ACTIVE --> IDLE: Round starts OR game ends OR conditions change during delay. Timer stopped.
