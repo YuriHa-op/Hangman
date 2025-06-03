@@ -223,14 +223,15 @@ sequenceDiagram
         GameService-->>ClientModel: GameStateDTO
         ClientModel-->>ClientApp: Update UI
 
-        alt Game Won or Lost
+        alt Game continues
+            Note right of GameManager: Continue guessing
+        else Game over
             GameManager->>GameManager: Determine outcome
             GameManager->>SP_DAO: saveMatchResult(username, outcome, score)
             SP_DAO-->>GameManager: Confirmation
             GameManager-->>GameService: Final GameStateDTO
             GameService-->>ClientModel: GameStateDTO
             ClientModel-->>ClientApp: Display result
-            break
         end
     end
 
