@@ -339,16 +339,16 @@ sequenceDiagram
         GameService-->>Client1Model: "Updated JSON (masked word, scores, etc.)"
         Client1Model-->>Client1App: "Refresh UI"
 
-        alt "Round Over (word guessed / time up / all failed)"
+               alt "Round Over (word guessed / time up / all failed)"
             MP_Manager->>MP_Manager: "Determine round winner(s), update scores"
             Note over Client1App, Client2App: "Clients see round over via getMultiplayerLobbyState"
             
             alt "More Rounds to Play"
-                Client1App->>Client1Model: "Player1 clicks \\"Start Next Round\\" (or auto-triggered)"
+                Client1App->>Client1Model: "Player1 clicks \"Start Next Round\" (or auto-triggered)"
                 Client1Model->>GameService: "startMultiplayerNextRound(username1)"
                 GameService->>MP_Manager: "startNextRound(username1) (if conditions met)"
                 MP_Manager->>WordManager1: "getRandomWord()"
-                WordManager1-->>MP_Manager: "\\"NEXTSECRET\\""
+                WordManager1-->>MP_Manager: "NEXTSECRET"
                 MP_Manager->>MP_Manager: "Initialize next round"
             else "Game Over (all rounds played / target score reached)"
                 MP_Manager->>MP_Manager: "Determine overall game winner(s)"
@@ -358,7 +358,7 @@ sequenceDiagram
                 break
             end
         end
-    end
+
 ```
 
 ### 4.7. `server.db.*DAO.java` (e.g., `MatchResultDAO`, `SinglePlayerMatchResultDAO`)
