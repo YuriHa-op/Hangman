@@ -345,32 +345,33 @@ stateDiagram-v2
     note right of IDLE: Normal game play / Waiting for round end (via onLobbyUpdate)
 
     IDLE --> NO_ROUND_WINNER_DETECTED: onLobbyUpdate: round ends, no winner, game ongoing
-    note right of NO_ROUND_WINNER_DETECTED: ViewController checks conditions (no dialog, cooldown over, pre-check delay inactive).
+    note right of NO_ROUND_WINNER_DETECTED: ViewController checks conditions (no dialog, cooldown over, pre-check delay inactive)
 
-    NO_ROUND_WINNER_DETECTED --> AFK_PRE_CHECK_DELAY_ACTIVE : Start afkPreCheckDelayTimer (4s)\nafkDialogDelayTimerActive = true.
+    NO_ROUND_WINNER_DETECTED --> AFK_PRE_CHECK_DELAY_ACTIVE : Start afkPreCheckDelayTimer (4s)\nafkDialogDelayTimerActive = true
 
-    AFK_PRE_CHECK_DELAY_ACTIVE --> SHOW_PRIMARY_AFK_DIALOG: afkPreCheckDelayTimer expires. Conditions still met (same round, not in progress).
-    AFK_PRE_CHECK_DELAY_ACTIVE --> IDLE: Round starts OR game ends OR conditions change during delay. Timer stopped.
+    AFK_PRE_CHECK_DELAY_ACTIVE --> SHOW_PRIMARY_AFK_DIALOG: afkPreCheckDelayTimer expires. Conditions still met (same round, not in progress)
+    AFK_PRE_CHECK_DELAY_ACTIVE --> IDLE: Round starts OR game ends OR conditions change during delay. Timer stopped
 
-    SHOW_PRIMARY_AFK_DIALOG: AfkCheckDialog.show() called. Dialog with countdown.
-    SHOW_PRIMARY_AFK_DIALOG --> AFK_YES_CLICKED: User clicks "Yes".
-    SHOW_PRIMARY_AFK_DIALOG --> AFK_PRIMARY_TIMEOUT: Dialog times out.
-    SHOW_PRIMARY_AFK_DIALOG --> IDLE: Round starts OR game ends while dialog is showing. Dialog closed.
+    SHOW_PRIMARY_AFK_DIALOG --> AFK_YES_CLICKED: User clicks "Yes"
+    SHOW_PRIMARY_AFK_DIALOG --> AFK_PRIMARY_TIMEOUT: Dialog times out
+    SHOW_PRIMARY_AFK_DIALOG --> IDLE: Round starts OR game ends while dialog is showing. Dialog closed
+    note right of SHOW_PRIMARY_AFK_DIALOG: AfkCheckDialog.show() called. Dialog with countdown
 
-    AFK_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called.
-    AFK_YES_CLICKED --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called. afkDialogCooldownActive = true.
+    AFK_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called
+    AFK_YES_CLICKED --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called\nafkDialogCooldownActive = true
 
-    AFK_PRIMARY_TIMEOUT --> SHOW_LAST_CHANCE_DIALOG: AfkCheckDialog.showLastChanceDialog() called.
-    AFK_PRIMARY_TIMEOUT --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called.
+    AFK_PRIMARY_TIMEOUT --> SHOW_LAST_CHANCE_DIALOG: AfkCheckDialog.showLastChanceDialog() called
+    AFK_PRIMARY_TIMEOUT --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called
 
-    SHOW_LAST_CHANCE_DIALOG: "Last Chance" dialog shown.
-    SHOW_LAST_CHANCE_DIALOG --> LAST_CHANCE_YES_CLICKED: User clicks "Yes" on last chance.
-    SHOW_LAST_CHANCE_DIALOG --> IDLE: Round starts OR game ends while dialog is showing. Dialog closed.
+    SHOW_LAST_CHANCE_DIALOG --> LAST_CHANCE_YES_CLICKED: User clicks "Yes" on last chance
+    SHOW_LAST_CHANCE_DIALOG --> IDLE: Round starts OR game ends while dialog is showing. Dialog closed
+    note right of SHOW_LAST_CHANCE_DIALOG: "Last Chance" dialog shown
 
-    LAST_CHANCE_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called.
+    LAST_CHANCE_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called
 
-    START_NEXT_ROUND_MODEL_CALL --> IDLE: Server processes. Next onLobbyUpdate reflects new state.
-    AFK_COOLDOWN_STARTED --> IDLE: afkDialogCooldownTimer expires. afkDialogCooldownActive = false.
+    START_NEXT_ROUND_MODEL_CALL --> IDLE: Server processes. Next onLobbyUpdate reflects new state
+    AFK_COOLDOWN_STARTED --> IDLE: afkDialogCooldownTimer expires\nafkDialogCooldownActive = false
+
 ```
 
 ## 5. Client-Side Implementation (Python/Tkinter)
