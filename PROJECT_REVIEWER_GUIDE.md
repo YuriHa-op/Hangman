@@ -358,7 +358,7 @@ sequenceDiagram
                 break
             end
         end
-
+end
 ```
 
 ### 4.7. `server.db.*DAO.java` (e.g., `MatchResultDAO`, `SinglePlayerMatchResultDAO`)
