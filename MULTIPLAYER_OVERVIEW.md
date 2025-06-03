@@ -14,29 +14,29 @@ The system is a client-server architecture with a central Java-based server hand
 graph TD
     subgraph JavaFX Client
         direction LR
-        JV[MultiplayerGameViewController] -- Manages/Updates --> JVUI[JavaFX UI Components]
-        JV -- Interacts with --> JM[MultiplayerGameModel]
-        JM -- Calls --> CORBA_IF_Java[GameService CORBA Interface]
+        JV[MultiplayerGameViewController] -- "Manages/Updates" --> JVUI[JavaFX UI Components]
+        JV -- "Interacts with" --> JM[MultiplayerGameModel]
+        JM -- "Calls" --> CORBA_IF_Java[GameService CORBA Interface]
     end
 
     subgraph Python Client
         direction LR
-        PC[GameController] -- Manages/Updates --> PV[Tkinter UI (MP Views)]
-        PC -- Interacts with --> PM[GameModel (Python)]
-        PM -- Calls --> CORBA_IF_Python[GameService CORBA Interface]
+        PC[GameController] -- "Manages/Updates" --> PV[Tkinter UI (MP Views)]
+        PC -- "Interacts with" --> PM[GameModel (Python)]
+        PM -- "Calls" --> CORBA_IF_Python[GameService CORBA Interface]
     end
 
     subgraph Server
         direction LR
         S_CORBA[CORBA ORB] --> GS[GameService Implementation]
-        GS -- Delegates to --> MGM[MultiplayerGameManager]
-        MGM -- Manages --> ML[MultiplayerLobby]
-        MGM -- Manages --> MGS[MultiplayerGameState]
-        MGM -- Uses --> WM[WordManager]
-        MGM -- Uses --> PlayerMgr[PlayerManager]
-        MGM -- Uses --> DAO[MatchResultDAO]
-        MGS -- Uses --> WM
-        DAO -- Interacts with --> DB[(Game Database)]
+        GS -- "Delegates to" --> MGM[MultiplayerGameManager]
+        MGM -- "Manages" --> ML[MultiplayerLobby]
+        MGM -- "Manages" --> MGS[MultiplayerGameState]
+        MGM -- "Uses" --> WM[WordManager]
+        MGM -- "Uses" --> PlayerMgr[PlayerManager]
+        MGM -- "Uses" --> DAO[MatchResultDAO]
+        MGS -- "Uses" --> WM
+        DAO -- "Interacts with" --> DB[(Game Database)]
     end
 
     CORBA_IF_Java --> S_CORBA
@@ -241,7 +241,7 @@ This class holds and manages the state for a single active multiplayer game.
     *   Sets `roundInProgress = false`.
     *   Sorts players who guessed the word by `playerFinishTimes` to find the round winner.
     *   Updates `roundWinners`, `playerRoundWins`, and `playerScores`.
-    *   If a player's total round wins reach a threshold (e.g., 3), sets `gameWinner`.
+    *   If a player's total round wins reach a threshold (e.g., 3), sets `gameWinner`. This threshold defines the overall victory condition for the multiplayer match (e.g., "first to 3 rounds won") and is a key configurable or fixed parameter of the game mode.
     *   Updates `playerWinStreaks`. If no one won the round, all streaks are reset to 0, and `roundPotentiallyStalled` is set to `true`.
     *   Adds a `RoundResult` to `roundResults`.
 *   `getMaskedWord(username)`, `getScore(username)`, `getScores()`, etc.: Provide access to game state information.

@@ -21,7 +21,7 @@ graph TD
         direction LR
         ServerUI[JavaFX UI for Server Admin] --> ServerMain[ServerMain.java]
         ServerMain --> CORBAServiceSetup[CORBA Service Setup]
-        CORBAServiceSetup --> GameServiceImpl[GameServiceImpl (GameService CORBA Object)]
+        CORBAServiceSetup --> GameServiceImpl["GameServiceImpl (GameService CORBA Object)"]
 
         GameServiceImpl --> GameManager[GameManager (Single Player)]
         GameServiceImpl --> PlayerManager[PlayerManager (Users, Auth, Stats)]
@@ -193,6 +193,55 @@ The Java server is the core of the application, handling all game logic, player 
     *   **Timing:** Manages round timers.
     *   **Game Conclusion:** Records game results via `SinglePlayerMatchResultDAO`.
 
+#### 4.5.1. Single-Player Game Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant ClientApp as Client (e.g., Python UI)
+    participant ClientModel as Client Model (Handles CORBA)
+    participant GameService as Server (GameServiceImpl via CORBA)
+    participant GameManager as GameManager (Server-Side Logic)
+    participant WordManager as WordManager (Server-Side)
+    participant SP_DAO as SinglePlayerMatchResultDAO (Server-Side DB)
+
+    ClientApp->>ClientModel: User clicks "Start Single-Player Game"
+    ClientModel->>GameService: startGame(username)
+    GameService->>GameManager: startGame(username)
+    GameManager->>WordManager: getRandomWord()
+    WordManager-->>GameManager: "SECRETWORD"
+    GameManager->>GameManager: Initialize game (maskedWord: "________", attemptsLeft: N)
+    GameManager-->>GameService: Initial GameStateDTO (masked: "________", ...)
+    GameService-->>ClientModel: GameStateDTO
+    ClientModel-->>ClientApp: Update UI (display masked word, attempts)
+
+    loop While game in progress
+        ClientApp->>ClientModel: User guesses letter 'S'
+        ClientModel->>GameService: sendGuess(username, 'S')
+        GameService->>GameManager: sendGuess(username, 'S')
+        GameManager->>GameManager: Process guess (update maskedWord: "S_______S", update attempts)
+        GameManager-->>GameService: Updated GameStateDTO
+        GameService-->>ClientModel: GameStateDTO
+        ClientModel-->>ClientApp: Update UI (display "S_______S")
+
+        alt Game Won/Lost
+            GameManager->>GameManager: Determine game outcome (Win/Loss)
+            GameManager->>SP_DAO: saveMatchResult(username, outcome, score, etc.)
+            SP_DAO-->>GameManager: Confirmation
+            GameManager-->>GameService: Final GameStateDTO (gameOver=true, result="Win/Loss")
+            GameService-->>ClientModel: GameStateDTO
+            ClientModel-->>ClientApp: Display "You Win!" / "Game Over!"
+            break
+        end
+    end
+    
+    ClientApp->>ClientModel: User might explicitly end session (or handled by server)
+    ClientModel->>GameService: endGameSession(username)
+    GameService->>GameManager: endGameSession(username)
+    GameManager->>GameManager: Cleanup game session for player
+    GameManager-->>GameService: Confirmation (if any)
+    GameService-->>ClientModel: Confirmation
+```
+
 ### 4.6. `server.handler.MultiplayerGameManager.java`
 
 *   **Role:** Manages multiplayer game lobbies, synchronization, and game progression.
@@ -210,6 +259,105 @@ The Java server is the core of the application, handling all game logic, player 
     *   **Cleanup:** Manages cleanup of finished games/lobbies.
     *   **Stall Detection:** Includes logic for detecting and potentially handling stalled games (e.g., if a player doesn't make a move).
     *   **Match History:** Interacts with `MatchResultDAO` to save multiplayer game results.
+
+#### 4.6.1. Multiplayer Game Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant Client1App as Player1 Client
+    participant Client1Model as Player1 Model (CORBA)
+    participant Client2App as Player2 Client
+    participant Client2Model as Player2 Model (CORBA)
+    participant GameService as Server (GameServiceImpl via CORBA)
+    participant MP_Manager as MultiplayerGameManager (Server Logic)
+    participant WordManager as WordManager (Server)
+    participant MP_DAO as MatchResultDAO (Server DB)
+
+    Note over Client1App, Client2App: Players decide to play multiplayer
+
+    Client1App->>Client1Model: User clicks "Join/Create Multiplayer Game"
+    Client1Model->>GameService: startMultiplayerGame(username1)
+    GameService->>MP_Manager: joinOrCreateLobby(username1)
+    MP_Manager-->>GameService: lobbyId_XYZ
+    GameService-->>Client1Model: lobbyId_XYZ
+    Client1Model-->>Client1App: Display "Waiting in lobby XYZ..."
+
+    Client2App->>Client2Model: User clicks "Join/Create Multiplayer Game"
+    Client2Model->>GameService: startMultiplayerGame(username2)
+    GameService->>MP_Manager: joinOrCreateLobby(username2) (joins existing or creates new)
+    MP_Manager-->>GameService: lobbyId_XYZ
+    GameService-->>Client2Model: lobbyId_XYZ
+    Client2Model-->>Client2App: Display "Waiting in lobby XYZ..."
+
+    loop Lobby Waiting / Game State Polling
+        Client1App->>Client1Model: Request lobby update
+        Client1Model->>GameService: getMultiplayerLobbyState(username1)
+        GameService->>MP_Manager: getLobbyByPlayer(username1) / getGameState(username1)
+        MP_Manager-->>GameService: JSON Lobby/Game State (players, status, scores, etc.)
+        GameService-->>Client1Model: JSON State
+        Client1Model-->>Client1App: Update UI (show players, game status)
+
+        Client2App->>Client2Model: Request lobby update
+        Client2Model->>GameService: getMultiplayerLobbyState(username2)
+        GameService-->>Client2Model: JSON Lobby/Game State
+        Client2Model-->>Client2App: Update UI
+    end
+
+    Note over MP_Manager: Lobby full or timer expires, game starts
+    MP_Manager->>WordManager: getRandomWord()
+    WordManager-->>MP_Manager: "MULTIPLAYERSECRET"
+    MP_Manager->>MP_Manager: Initialize shared game state for lobby XYZ
+
+    Note over Client1App, Client2App: Clients see game started via getMultiplayerLobbyState
+    Client1App->>Client1Model: Player 1 ready for first round
+    Client1Model->>GameService: playerReadyForFirstRound(username1)
+    GameService->>MP_Manager: playerReadyForFirstRound(username1)
+    
+    Client2App->>Client2Model: Player 2 ready for first round
+    Client2Model->>GameService: playerReadyForFirstRound(username2)
+    GameService->>MP_Manager: playerReadyForFirstRound(username2)
+
+    Note over MP_Manager: All (or enough) players ready, first round starts
+    MP_Manager->>MP_Manager: Start round, set timer, current word for all.
+
+    loop Round in Progress
+        Note over Client1App, Client2App: UI shows masked word for "MULTIPLAYERSECRET"
+        Client1App->>Client1Model: Player1 guesses 'M'
+        Client1Model->>GameService: sendMultiplayerGuess(username1, 'M')
+        GameService->>MP_Manager: makeGuess(username1, 'M')
+        MP_Manager->>MP_Manager: Update game state (Player1 score, common masked word)
+
+        Client2App->>Client2Model: Player2 guesses 'T'
+        Client2Model->>GameService: sendMultiplayerGuess(username2, 'T')
+        GameService->>MP_Manager: makeGuess(username2, 'T')
+        MP_Manager->>MP_Manager: Update game state (Player2 score, common masked word)
+        
+        Note over Client1App, Client2App: Clients poll getMultiplayerLobbyState for updates
+        Client1Model->>GameService: getMultiplayerLobbyState(username1)
+        GameService-->>Client1Model: Updated JSON (masked word, scores, etc.)
+        Client1Model-->>Client1App: Refresh UI
+
+        alt Round Over (word guessed / time up / all failed)
+            MP_Manager->>MP_Manager: Determine round winner(s), update scores
+            Note over Client1App, Client2App: Clients see round over via getMultiplayerLobbyState
+            
+            alt More Rounds to Play
+                Client1App->>Client1Model: Player1 clicks "Start Next Round" (or auto-triggered)
+                Client1Model->>GameService: startMultiplayerNextRound(username1)
+                GameService->>MP_Manager: startNextRound(username1) (if conditions met)
+                MP_Manager->>WordManager: getRandomWord()
+                WordManager-->>MP_Manager: "NEXTSECRET"
+                MP_Manager->>MP_Manager: Initialize next round
+            else Game Over (all rounds played / target score reached)
+                MP_Manager->>MP_Manager: Determine overall game winner(s)
+                MP_Manager->>MP_DAO: saveMultiplayerMatchResult(lobbyId_XYZ, player_scores, winner, etc.)
+                MP_DAO-->>MP_Manager: Confirmation
+                Note over Client1App, Client2App: Clients see game over and final results via getMultiplayerLobbyState
+                break
+            end
+        end
+    end
+```
 
 ### 4.7. `server.db.*DAO.java` (e.g., `MatchResultDAO`, `SinglePlayerMatchResultDAO`)
 
@@ -328,21 +476,28 @@ While not fully explored, the directory structure suggests a Java-based client.
     7.  Response (success/failure, player data) travels back via CORBA.
     8.  Client Model updates, Controller updates UI.
 
-*   **Starting a Game:**
+*   **Starting a Game (Single Player - see section 4.5.1 for detailed flow):**
     1.  Client UI triggers "Start Game".
     2.  Controller -> Model -> CORBA call to `GameServiceImpl.startGame(username)`.
-    3.  `GameServiceImpl` delegates to `GameManager` (or `MultiplayerGameManager`).
+    3.  `GameServiceImpl` delegates to `GameManager`.
     4.  `GameManager` gets word from `WordManager`, sets up initial state.
     5.  Initial `GameStateDTO` (CORBA version) sent back to client.
     6.  Client UI displays masked word, etc.
 
-*   **Making a Guess:**
+*   **Making a Guess (Single Player - see section 4.5.1 for detailed flow):**
     1.  Client UI captures letter guess.
     2.  Controller -> Model -> CORBA call to `GameServiceImpl.sendGuess(username, letter)`.
-    3.  `GameServiceImpl` delegates to appropriate GameManager.
+    3.  `GameServiceImpl` delegates to `GameManager`.
     4.  Game logic updates state (masked word, attempts).
     5.  Updated `GameStateDTO` sent back to client.
     6.  Client UI refreshes.
+
+*   **Multiplayer Interactions (see section 4.6.1 for detailed flow):**
+    *   Joining/Creating Lobbies: `startMultiplayerGame(username)`
+    *   Getting Lobby/Game State: `getMultiplayerLobbyState(username)`
+    *   Signaling Readiness: `playerReadyForFirstRound(username)`
+    *   Making Guesses: `sendMultiplayerGuess(username, letter)`
+    *   Starting Next Round: `startMultiplayerNextRound(username)`
 
 *   **Admin Adding a Word:**
     1.  Admin Client UI captures new word.
