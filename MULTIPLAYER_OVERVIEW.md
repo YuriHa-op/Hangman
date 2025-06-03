@@ -344,7 +344,7 @@ stateDiagram-v2
     [*] --> IDLE
     note right of IDLE: Normal game play / Waiting for round end (via onLobbyUpdate)
 
-    IDLE --> NO_ROUND_WINNER_DETECTED: onLobbyUpdate: round ends, no winner, game ongoing
+    IDLE --> NO_ROUND_WINNER_DETECTED: onLobbyUpdate - round ends, no winner, game ongoing
     note right of NO_ROUND_WINNER_DETECTED: ViewController checks conditions. No dialog, cooldown over, pre-check delay inactive
 
     NO_ROUND_WINNER_DETECTED --> AFK_PRE_CHECK_DELAY_ACTIVE: Start afkPreCheckDelayTimer (4s)
