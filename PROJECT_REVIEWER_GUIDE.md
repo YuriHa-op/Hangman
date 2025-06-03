@@ -17,38 +17,38 @@ The Hangman game is built upon a **client-server model**.
 
 ```mermaid
 graph TD
-    subgraph Server [Java Server Core - Running on Server Machine]
+    subgraph "Server [Java Server Core - Running on Server Machine]"
         direction LR
-        ServerUI[JavaFX UI for Server Admin] --> ServerMain[ServerMain.java]
-        ServerMain --> CORBAServiceSetup[CORBA Service Setup]
+        ServerUI["JavaFX UI for Server Admin"] --> ServerMain["ServerMain.java"]
+        ServerMain --> CORBAServiceSetup["CORBA Service Setup"]
         CORBAServiceSetup --> GameServiceImpl["GameServiceImpl (GameService CORBA Object)"]
 
-        GameServiceImpl --> GameManager[GameManager (Single Player)]
-        GameServiceImpl --> PlayerManager[PlayerManager (Users, Auth, Stats)]
-        GameServiceImpl --> WordManager[WordManager (Word dictionary)]
-        GameServiceImpl --> MultiplayerGameManager[MultiplayerGameManager]
+        GameServiceImpl --> GameManagerId["GameManager (Single Player)"]
+        GameServiceImpl --> PlayerManagerId["PlayerManager (Users, Auth, Stats)"]
+        GameServiceImpl --> WordManagerId["WordManager (Word dictionary)"]
+        GameServiceImpl --> MultiplayerGameManagerId["MultiplayerGameManager"]
 
-        PlayerManager --> MySQL_DB[(MySQL Database)]
-        GameManager --> MySQL_DB
-        MultiplayerGameManager --> MySQL_DB
-        WordManager --> TextFile[words.txt]
+        PlayerManagerId --> MySQL_DB["(MySQL Database)"]
+        GameManagerId --> MySQL_DB
+        MultiplayerGameManagerId --> MySQL_DB
+        WordManagerId --> TextFileId["words.txt"]
     end
 
-    subgraph Clients [Client Applications - Running on User Machines]
+    subgraph "Clients [Client Applications - Running on User Machines]"
         direction TB
-        PythonClient[Python Client (MVC, Tkinter)]
-        JavaClient[Potential Java Client]
+        PythonClientId["Python Client (MVC, Tkinter)"]
+        JavaClientId["Potential Java Client"]
 
-        PythonClient --> Python_CORBA_Lib[Python CORBA Library]
-        JavaClient --> Java_CORBA_Lib[Java CORBA Library/Runtime]
+        PythonClientId --> Python_CORBA_LibId["Python CORBA Library"]
+        JavaClientId --> Java_CORBA_LibId["Java CORBA Library/Runtime"]
 
-        Python_CORBA_Lib --> Network
-        Java_CORBA_Lib --> Network
+        Python_CORBA_LibId --> NetworkId["Network (e.g., IIOP over TCP/IP)"]
+        Java_CORBA_LibId --> NetworkId
     end
 
-    Network[Network (e.g., IIOP over TCP/IP)] --> GameServiceImpl
+    NetworkId --> GameServiceImpl
 
-    AdminAccess[Admin Functionality] -- via CORBA calls --> GameServiceImpl
+    AdminAccessId["Admin Functionality"] -- "via CORBA calls" --> GameServiceImpl
 ```
 
 ## 3. CORBA Communication Deep Dive
@@ -81,13 +81,13 @@ In the Hangman game, CORBA serves as the bridge between the Java-based server an
 
 ```mermaid
 sequenceDiagram
-    participant ClientApp as Client Application (Python/Java)
-    participant ClientStub as Client CORBA Stub (e.g., GameServiceHelper in Java)
-    participant ClientORB as Client ORB
-    participant NamingService as CORBA Naming Service
-    participant ServerORB as Server ORB
-    participant ServerSkeleton as Server CORBA Skeleton (GameServicePOA)
-    participant GameServiceImpl as GameServiceImpl (Actual Game Logic)
+    participant ClientApp as "Client Application (Python/Java)"
+    participant ClientStub as "Client CORBA Stub (e.g., GameServiceHelper in Java)"
+    participant ClientORB as "Client ORB"
+    participant NamingService as "CORBA Naming Service"
+    participant ServerORB as "Server ORB"
+    participant ServerSkeleton as "Server CORBA Skeleton (GameServicePOA)"
+    participant GameServiceImpl as "GameServiceImpl (Actual Game Logic)"
 
     Note over ClientApp, ClientORB: Initial Setup
     ClientApp->>ClientORB: Initialize ORB
@@ -197,12 +197,12 @@ The Java server is the core of the application, handling all game logic, player 
 
 ```mermaid
 sequenceDiagram
-    participant ClientApp as Client (e.g., Python UI)
-    participant ClientModel as Client Model (Handles CORBA)
-    participant GameService as Server (GameServiceImpl via CORBA)
-    participant GameManager as GameManager (Server-Side Logic)
-    participant WordManager as WordManager (Server-Side)
-    participant SP_DAO as SinglePlayerMatchResultDAO (Server-Side DB)
+    participant ClientApp as "Client (e.g., Python UI)"
+    participant ClientModel as "Client Model (Handles CORBA)"
+    participant GameService as "Server (GameServiceImpl via CORBA)"
+    participant GameManager as "GameManager (Server-Side Logic)"
+    participant WordManager as "WordManager (Server-Side)"
+    participant SP_DAO as "SinglePlayerMatchResultDAO (Server-Side DB)"
 
     ClientApp->>ClientModel: User clicks "Start Single-Player Game"
     ClientModel->>GameService: startGame(username)
@@ -264,14 +264,14 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client1App as Player1 Client
-    participant Client1Model as Player1 Model (CORBA)
-    participant Client2App as Player2 Client
-    participant Client2Model as Player2 Model (CORBA)
-    participant GameService as Server (GameServiceImpl via CORBA)
-    participant MP_Manager as MultiplayerGameManager (Server Logic)
-    participant WordManager as WordManager (Server)
-    participant MP_DAO as MatchResultDAO (Server DB)
+    participant Client1App as "Player1 Client"
+    participant Client1Model as "Player1 Model (CORBA)"
+    participant Client2App as "Player2 Client"
+    participant Client2Model as "Player2 Model (CORBA)"
+    participant GameService as "Server (GameServiceImpl via CORBA)"
+    participant MP_Manager as "MultiplayerGameManager (Server Logic)"
+    participant WordManager as "WordManager (Server)"
+    participant MP_DAO as "MatchResultDAO (Server DB)"
 
     Note over Client1App, Client2App: Players decide to play multiplayer
 
@@ -501,7 +501,7 @@ While not fully explored, the directory structure suggests a Java-based client.
 
 *   **Admin Adding a Word:**
     1.  Admin Client UI captures new word.
-    2.  Admin Client makes CORBA call to `GameServiceImpl.addWord(word)`.
+    2.  Admin Client makes CORBA call to `GameServiceImpl.addWord(word)`
     3.  `GameServiceImpl` delegates to `WordManager.addWord()`.
     4.  `WordManager` updates its internal list and/or `words.txt`.
     5.  Confirmation sent back via CORBA.

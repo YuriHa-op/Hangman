@@ -12,31 +12,31 @@ The system is a client-server architecture with a central Java-based server hand
 
 ```mermaid
 graph TD
-    subgraph JavaFX Client
+    subgraph "JavaFX Client"
         direction LR
-        JV[MultiplayerGameViewController] -- "Manages/Updates" --> JVUI[JavaFX UI Components]
-        JV -- "Interacts with" --> JM[MultiplayerGameModel]
-        JM -- "Calls" --> CORBA_IF_Java[GameService CORBA Interface]
+        JV["MultiplayerGameViewController"] -- "Manages/Updates" --> JVUI["JavaFX UI Components"]
+        JV -- "Interacts with" --> JM["MultiplayerGameModel"]
+        JM -- "Calls" --> CORBA_IF_Java["GameService CORBA Interface"]
     end
 
-    subgraph Python Client
+    subgraph "Python Client"
         direction LR
-        PC[GameController] -- "Manages/Updates" --> PV[Tkinter UI (MP Views)]
-        PC -- "Interacts with" --> PM[GameModel (Python)]
-        PM -- "Calls" --> CORBA_IF_Python[GameService CORBA Interface]
+        PC["GameController"] -- "Manages/Updates" --> PV["Tkinter UI (MP Views)"]
+        PC -- "Interacts with" --> PM["GameModel (Python)"]
+        PM -- "Calls" --> CORBA_IF_Python["GameService CORBA Interface"]
     end
 
-    subgraph Server
+    subgraph "Server"
         direction LR
-        S_CORBA[CORBA ORB] --> GS[GameService Implementation]
-        GS -- "Delegates to" --> MGM[MultiplayerGameManager]
-        MGM -- "Manages" --> ML[MultiplayerLobby]
-        MGM -- "Manages" --> MGS[MultiplayerGameState]
-        MGM -- "Uses" --> WM[WordManager]
-        MGM -- "Uses" --> PlayerMgr[PlayerManager]
-        MGM -- "Uses" --> DAO[MatchResultDAO]
+        S_CORBA["CORBA ORB"] --> GS["GameService Implementation"]
+        GS -- "Delegates to" --> MGM["MultiplayerGameManager"]
+        MGM -- "Manages" --> ML["MultiplayerLobby"]
+        MGM -- "Manages" --> MGS["MultiplayerGameState"]
+        MGM -- "Uses" --> WM["WordManager"]
+        MGM -- "Uses" --> PlayerMgr["PlayerManager"]
+        MGM -- "Uses" --> DAO_M["MatchResultDAO"] 
         MGS -- "Uses" --> WM
-        DAO -- "Interacts with" --> DB[(Game Database)]
+        DAO_M -- "Interacts with" --> DB["(Game Database)"]
     end
 
     CORBA_IF_Java --> S_CORBA
@@ -51,7 +51,7 @@ graph TD
     style MGM fill:#9cf,stroke:#333,stroke-width:2px; label:"MultiplayerGameManager"
     style ML fill:#9cf,stroke:#333,stroke-width:2px; label:"MultiplayerLobby"
     style MGS fill:#9cf,stroke:#333,stroke-width:2px; label:"MultiplayerGameState"
-    style DAO fill:#9cf,stroke:#333,stroke-width:2px; label:"MatchResultDAO"
+    style DAO_M fill:#9cf,stroke:#333,stroke-width:2px; label:"MatchResultDAO"
     style WM fill:#lightgrey,stroke:#333,stroke-width:1px; label:"WordManager"
     style PlayerMgr fill:#lightgrey,stroke:#333,stroke-width:1px; label:"PlayerManager"
 ```
