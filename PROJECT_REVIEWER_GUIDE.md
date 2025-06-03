@@ -204,42 +204,44 @@ sequenceDiagram
     participant WordManager
     participant SP_DAO
 
-    ClientApp->>ClientModel: "User clicks \\"Start Single-Player Game\\""
-    ClientModel->>GameService: "startGame(username)"
-    GameService->>GameManager: "startGame(username)"
-    GameManager->>WordManager: "getRandomWord()"
-    WordManager-->>GameManager: "\\"SECRETWORD\\""
-    GameManager->>GameManager: "Initialize game (maskedWord: \\"________\\", attemptsLeft: N)"
-    GameManager-->>GameService: "Initial GameStateDTO (masked: \\"________\\", ...)"
-    GameService-->>ClientModel: "GameStateDTO"
-    ClientModel-->>ClientApp: "Update UI (display masked word, attempts)"
+    ClientApp->>ClientModel: User clicks "Start Single-Player Game"
+    ClientModel->>GameService: startGame(username)
+    GameService->>GameManager: startGame(username)
+    GameManager->>WordManager: getRandomWord()
+    WordManager-->>GameManager: SECRETWORD
+    GameManager->>GameManager: Initialize game (maskedWord: "________", attemptsLeft: N)
+    GameManager-->>GameService: Initial GameStateDTO
+    GameService-->>ClientModel: GameStateDTO
+    ClientModel-->>ClientApp: Update UI (masked word, attempts)
 
-    loop "While game in progress"
-        ClientApp->>ClientModel: "User guesses letter 'S'"
-        ClientModel->>GameService: "sendGuess(username, 'S')"
-        GameService->>GameManager: "sendGuess(username, 'S')"
-        GameManager->>GameManager: "Process guess (update maskedWord: \\"S_______S\\", update attempts)"
-        GameManager-->>GameService: "Updated GameStateDTO"
-        GameService-->>ClientModel: "GameStateDTO"
-        ClientModel-->>ClientApp: "Update UI (display \\"S_______S\\")"
+    loop While game in progress
+        ClientApp->>ClientModel: User guesses letter 'S'
+        ClientModel->>GameService: sendGuess(username, 'S')
+        GameService->>GameManager: sendGuess(username, 'S')
+        GameManager->>GameManager: Process guess (update maskedWord, attempts)
+        GameManager-->>GameService: Updated GameStateDTO
+        GameService-->>ClientModel: GameStateDTO
+        ClientModel-->>ClientApp: Update UI
 
-        alt "Game Won/Lost"
-            GameManager->>GameManager: "Determine game outcome (Win/Loss)"
-            GameManager->>SP_DAO: "saveMatchResult(username, outcome, score, etc.)"
-            SP_DAO-->>GameManager: "Confirmation"
-            GameManager-->>GameService: "Final GameStateDTO (gameOver=true, result=\\"Win/Loss\\")"
-            GameService-->>ClientModel: "GameStateDTO"
-            ClientModel-->>ClientApp: "Display \\"You Win!\\" / \\"Game Over!\\""
-            break
+        alt Game continues
+            Note right of GameManager: Continue guessing
+        else Game over
+            GameManager->>GameManager: Determine outcome
+            GameManager->>SP_DAO: saveMatchResult(username, outcome, score)
+            SP_DAO-->>GameManager: Confirmation
+            GameManager-->>GameService: Final GameStateDTO
+            GameService-->>ClientModel: GameStateDTO
+            ClientModel-->>ClientApp: Display result
         end
     end
-    
-    ClientApp->>ClientModel: "User might explicitly end session (or handled by server)"
-    ClientModel->>GameService: "endGameSession(username)"
-    GameService->>GameManager: "endGameSession(username)"
-    GameManager->>GameManager: "Cleanup game session for player"
-    GameManager-->>GameService: "Confirmation (if any)"
-    GameService-->>ClientModel: "Confirmation"
+
+    ClientApp->>ClientModel: End session
+    ClientModel->>GameService: endGameSession(username)
+    GameService->>GameManager: endGameSession(username)
+    GameManager->>GameManager: Cleanup session
+    GameManager-->>GameService: Confirmation
+    GameService-->>ClientModel: Confirmation
+
 ```
 
 ### 4.6. `server.handler.MultiplayerGameManager.java`
@@ -273,90 +275,87 @@ sequenceDiagram
     participant WordManager1
     participant MP_DAO
 
-    Note over Client1App, Client2App: "Players decide to play multiplayer"
+    Note over Client1App, Client2App: Players decide to play multiplayer
 
-    Client1App->>Client1Model: "User clicks \\"Join/Create Multiplayer Game\\""
-    Client1Model->>GameService: "startMultiplayerGame(username1)"
-    GameService->>MP_Manager: "joinOrCreateLobby(username1)"
-    MP_Manager-->>GameService: "lobbyId_XYZ"
-    GameService-->>Client1Model: "lobbyId_XYZ"
-    Client1Model-->>Client1App: "Display \\"Waiting in lobby XYZ...\\""
+    Client1App->>Client1Model: Join/Create Multiplayer Game
+    Client1Model->>GameService: startMultiplayerGame(username1)
+    GameService->>MP_Manager: joinOrCreateLobby(username1)
+    MP_Manager-->>GameService: lobbyId_XYZ
+    GameService-->>Client1Model: lobbyId_XYZ
+    Client1Model-->>Client1App: Show "Waiting in lobby XYZ..."
 
-    Client2App->>Client2Model: "User clicks \\"Join/Create Multiplayer Game\\""
-    Client2Model->>GameService: "startMultiplayerGame(username2)"
-    GameService->>MP_Manager: "joinOrCreateLobby(username2) (joins existing or creates new)"
-    MP_Manager-->>GameService: "lobbyId_XYZ"
-    GameService-->>Client2Model: "lobbyId_XYZ"
-    Client2Model-->>Client2App: "Display \\"Waiting in lobby XYZ...\\""
+    Client2App->>Client2Model: Join/Create Multiplayer Game
+    Client2Model->>GameService: startMultiplayerGame(username2)
+    GameService->>MP_Manager: joinOrCreateLobby(username2)
+    MP_Manager-->>GameService: lobbyId_XYZ
+    GameService-->>Client2Model: lobbyId_XYZ
+    Client2Model-->>Client2App: Show "Waiting in lobby XYZ..."
 
-    loop "Lobby Waiting / Game State Polling"
-        Client1App->>Client1Model: "Request lobby update"
-        Client1Model->>GameService: "getMultiplayerLobbyState(username1)"
-        GameService->>MP_Manager: "getLobbyByPlayer(username1) / getGameState(username1)"
-        MP_Manager-->>GameService: "JSON Lobby/Game State (players, status, scores, etc.)"
-        GameService-->>Client1Model: "JSON State"
-        Client1Model-->>Client1App: "Update UI (show players, game status)"
+    loop Lobby Polling
+        Client1App->>Client1Model: Request update
+        Client1Model->>GameService: getMultiplayerLobbyState(username1)
+        GameService->>MP_Manager: getLobbyByPlayer/getGameState
+        MP_Manager-->>GameService: JSON Lobby/Game State
+        GameService-->>Client1Model: JSON
+        Client1Model-->>Client1App: Update UI
 
-        Client2App->>Client2Model: "Request lobby update"
-        Client2Model->>GameService: "getMultiplayerLobbyState(username2)"
-        GameService-->>Client2Model: "JSON Lobby/Game State"
-        Client2Model-->>Client2App: "Update UI"
+        Client2App->>Client2Model: Request update
+        Client2Model->>GameService: getMultiplayerLobbyState(username2)
+        GameService-->>Client2Model: JSON Lobby/Game State
+        Client2Model-->>Client2App: Update UI
     end
 
-    Note over MP_Manager: "Lobby full or timer expires, game starts"
-    MP_Manager->>WordManager1: "getRandomWord()"
-    WordManager1-->>MP_Manager: "\\"MULTIPLAYERSECRET\\""
-    MP_Manager->>MP_Manager: "Initialize shared game state for lobby XYZ"
+    Note over MP_Manager: Lobby full or timer expires, game starts
+    MP_Manager->>WordManager1: getRandomWord()
+    WordManager1-->>MP_Manager: MULTIPLAYERSECRET
+    MP_Manager->>MP_Manager: Init game state
 
-    Note over Client1App, Client2App: "Clients see game started via getMultiplayerLobbyState"
-    Client1App->>Client1Model: "Player 1 ready for first round"
-    Client1Model->>GameService: "playerReadyForFirstRound(username1)"
-    GameService->>MP_Manager: "playerReadyForFirstRound(username1)"
-    
-    Client2App->>Client2Model: "Player 2 ready for first round"
-    Client2Model->>GameService: "playerReadyForFirstRound(username2)"
-    GameService->>MP_Manager: "playerReadyForFirstRound(username2)"
+    Client1App->>Client1Model: Player 1 ready
+    Client1Model->>GameService: playerReadyForFirstRound(username1)
+    GameService->>MP_Manager: playerReadyForFirstRound(username1)
 
-    Note over MP_Manager: "All (or enough) players ready, first round starts"
-    MP_Manager->>MP_Manager: "Start round, set timer, current word for all."
+    Client2App->>Client2Model: Player 2 ready
+    Client2Model->>GameService: playerReadyForFirstRound(username2)
+    GameService->>MP_Manager: playerReadyForFirstRound(username2)
 
-    loop "Round in Progress"
-        Note over Client1App, Client2App: "UI shows masked word for \\"MULTIPLAYERSECRET\\""
-        Client1App->>Client1Model: "Player1 guesses 'M'"
-        Client1Model->>GameService: "sendMultiplayerGuess(username1, 'M')"
-        GameService->>MP_Manager: "makeGuess(username1, 'M')"
-        MP_Manager->>MP_Manager: "Update game state (Player1 score, common masked word)"
+    MP_Manager->>MP_Manager: Start round, set timer
 
-        Client2App->>Client2Model: "Player2 guesses 'T'"
-        Client2Model->>GameService: "sendMultiplayerGuess(username2, 'T')"
-        GameService->>MP_Manager: "makeGuess(username2, 'T')"
-        MP_Manager->>MP_Manager: "Update game state (Player2 score, common masked word)"
-        
-        Note over Client1App, Client2App: "Clients poll getMultiplayerLobbyState for updates"
-        Client1Model->>GameService: "getMultiplayerLobbyState(username1)"
-        GameService-->>Client1Model: "Updated JSON (masked word, scores, etc.)"
-        Client1Model-->>Client1App: "Refresh UI"
+    loop Round in Progress
+        Note over Client1App, Client2App: UI shows masked word
+        Client1App->>Client1Model: Guess 'M'
+        Client1Model->>GameService: sendMultiplayerGuess(username1, 'M')
+        GameService->>MP_Manager: makeGuess(username1, 'M')
+        MP_Manager->>MP_Manager: Update state
 
-        alt "Round Over (word guessed / time up / all failed)"
-            MP_Manager->>MP_Manager: "Determine round winner(s), update scores"
-            Note over Client1App, Client2App: "Clients see round over via getMultiplayerLobbyState"
-            
-            alt "More Rounds to Play"
-                Client1App->>Client1Model: "Player1 clicks \\"Start Next Round\\" (or auto-triggered)"
-                Client1Model->>GameService: "startMultiplayerNextRound(username1)"
-                GameService->>MP_Manager: "startNextRound(username1) (if conditions met)"
-                MP_Manager->>WordManager1: "getRandomWord()"
-                WordManager1-->>MP_Manager: "\\"NEXTSECRET\\""
-                MP_Manager->>MP_Manager: "Initialize next round"
-            else "Game Over (all rounds played / target score reached)"
-                MP_Manager->>MP_Manager: "Determine overall game winner(s)"
-                MP_Manager->>MP_DAO: "saveMultiplayerMatchResult(lobbyId_XYZ, player_scores, winner, etc.)"
-                MP_DAO-->>MP_Manager: "Confirmation"
-                Note over Client1App, Client2App: "Clients see game over and final results via getMultiplayerLobbyState"
-                break
+        Client2App->>Client2Model: Guess 'T'
+        Client2Model->>GameService: sendMultiplayerGuess(username2, 'T')
+        GameService->>MP_Manager: makeGuess(username2, 'T')
+        MP_Manager->>MP_Manager: Update state
+
+        Client1Model->>GameService: getMultiplayerLobbyState(username1)
+        GameService-->>Client1Model: Updated JSON
+        Client1Model-->>Client1App: Refresh UI
+
+        alt Round Over
+            MP_Manager->>MP_Manager: Update scores
+            Note over Client1App, Client2App: Round ended
+
+            alt More Rounds
+                Client1App->>Client1Model: Start next round
+                Client1Model->>GameService: startMultiplayerNextRound(username1)
+                GameService->>MP_Manager: startNextRound(username1)
+                MP_Manager->>WordManager1: getRandomWord()
+                WordManager1-->>MP_Manager: NEXTSECRET
+                MP_Manager->>MP_Manager: Init next round
+            else Game Over
+                MP_Manager->>MP_Manager: Determine winners
+                MP_Manager->>MP_DAO: saveMultiplayerMatchResult
+                MP_DAO-->>MP_Manager: Confirmation
+                Note over Client1App, Client2App: Game over
             end
         end
     end
+
 ```
 
 ### 4.7. `server.db.*DAO.java` (e.g., `MatchResultDAO`, `SinglePlayerMatchResultDAO`)

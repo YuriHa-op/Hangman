@@ -42,18 +42,19 @@ graph TD
     CORBA_IF_Java --> S_CORBA
     CORBA_IF_Python --> S_CORBA
 
-    style JV fill:#f9f,stroke:#333,stroke-width:2px,label:"JavaFX ViewController"
-    style JM fill:#f9f,stroke:#333,stroke-width:2px,label:"JavaFX Model"
-    style PC fill:#ccf,stroke:#333,stroke-width:2px,label:"Python Controller"
-    style PM fill:#ccf,stroke:#333,stroke-width:2px,label:"Python Model"
+    style JV fill:#f9f,stroke:#333,stroke-width:2px
+style JM fill:#f9f,stroke:#333,stroke-width:2px
+style PC fill:#ccf,stroke:#333,stroke-width:2px
+style PM fill:#ccf,stroke:#333,stroke-width:2px
 
-    style GS fill:#9cf,stroke:#333,stroke-width:2px,label:"GameService Impl"
-    style MGM fill:#9cf,stroke:#333,stroke-width:2px,label:"MultiplayerGameManager"
-    style ML fill:#9cf,stroke:#333,stroke-width:2px,label:"MultiplayerLobby"
-    style MGS fill:#9cf,stroke:#333,stroke-width:2px,label:"MultiplayerGameState"
-    style DAO_M fill:#9cf,stroke:#333,stroke-width:2px,label:"MatchResultDAO"
-    style WM fill:#lightgrey,stroke:#333,stroke-width:1px,label:"WordManager"
-    style PlayerMgr fill:#lightgrey,stroke:#333,stroke-width:1px,label:"PlayerManager"
+style GS fill:#9cf,stroke:#333,stroke-width:2px
+style MGM fill:#9cf,stroke:#333,stroke-width:2px
+style ML fill:#9cf,stroke:#333,stroke-width:2px
+style MGS fill:#9cf,stroke:#333,stroke-width:2px
+style DAO_M fill:#9cf,stroke:#333,stroke-width:2px
+style WM fill:#d3d3d3,stroke:#333,stroke-width:1px
+style PlayerMgr fill:#d3d3d3,stroke:#333,stroke-width:1px
+
 ```
 
 **Key Components:**
@@ -341,34 +342,37 @@ This is a complex class responsible for rendering the multiplayer game UI and ha
 ```mermaid
 stateDiagram-v2
     [*] --> IDLE
-    IDLE: Normal game play / Waiting for round end (via onLobbyUpdate)
+    note right of IDLE: Normal game play / Waiting for round end (via onLobbyUpdate)
 
-    IDLE --> NO_ROUND_WINNER_DETECTED: onLobbyUpdate: round ends, no winner, game ongoing
-    NO_ROUND_WINNER_DETECTED: ViewController checks conditions (no dialog, cooldown over, pre-check delay inactive).
-    NO_ROUND_WINNER_DETECTED --> AFK_PRE_CHECK_DELAY_ACTIVE : Start afkPreCheckDelayTimer (4s). afkDialogDelayTimerActive = true.
+    IDLE --> NO_ROUND_WINNER_DETECTED: onLobbyUpdate - round ends, no winner, game ongoing
+    note right of NO_ROUND_WINNER_DETECTED: ViewController checks conditions. No dialog, cooldown over, pre-check delay inactive
 
-    AFK_PRE_CHECK_DELAY_ACTIVE --> SHOW_PRIMARY_AFK_DIALOG: afkPreCheckDelayTimer expires. Conditions still met (same round, not in progress).
-    AFK_PRE_CHECK_DELAY_ACTIVE --> IDLE: Round starts OR game ends OR conditions change during delay. Timer stopped.
+    NO_ROUND_WINNER_DETECTED --> AFK_PRE_CHECK_DELAY_ACTIVE: Start afkPreCheckDelayTimer (4s)
+    note right of AFK_PRE_CHECK_DELAY_ACTIVE: afkDialogDelayTimerActive = true
 
-    SHOW_PRIMARY_AFK_DIALOG: AfkCheckDialog.show() called. Dialog with countdown.
-    SHOW_PRIMARY_AFK_DIALOG --> AFK_YES_CLICKED: User clicks "Yes".
-    SHOW_PRIMARY_AFK_DIALOG --> AFK_PRIMARY_TIMEOUT: Dialog times out.
-    SHOW_PRIMARY_AFK_DIALOG --> IDLE: Round starts OR game ends while dialog is showing. Dialog closed.
+    AFK_PRE_CHECK_DELAY_ACTIVE --> SHOW_PRIMARY_AFK_DIALOG: Delay expires, conditions still valid
+    AFK_PRE_CHECK_DELAY_ACTIVE --> IDLE: Round starts / game ends / conditions change
 
-    AFK_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called.
-    AFK_YES_CLICKED --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called. afkDialogCooldownActive = true.
+    SHOW_PRIMARY_AFK_DIALOG --> AFK_YES_CLICKED: User clicks "Yes"
+    SHOW_PRIMARY_AFK_DIALOG --> AFK_PRIMARY_TIMEOUT: Dialog times out
+    SHOW_PRIMARY_AFK_DIALOG --> IDLE: Round starts / game ends while dialog showing
+    note right of SHOW_PRIMARY_AFK_DIALOG: AfkCheckDialog.show() called
 
-    AFK_PRIMARY_TIMEOUT --> SHOW_LAST_CHANCE_DIALOG: AfkCheckDialog.showLastChanceDialog() called.
-    AFK_PRIMARY_TIMEOUT --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called.
+    AFK_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called
+    AFK_YES_CLICKED --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called
+    note right of AFK_COOLDOWN_STARTED: afkDialogCooldownActive = true
 
-    SHOW_LAST_CHANCE_DIALOG: "Last Chance" dialog shown.
-    SHOW_LAST_CHANCE_DIALOG --> LAST_CHANCE_YES_CLICKED: User clicks "Yes" on last chance.
-    SHOW_LAST_CHANCE_DIALOG --> IDLE: Round starts OR game ends while dialog is showing. Dialog closed.
+    AFK_PRIMARY_TIMEOUT --> SHOW_LAST_CHANCE_DIALOG: AfkCheckDialog.showLastChanceDialog()
+    AFK_PRIMARY_TIMEOUT --> AFK_COOLDOWN_STARTED: startAfkDialogCooldown() called
 
-    LAST_CHANCE_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called.
+    SHOW_LAST_CHANCE_DIALOG --> LAST_CHANCE_YES_CLICKED: User clicks "Yes"
+    SHOW_LAST_CHANCE_DIALOG --> IDLE: Round starts / game ends while dialog showing
+    note right of SHOW_LAST_CHANCE_DIALOG: "Last Chance" dialog shown
 
-    START_NEXT_ROUND_MODEL_CALL --> IDLE: Server processes. Next onLobbyUpdate reflects new state.
-    AFK_COOLDOWN_STARTED --> IDLE: afkDialogCooldownTimer expires. afkDialogCooldownActive = false.
+    LAST_CHANCE_YES_CLICKED --> START_NEXT_ROUND_MODEL_CALL: model.startNextRound() called
+
+    START_NEXT_ROUND_MODEL_CALL --> IDLE: Next onLobbyUpdate reflects new state
+    AFK_COOLDOWN_STARTED --> IDLE: afkDialogCooldownTimer expires
 ```
 
 ## 5. Client-Side Implementation (Python/Tkinter)
@@ -477,34 +481,34 @@ The core logic resides in `GameController`, which calls methods on `MultiplayerG
 ```mermaid
 sequenceDiagram
     participant User
-    participant ClientApp (e.g., MainMenu, MultiplayerQueueView)
-    participant ClientGameModel (Java/Python)
-    participant GameService (CORBA Server)
+    participant ClientApp_MainMenu_MultiplayerQueueView
+    participant ClientGameModel_Java_Python
+    participant GameService_CORBA_Server
     participant MultiplayerGameManager
     participant MultiplayerLobby
     participant MultiplayerGameState
 
-    User->>ClientApp: Clicks "Join Multiplayer" / Navigates to Queue
-    ClientApp->>ClientGameModel: initiateMultiplayerGame() / start_multiplayer_game()
-    ClientGameModel->>GameService: startMultiplayerGame(username)
-    GameService->>MultiplayerGameManager: joinOrCreateLobby(username)
+    User->>ClientApp_MainMenu_MultiplayerQueueView: Clicks "Join Multiplayer" / Navigates to Queue
+    ClientApp_MainMenu_MultiplayerQueueView->>ClientGameModel_Java_Python: initiateMultiplayerGame() / start_multiplayer_game()
+    ClientGameModel_Java_Python->>GameService_CORBA_Server: startMultiplayerGame(username)
+    GameService_CORBA_Server->>MultiplayerGameManager: joinOrCreateLobby(username)
     MultiplayerGameManager->>MultiplayerLobby: new MultiplayerLobby() or find existing
     MultiplayerLobby->>MultiplayerGameManager: (Lobby instance created/found)
     MultiplayerGameManager->>MultiplayerGameManager: scheduleLobbyStartTimer(queueTimeSeconds)
-    MultiplayerGameManager-->>GameService: lobbyId (or equivalent success indication)
-    GameService-->>ClientGameModel: lobbyId (or equivalent)
-    ClientGameModel-->>ClientApp: (Polling starts or lobby ID stored)
-    ClientApp->>ClientApp: Show MultiplayerQueueView
+    MultiplayerGameManager-->>GameService_CORBA_Server: lobbyId (or equivalent success indication)
+    GameService_CORBA_Server-->>ClientGameModel_Java_Python: lobbyId (or equivalent)
+    ClientGameModel_Java_Python-->>ClientApp_MainMenu_MultiplayerQueueView: (Polling starts or lobby ID stored)
+    ClientApp_MainMenu_MultiplayerQueueView->>ClientApp_MainMenu_MultiplayerQueueView: Show MultiplayerQueueView
 
     loop Lobby Polling (e.g., every 1s)
-        ClientApp->>ClientGameModel: updateLobbyState() / get_multiplayer_lobby_state()
-        ClientGameModel->>GameService: getMultiplayerLobbyState(username)
-        GameService->>MultiplayerGameManager: getLobbyByPlayer(username) / getGameStateForPlayer()
-        MultiplayerGameManager-->>GameService: lobbyStateJSON (includes player list, queue time, status)
-        GameService-->>ClientGameModel: lobbyStateJSON
-        ClientGameModel->>ClientGameModel: Parse JSON (e.g., LobbyState obj / dict)
-        ClientGameModel-->>ClientApp: Parsed LobbyState
-        ClientApp->>ClientApp: Update MultiplayerQueueView (player count, time left)
+        ClientApp_MainMenu_MultiplayerQueueView->>ClientGameModel_Java_Python: updateLobbyState() / get_multiplayer_lobby_state()
+        ClientGameModel_Java_Python->>GameService_CORBA_Server: getMultiplayerLobbyState(username)
+        GameService_CORBA_Server->>MultiplayerGameManager: getLobbyByPlayer(username) / getGameStateForPlayer()
+        MultiplayerGameManager-->>GameService_CORBA_Server: lobbyStateJSON (includes player list, queue time, status)
+        GameService_CORBA_Server-->>ClientGameModel_Java_Python: lobbyStateJSON
+        ClientGameModel_Java_Python->>ClientGameModel_Java_Python: Parse JSON (e.g., LobbyState obj / dict)
+        ClientGameModel_Java_Python-->>ClientApp_MainMenu_MultiplayerQueueView: Parsed LobbyState
+        ClientApp_MainMenu_MultiplayerQueueView->>ClientApp_MainMenu_MultiplayerQueueView: Update MultiplayerQueueView (player count, time left)
     end
 
     MultiplayerGameManager->>MultiplayerGameManager: startLobbyIfReady(lobbyId) [Queue Timer Expires on Server]
@@ -514,11 +518,11 @@ sequenceDiagram
         MultiplayerGameManager->>MultiplayerGameState: startNewRound()
         MultiplayerGameManager->>MultiplayerGameManager: scheduleRoundTimer()
         Note over MultiplayerGameManager: Server state for this lobby becomes "STARTED".
-        Note over ClientApp: Next poll will show "STARTED", client transitions to MultiplayerGameView.
+        Note over ClientApp_MainMenu_MultiplayerQueueView: Next poll will show "STARTED", client transitions to MultiplayerGameView.
     else Lobby Not Ready (not enough players)
         MultiplayerGameManager->>MultiplayerGameManager: removeLobby(lobbyId)
         Note over MultiplayerGameManager: Server state for this lobby becomes "NOMATCH" or is removed.
-        Note over ClientApp: Next poll shows "NOMATCH", client displays "No Match Found" dialog.
+        Note over ClientApp_MainMenu_MultiplayerQueueView: Next poll shows "NOMATCH", client displays "No Match Found" dialog.
     end
 ```
 
