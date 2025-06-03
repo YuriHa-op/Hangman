@@ -204,42 +204,42 @@ sequenceDiagram
     participant WordManager
     participant SP_DAO
 
-    ClientApp->>ClientModel: "User clicks \\"Start Single-Player Game\\""
-    ClientModel->>GameService: "startGame(username)"
-    GameService->>GameManager: "startGame(username)"
-    GameManager->>WordManager: "getRandomWord()"
-    WordManager-->>GameManager: "\\"SECRETWORD\\""
-    GameManager->>GameManager: "Initialize game (maskedWord: \\"________\\", attemptsLeft: N)"
-    GameManager-->>GameService: "Initial GameStateDTO (masked: \\"________\\", ...)"
-    GameService-->>ClientModel: "GameStateDTO"
-    ClientModel-->>ClientApp: "Update UI (display masked word, attempts)"
+    ClientApp->>ClientModel: User clicks "Start Single-Player Game"
+    ClientModel->>GameService: startGame(username)
+    GameService->>GameManager: startGame(username)
+    GameManager->>WordManager: getRandomWord()
+    WordManager-->>GameManager: SECRETWORD
+    GameManager->>GameManager: Initialize game (maskedWord: "________", attemptsLeft: N)
+    GameManager-->>GameService: Initial GameStateDTO (masked: "________", ...)
+    GameService-->>ClientModel: GameStateDTO
+    ClientModel-->>ClientApp: Update UI (display masked word, attempts)
 
-    loop "While game in progress"
-        ClientApp->>ClientModel: "User guesses letter 'S'"
-        ClientModel->>GameService: "sendGuess(username, 'S')"
-        GameService->>GameManager: "sendGuess(username, 'S')"
-        GameManager->>GameManager: "Process guess (update maskedWord: \\"S_______S\\", update attempts)"
-        GameManager-->>GameService: "Updated GameStateDTO"
-        GameService-->>ClientModel: "GameStateDTO"
-        ClientModel-->>ClientApp: "Update UI (display \\"S_______S\\")"
+    loop While game in progress
+        ClientApp->>ClientModel: User guesses letter 'S'
+        ClientModel->>GameService: sendGuess(username, 'S')
+        GameService->>GameManager: sendGuess(username, 'S')
+        GameManager->>GameManager: Process guess (update maskedWord: "S_______S", update attempts)
+        GameManager-->>GameService: Updated GameStateDTO
+        GameService-->>ClientModel: GameStateDTO
+        ClientModel-->>ClientApp: Update UI (display "S_______S")
 
-        alt "Game Won/Lost"
-            GameManager->>GameManager: "Determine game outcome (Win/Loss)"
-            GameManager->>SP_DAO: "saveMatchResult(username, outcome, score, etc.)"
-            SP_DAO-->>GameManager: "Confirmation"
-            GameManager-->>GameService: "Final GameStateDTO (gameOver=true, result=\\"Win/Loss\\")"
-            GameService-->>ClientModel: "GameStateDTO"
-            ClientModel-->>ClientApp: "Display \\"You Win!\\" / \\"Game Over!\\""
+        alt Game Won/Lost
+            GameManager->>GameManager: Determine game outcome (Win/Loss)
+            GameManager->>SP_DAO: saveMatchResult(username, outcome, score, etc.)
+            SP_DAO-->>GameManager: Confirmation
+            GameManager-->>GameService: Final GameStateDTO (gameOver=true, result="Win/Loss")
+            GameService-->>ClientModel: GameStateDTO
+            ClientModel-->>ClientApp: Display "You Win!" / "Game Over!"
             break
         end
     end
-    
-    ClientApp->>ClientModel: "User might explicitly end session (or handled by server)"
-    ClientModel->>GameService: "endGameSession(username)"
-    GameService->>GameManager: "endGameSession(username)"
-    GameManager->>GameManager: "Cleanup game session for player"
-    GameManager-->>GameService: "Confirmation (if any)"
-    GameService-->>ClientModel: "Confirmation"
+
+    ClientApp->>ClientModel: User might explicitly end session (or handled by server)
+    ClientModel->>GameService: endGameSession(username)
+    GameService->>GameManager: endGameSession(username)
+    GameManager->>GameManager: Cleanup game session for player
+    GameManager-->>GameService: Confirmation (if any)
+    GameService-->>ClientModel: Confirmation
 ```
 
 ### 4.6. `server.handler.MultiplayerGameManager.java`
