@@ -36,7 +36,7 @@ Run the player main class:
   ```bash
   java -cp target/classes client.player.Main
   ```
-
+ 
 
 ### 4. Start the Admin Application
 
