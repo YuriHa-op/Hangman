@@ -106,22 +106,24 @@ class GameModel:
 
     def send_guess(self, guess):
         if not self.username:
-            # print("[DEBUG] send_guess: No username, returning False")
             return False
         try:
-            # print(f"[DEBUG SP CLIENT] Attempting to send guess: username='{self.username}', letter='{guess}' (type: {type(guess)})")
             result_corba_bool = self.game_service.sendGuess(self.username, guess)
-            # print(f"[DEBUG SP CLIENT] Raw response from server sendGuess: {result_corba_bool} (type: {type(result_corba_bool)})")
             
-            bool_true_val = GameModule.BOOL_TRUE
-            # print(f"[DEBUG SP CLIENT] GameModule.BOOL_TRUE is: {bool_true_val} (type: {type(bool_true_val)})")
+            # Revert to direct comparison with GameModule.BOOL_TRUE
+            # It's the most explicit way if BOOL_TRUE is the defined constant for true.
+            is_correct_guess = (result_corba_bool == GameModule.BOOL_TRUE)
             
-            is_correct_guess = (result_corba_bool == bool_true_val)
-            # print(f"[DEBUG SP CLIENT] Comparison (result_corba_bool == GameModule.BOOL_TRUE): {is_correct_guess}")
+            # --- DEBUG PRINT --- 
+            # This will help understand the values if the issue persists.
+            # You can remove this after debugging.
+            print(f"[DEBUG GameModel.send_guess] Letter: {guess}, Server Raw: {result_corba_bool} (Type: {type(result_corba_bool)}), " \
+                  f"GameModule.BOOL_TRUE: {GameModule.BOOL_TRUE} (Type: {type(GameModule.BOOL_TRUE)}), " \
+                  f"Comparison Result (is_correct_guess): {is_correct_guess}")
+            # --- END DEBUG PRINT ---
             
             return is_correct_guess
         except Exception as e:
-            # print(f"[ERROR SP CLIENT] Exception in send_guess: {e}")
             import traceback
             traceback.print_exc() 
             return False 

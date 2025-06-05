@@ -14,7 +14,7 @@ class MatchFoundDialog(QDialog):
 
         layout.addWidget(QLabel(f"Match found! Your opponent: {opponent_name}", font=QFont("Arial", 15)), alignment=Qt.AlignCenter)
         layout.addWidget(QLabel("The game will start in...", font=QFont("Arial", 14)), alignment=Qt.AlignCenter)
-        
+
         self.countdown_label = QLabel(str(self.remaining_seconds), font=QFont("Arial", 32, QFont.Bold))
         self.countdown_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.countdown_label)
@@ -57,7 +57,7 @@ class GameOverDialog(QDialog):
         layout = QVBoxLayout(self)
 
         layout.addWidget(QLabel(result_text, font=QFont("Arial", 18)), alignment=Qt.AlignCenter)
-        
+
         ok_button = QPushButton("OK")
         ok_button.clicked.connect(self.accept_and_callback)
         layout.addWidget(ok_button, alignment=Qt.AlignCenter)
@@ -131,7 +131,7 @@ class QtSinglePlayer1v1GameView(QWidget):
         for row_idx, row_str in enumerate(keyboard_rows):
             num_keys = len(row_str)
             # Simple centering for rows with fewer keys, assuming max 10 keys wide
-            start_col = (10 - num_keys) // 2 if num_keys < 10 else 0 
+            start_col = (10 - num_keys) // 2 if num_keys < 10 else 0
             for col_idx_in_row, letter in enumerate(row_str):
                 actual_col_idx = start_col + col_idx_in_row
                 btn = QPushButton(letter)
@@ -141,7 +141,7 @@ class QtSinglePlayer1v1GameView(QWidget):
                 kb_layout.addWidget(btn, row_idx, actual_col_idx) # Add to grid layout by row, actual_col_idx
                 self.keyboard_buttons[letter] = btn
         main_layout.addWidget(kb_container_widget, alignment=Qt.AlignCenter) # Center the keyboard grid
-        
+
         main_layout.addStretch(1)
 
         self.back_button = QPushButton("Back to Main Menu")
@@ -158,8 +158,8 @@ class QtSinglePlayer1v1GameView(QWidget):
         # For now, if controller needs to handle it, it should disconnect default and connect its own,
         # or we connect directly to controller.handle_back_to_menu_from_sp_game
         if self.controller:
-             # Disconnect previous if any, then connect to controller's method
-            try: self.back_button.clicked.disconnect() 
+            # Disconnect previous if any, then connect to controller's method
+            try: self.back_button.clicked.disconnect()
             except TypeError: pass # No connection to disconnect
             self.back_button.clicked.connect(self.controller.handle_back_to_menu_from_sp_game)
 
@@ -179,7 +179,7 @@ class QtSinglePlayer1v1GameView(QWidget):
         self.timer_label.setStyleSheet(f"color: {timer_color}; font-size: 16pt; font-family: Arial;")
         self.incorrect_label.setText(incorrect_text)
         self.set_status(status_text) # Uses its own method for color
-        self.score_label.setText(f"Score: {player_wins}/{total_rounds}") 
+        self.score_label.setText(f"Score: {player_wins}/{total_rounds}")
         self.round_label.setText(f"Round: {current_round_num + 1}/{total_rounds}")
         self.update_keyboard(attempted_letters, current_word_upper if current_word_upper else "", round_over or game_over)
 
@@ -189,38 +189,41 @@ class QtSinglePlayer1v1GameView(QWidget):
         incorrect_style = "QPushButton { background-color: #f44336; color: white; border: 1px solid #D32F2F; }"
         disabled_default_style = "QPushButton { background-color: #F5F5F5; color: #A0A0A0; border: 1px solid #E0E0E0; }"
 
+        # Ensure current_word_upper is actually uppercase for reliable comparison
+        final_word_to_check = current_word_upper.upper() if current_word_upper else ""
+
         for letter, btn in self.keyboard_buttons.items():
             letter_lower = letter.lower()
-            btn.setEnabled(not disable_all)
-            current_stylesheet = default_style
 
-            if letter_lower in attempted_letters:
-                btn.setEnabled(False) 
-                # If the actual word is known (e.g. round over, or server reveals it)
-                if current_word_upper and current_word_upper != "_ _ _": 
-                    current_stylesheet = correct_style if letter_lower in current_word_upper.lower() else incorrect_style
-                # Else, if word not fully known, rely on feedback_guess for immediate color.
-                # Here, we are just ensuring it's disabled. feedback_guess handles initial coloring.
-            
-            if disable_all: 
+            if disable_all:  # Round or Game is Over - Keyboard is informational
                 btn.setEnabled(False)
-                if current_word_upper and current_word_upper != "_ _ _":
-                    if letter_lower in current_word_upper.lower():
-                        current_stylesheet = correct_style
-                    elif letter_lower in attempted_letters: # Guessed and not in word
-                        current_stylesheet = incorrect_style
-                    else: # Not attempted
-                        current_stylesheet = disabled_default_style
-                else: # Word not known or placeholder
-                    current_stylesheet = disabled_default_style # Fallback to generic disabled
-            
-            btn.setStyleSheet(current_stylesheet)
+                if final_word_to_check and final_word_to_check != "_ _ _":
+                    if letter_lower in final_word_to_check.lower():
+                        btn.setStyleSheet(correct_style)
+                    elif letter_lower in attempted_letters: # Attempted and not in the final word
+                        btn.setStyleSheet(incorrect_style)
+                    else: # Not attempted, and not in the final word (though less likely to be styled)
+                        btn.setStyleSheet(disabled_default_style)
+                else: # Final word not available, use generic disabled style
+                    # If already colored by feedback_guess, preserve it, otherwise generic disable
+                    if btn.styleSheet() != correct_style and btn.styleSheet() != incorrect_style:
+                        btn.setStyleSheet(disabled_default_style)
+                    # else, its existing color (from feedback_guess) remains.
+            else:  # Game is in progress
+                if letter_lower in attempted_letters:
+                    # feedback_guess has already set the style and disabled the button.
+                    # Do not override the style here mid-round.
+                    btn.setEnabled(False) # Ensure it stays disabled
+                else:
+                    # This letter has not been attempted in the current round, so reset to default and enable.
+                    btn.setEnabled(True)
+                    btn.setStyleSheet(default_style)
 
     def feedback_guess(self, letter, is_correct):
         btn = self.keyboard_buttons.get(letter.upper())
         if btn:
             style = "QPushButton { background-color: #4CAF50; color: white; border: 1px solid #388E3C; }" if is_correct \
-                    else "QPushButton { background-color: #f44336; color: white; border: 1px solid #D32F2F; }"
+                else "QPushButton { background-color: #f44336; color: white; border: 1px solid #D32F2F; }"
             btn.setStyleSheet(style)
             btn.setEnabled(False)
 
@@ -238,7 +241,7 @@ class QtSinglePlayer1v1GameView(QWidget):
         self.game_over_dialog = GameOverDialog(result_text, on_ok_callback, self.main_window)
         self.game_over_dialog.exec_()
 
-    def _close_dialogs(self): 
+    def _close_dialogs(self):
         if self.match_found_dialog:
             if self.match_found_dialog.isVisible(): self.match_found_dialog.accept() # or .close() or .reject()
             self.match_found_dialog.deleteLater() # Important for PyQt resource management
