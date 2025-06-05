@@ -6,7 +6,7 @@ module GameModule {
     enum Bool { BOOL_FALSE, BOOL_TRUE };
 
     typedef sequence<string> StringSeq;
-
+    //player 1v1
     struct GameStateDTO {
         string maskedWord;
         long incorrectGuesses;
@@ -21,7 +21,7 @@ module GameModule {
         long finishedTime;
         string opponentUsername;
     };
-
+    //admin settings
     struct SystemStatisticsDTO {
         long totalGames;
         long wins;
@@ -30,7 +30,7 @@ module GameModule {
         long waitingTime;
         long roundTime;
     };
-
+ // player
     struct LeaderboardEntryDTO {
         string username;
         long wins;
@@ -39,7 +39,7 @@ module GameModule {
     typedef sequence<LeaderboardEntryDTO> LeaderboardEntrySeq;
 
     interface GameService {
-        //client
+        //player login and 1v1 mode
         Bool login(in string username, in string password)
                     raises (AlreadyLoggedInException);
         void logout(in string username);
@@ -49,7 +49,7 @@ module GameModule {
         string viewLeaderboard();
         string getMaskedWord(in string username);
 
-        // Admin
+        // Admin player management
         Bool createPlayer(in string username, in string password);
         Bool deletePlayer(in string username);
         Bool updatePlayerPassword(in string username, in string newPassword);

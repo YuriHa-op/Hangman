@@ -247,11 +247,6 @@ public class GameViewController implements GameModel.MatchListener {
             }
             clickedButton.setDisable(true);
 
-            // Removed direct model.getGameState(), updateUI(), and model.finishRound() calls.
-            // The GameStatePoller will handle fetching the updated state and refreshing the UI.
-            // The server-side sendGuess is expected to call finishRound if appropriate.
-            // Timeouts are handled by GameTimerHelper -> handleTimeUp -> model.finishRound.
-
         } catch (Exception e) {
             System.err.println("Error handling key press: " + e.getMessage());
             e.printStackTrace();

@@ -43,9 +43,6 @@ class GameModel:
 
     def login(self, username, password):
         try:
-            # Assuming GameModule.Bool maps to an enum with members BOOL_TRUE, BOOL_FALSE
-            # or integer constants where BOOL_TRUE might be 1.
-            # For omniidl, it's typically GameModule.BOOL_TRUE for enums.
             result = self.game_service.login(username, password)
             if result == GameModule.BOOL_TRUE: # Compare with GameModule.BOOL_TRUE
                 self.username = username
@@ -54,10 +51,10 @@ class GameModel:
         except GameModule.AlreadyLoggedInException as e:
             # It's better to let the controller handle UI-specific error messages
             raise e # Re-raise the exception
-        # It's good practice to also handle potential CORBA system exceptions
+        #  handle potential CORBA system exceptions
         except CORBA.SystemException as e:
             print(f"CORBA SystemException during login: {e}")
-            return False # Or raise a custom exception
+            return False
 
     def create_player(self, username, password):
         try:
@@ -65,7 +62,7 @@ class GameModel:
             return result == GameModule.BOOL_TRUE # Compare with GameModule.BOOL_TRUE
         except CORBA.SystemException as e:
             print(f"CORBA SystemException during create_player: {e}")
-            return False # Or raise a custom exception
+            return False #
 
     def logout(self):
         if self.username:

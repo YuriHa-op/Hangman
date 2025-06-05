@@ -13,14 +13,12 @@ public class GameTimerHelper {
     private int remainingTime;
     private Runnable onTimeUp;
     private Label timerLabel;
-    private String defaultTimerColorStyle = ""; // Or your default style like "-fx-text-fill: white;"
+    private String defaultTimerColorStyle = "";
 
     public GameTimerHelper(Label timerLabel, Runnable onTimeUp) {
         this.timerLabel = timerLabel;
         this.onTimeUp = onTimeUp;
         if (timerLabel != null) {
-            // Assuming the default style is the initial one or you can set it here.
-            // For simplicity, we capture any inline style if set, or use empty for CSS default.
             this.defaultTimerColorStyle = timerLabel.getStyle(); 
         }
     }
@@ -86,9 +84,8 @@ public class GameTimerHelper {
         Platform.runLater(() -> {
             timerLabel.setText(String.valueOf(remainingTime));
             if (remainingTime <= 0) {
-                timerLabel.setStyle("-fx-text-fill: red;");
-                // Consider adding Shake here if timer directly goes to 0 and stops
-                // However, startRoundTimer already handles immediate onTimeUp for initial <= 0
+                timerLabel.setStyle("-fx-text-fill: red;");// Consider adding Shake boo
+
             } else if (remainingTime <= 5) { 
                 timerLabel.setStyle("-fx-text-fill: red;");
             } else if (remainingTime <= 15) {

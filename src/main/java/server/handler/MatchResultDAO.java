@@ -60,9 +60,6 @@ public class MatchResultDAO {
         }
     }
 
-    // Old inner DTOs (GameSummary, GameDetails, RoundInfo) are removed from here.
-    // They are now replaced by DTOs in the server.dto package.
-
     // --- Fetch all games a player participated in ---
     public List<MultiplayerGameSummaryDTO> getGamesForPlayer(String username) {
         List<MultiplayerGameSummaryDTO> result = new ArrayList<>();

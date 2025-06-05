@@ -46,7 +46,6 @@ public class GameServiceImpl extends GameServicePOA {
                 //put this hotdog in you GameServiceImpl
 
 
-
     public GameServiceImpl() {
         this.wordManager = new WordManager();
         this.playerManager = new PlayerManager();

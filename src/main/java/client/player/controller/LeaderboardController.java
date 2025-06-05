@@ -30,7 +30,6 @@ import java.util.List;
 public class LeaderboardController {
     @FXML private ListView<PlayerEntry> leaderboardListView;
     @FXML private Button closeButton; // For the 'X' button
-    // @FXML private VBox leaderboardContentPanel; // If we need to manipulate it from controller
 
     private Stage stage;
     private GameService gameService;
@@ -41,7 +40,7 @@ public class LeaderboardController {
         private final int rank;
         private final String name;
         private final int wins;
-        // Assuming a default avatar for now, or path could be part of data
+        // Assuming a default avatar
         private final String avatarPath = "/avat.png"; // Default avatar
         private final String crownPath = "/crown.png";
 
@@ -98,8 +97,6 @@ public class LeaderboardController {
                 leaderboardListView.setItems(entries);
 
                 // Adjust ListView height to show all items
-                // Assuming an approximate cell height (e.g., 60px based on CSS and content)
-                // This might need fine-tuning based on actual rendered cell height.
                 double cellHeight = 70; // Approximate height of a single cell - Increased
                 int numItems = entries.size();
                 if (numItems > 0) {

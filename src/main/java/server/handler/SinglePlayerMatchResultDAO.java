@@ -166,6 +166,4 @@ public class SinglePlayerMatchResultDAO {
             return null;
         }
     }
-    // Removed inner DTOs SPGameSummary, SPGameDetails, and SinglePlayerRoundResult
-    // as they are now replaced by DTOs from server.dto package.
 } 

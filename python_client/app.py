@@ -1,10 +1,12 @@
 from models.game_model import GameModel
-from views.main_view import HangmanApp
-from controllers.game_controller import GameController
+from views.app_view import HangmanApp # Updated import for HangmanApp
+# Specific view and controller imports are handled within HangmanApp (app_view.py)
 
 if __name__ == "__main__":
     model = GameModel()
-    view = HangmanApp(None)  # Placeholder for controller
-    controller = GameController(view, model)
-    view.controller = controller  # Connect the controller to the view
-    controller.start()  # Starts the app
+    app_view = HangmanApp(model) # Pass model to HangmanApp constructor
+
+    app_view.setup_frames_and_controllers() # Call the setup method on HangmanApp
+
+    app_view.show_frame("Login") # Start with the login view
+    app_view.run()  # Start the Tkinter main loop

@@ -25,7 +25,7 @@ public class GameResultsView {
             stage = new Stage();
             stage.initOwner(owner);
             stage.initModality(Modality.APPLICATION_MODAL);
-            stage.initStyle(StageStyle.UNDECORATED); // Optional: for a more dialog-like feel
+            stage.initStyle(StageStyle.UNDECORATED);
             stage.setTitle("Game Results");
 
             controller.setStage(stage);
@@ -38,9 +38,6 @@ public class GameResultsView {
             });
 
             Scene scene = new Scene(root);
-            // Optional: Make the scene transparent if the root VBox in FXML has rounded corners and you want to see them.
-            // scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-            // stage.initStyle(StageStyle.TRANSPARENT); // if scene fill is transparent
 
             stage.setScene(scene);
             stage.showAndWait();

@@ -114,10 +114,7 @@ public class GameManager {
         // Check if word is fully guessed (this check should come after processing the current letter's effect)
         if (!progress.toString().contains("_")) { // Word fully guessed
             finishRound(username, currentRemainingTimeSeconds, Bool.BOOL_TRUE); // Word guessed
-            // If word is complete, this guess (if correct) or a previous one led to completion.
-            // The primary return should reflect if THIS letter was part of the word.
-            // However, standard Hangman might just consider the game won at this point.
-            // Let's return TRUE if the word is complete, as the state is now 'won round'.
+
             return Bool.BOOL_TRUE;
         }
 
