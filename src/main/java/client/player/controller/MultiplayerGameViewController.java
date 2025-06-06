@@ -10,7 +10,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -43,7 +43,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     @FXML private Label timerLabel;
     @FXML private Label roundLabel;
     @FXML private HBox scoresPanel;
-    @FXML private GridPane keyboardGrid;
+    @FXML private VBox keyboardGrid;
     @FXML private ImageView exitGameButton;
     @FXML private Label roundWinnerBanner;
 
@@ -244,6 +244,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 gameOverDialogShown = true;
                 stopPolling();
 
+                final String gameId = state.getGameId();
+
                 // Prepare data for results screen
                 final List<String> playerNames = new ArrayList<>(state.getPlayers());
                 final Map<String, Integer> finalScores = new HashMap<>(state.getScoresFromGameState());
@@ -253,7 +255,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                     Platform.runLater(() -> {
                         GameResultsView resultsView = new GameResultsView();
                         // Pass the main game stage (this.stage) as owner
-                        resultsView.showResults(this.stage, playerNames, finalScores, this::handleBackToMenu);
+                        resultsView.showResults(this.stage, playerNames, finalScores, model, gameId, this::handleBackToMenu);
                     });
                 };
 

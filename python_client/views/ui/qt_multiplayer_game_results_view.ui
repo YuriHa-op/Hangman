@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QtMultiplayerGameResultsView</class>
+ <widget class="QWidget" name="QtMultiplayerGameResultsView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Game Results</string>
+  </property>
+  <layout class="QVBoxLayout" name="main_layout">
+   <item>
+    <widget class="QLabel" name="header_label">
+     <property name="font">
+      <font>
+       <family>Arial</family>
+       <pointsize>20</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>Match Scoreboard</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QTableWidget" name="table">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="selectionBehavior">
+      <set>QAbstractItemView::SelectRows</set>
+     </property>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Rank</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Player</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Score</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="view_details_button">
+     <property name="text">
+      <string>View Details</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="back_button">
+     <property name="text">
+      <string>Back to Main Menu</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui> 

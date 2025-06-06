@@ -1,29 +1,31 @@
 package client.player.helper;
 
-import javafx.scene.control.Button;
-import javafx.scene.layout.GridPane;
-import java.util.HashMap;
-import java.util.Map;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.layout.Pane;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class KeyboardHelper {
-    private Map<String, Button> keyboardButtons = new HashMap<>();
-    private GridPane keyboardGrid;
-    private EventHandler<ActionEvent> keyPressHandler;
+    private final Map<String, Button> keyboardButtons = new HashMap<>();
+    private final EventHandler<ActionEvent> keyPressHandler;
 
-    public KeyboardHelper(GridPane keyboardGrid, EventHandler<ActionEvent> keyPressHandler) {
-        this.keyboardGrid = keyboardGrid;
+    public KeyboardHelper(Pane keyboardPane, EventHandler<ActionEvent> keyPressHandler) {
         this.keyPressHandler = keyPressHandler;
-        initializeKeyboardButtons();
+        initializeKeyboardButtons(keyboardPane);
     }
 
-    private void initializeKeyboardButtons() {
-        for (javafx.scene.Node node : keyboardGrid.getChildren()) {
+    private void initializeKeyboardButtons(Pane pane) {
+        for (Node node : pane.getChildren()) {
             if (node instanceof Button) {
                 Button btn = (Button) node;
                 keyboardButtons.put(btn.getText().toUpperCase(), btn);
                 btn.setOnAction(keyPressHandler);
+            } else if (node instanceof Pane) {
+                initializeKeyboardButtons((Pane) node); // Recurse for nested panes
             }
         }
     }
@@ -32,7 +34,6 @@ public class KeyboardHelper {
         for (Button button : keyboardButtons.values()) {
             button.setDisable(false);
             button.getStyleClass().removeAll("correct", "incorrect");
-            button.setOnAction(keyPressHandler);
         }
     }
 

@@ -1,6 +1,8 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QMessageBox, QDialog, QApplication)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
+from PyQt5 import uic
+import os
 
 class MatchFoundDialog(QDialog):
     def __init__(self, opponent_name, countdown_seconds, countdown_callback, parent=None):
@@ -8,27 +10,24 @@ class MatchFoundDialog(QDialog):
         self.countdown_callback = countdown_callback
         self.remaining_seconds = countdown_seconds
 
-        self.setWindowTitle("Match Found")
-        self.setModal(True)
-        layout = QVBoxLayout(self)
+        ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_match_found_dialog.ui')
+        uic.loadUi(ui_path, self)
 
-        layout.addWidget(QLabel(f"Match found! Your opponent: {opponent_name}", font=QFont("Arial", 15)), alignment=Qt.AlignCenter)
-        layout.addWidget(QLabel("The game will start in...", font=QFont("Arial", 14)), alignment=Qt.AlignCenter)
+        self.opponent_label = self.findChild(QLabel, 'opponent_label')
+        self.countdown_label = self.findChild(QLabel, 'countdown_label')
 
-        self.countdown_label = QLabel(str(self.remaining_seconds), font=QFont("Arial", 32, QFont.Bold))
-        self.countdown_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.countdown_label)
+        self.opponent_label.setText(f"Match found! Your opponent: {opponent_name}")
+        self.countdown_label.setText(str(self.remaining_seconds))
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_countdown)
         self.timer.start(1000)
 
-        self.setFixedSize(400, 180)
         if parent:
             try:
                 self.move(parent.geometry().center() - self.rect().center())
             except Exception:
-                pass # Fallback if parent geometry isn't available early
+                pass
 
     def update_countdown(self):
         self.remaining_seconds -= 1
@@ -36,32 +35,28 @@ class MatchFoundDialog(QDialog):
             self.countdown_label.setText(str(self.remaining_seconds))
         else:
             self.timer.stop()
-            self.accept() # Close the dialog
+            self.accept()
             if self.countdown_callback:
                 self.countdown_callback()
 
     def closeEvent(self, event):
-        self.timer.stop() # Ensure timer stops if dialog is closed manually
-        # Consider if closing MatchFoundDialog via 'X' should trigger countdown_callback
-        # or if controller should handle this scenario (e.g. player aborted queue)
-        # if self.countdown_callback:
-        #     self.countdown_callback() # Potentially call to not get stuck
+        self.timer.stop()
         super().closeEvent(event)
 
 class GameOverDialog(QDialog):
     def __init__(self, result_text, on_ok_callback, parent=None):
         super().__init__(parent)
         self.on_ok_callback = on_ok_callback
-        self.setWindowTitle("Game Over")
-        self.setModal(True)
-        layout = QVBoxLayout(self)
+        
+        ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_game_over_dialog.ui')
+        uic.loadUi(ui_path, self)
 
-        layout.addWidget(QLabel(result_text, font=QFont("Arial", 18)), alignment=Qt.AlignCenter)
+        self.result_label = self.findChild(QLabel, 'result_label')
+        self.ok_button = self.findChild(QPushButton, 'ok_button')
+        
+        self.result_label.setText(result_text)
+        self.ok_button.clicked.connect(self.accept_and_callback)
 
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(self.accept_and_callback)
-        layout.addWidget(ok_button, alignment=Qt.AlignCenter)
-        self.setFixedSize(300, 150)
         if parent:
             try:
                 self.move(parent.geometry().center() - self.rect().center())
@@ -74,7 +69,6 @@ class GameOverDialog(QDialog):
             self.on_ok_callback()
 
     def closeEvent(self, event):
-        # If closed via 'X', call the ok_callback to ensure consistent behavior (e.g., returning to menu)
         if self.on_ok_callback:
             self.on_ok_callback()
         super().closeEvent(event)
@@ -87,98 +81,59 @@ class QtSinglePlayer1v1GameView(QWidget):
         self.keyboard_buttons = {}
         self.match_found_dialog = None
         self.game_over_dialog = None
-        self._init_ui()
+        
+        ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_single_player_1v1_game_view.ui')
+        uic.loadUi(ui_path, self)
 
-    def _init_ui(self):
-        self.setWindowTitle("1v1 Hangman Challenge")
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(15, 15, 15, 15)
-        main_layout.setSpacing(10)
+        # Find all widgets from the UI file
+        self.word_label = self.findChild(QLabel, 'word_label')
+        self.timer_label = self.findChild(QLabel, 'timer_label')
+        self.round_label = self.findChild(QLabel, 'round_label')
+        self.score_label = self.findChild(QLabel, 'score_label')
+        self.incorrect_label = self.findChild(QLabel, 'incorrect_label')
+        self.status_label = self.findChild(QLabel, 'status_label')
+        self.back_button = self.findChild(QPushButton, 'back_button')
+        self.kb_container_widget = self.findChild(QWidget, 'kb_container_widget')
 
-        title_label = QLabel("1v1 Hangman Challenge", font=QFont("Arial", 20))
-        title_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(title_label)
+        self._create_keyboard()
+        self.back_button.clicked.connect(self.handle_back_button_press)
 
-        top_info_frame = QHBoxLayout()
-        self.word_label = QLabel("_ _ _ _ _", font=QFont("Consolas", 30, QFont.Bold))
-        self.word_label.setStyleSheet("letter-spacing: 4px;")
-        self.timer_label = QLabel("Time: --", font=QFont("Arial", 16))
-        top_info_frame.addWidget(self.word_label, alignment=Qt.AlignCenter)
-        top_info_frame.addStretch()
-        top_info_frame.addWidget(self.timer_label, alignment=Qt.AlignRight | Qt.AlignVCenter)
-        main_layout.addLayout(top_info_frame)
-
-        stats_frame = QHBoxLayout()
-        self.round_label = QLabel("Round: -/-", font=QFont("Arial", 14))
-        self.score_label = QLabel("Score: -/-", font=QFont("Arial", 14))
-        self.incorrect_label = QLabel("Incorrect: -/-", font=QFont("Arial", 12))
-        stats_frame.addWidget(self.round_label)
-        stats_frame.addStretch(1)
-        stats_frame.addWidget(self.score_label)
-        stats_frame.addStretch(1)
-        stats_frame.addWidget(self.incorrect_label)
-        main_layout.addLayout(stats_frame)
-
-        self.status_label = QLabel("Waiting to start...", font=QFont("Arial", 14))
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("color: blue;")
-        main_layout.addWidget(self.status_label)
-
-        kb_container_widget = QWidget() # Use a container to center the grid
-        kb_layout = QGridLayout(kb_container_widget)
-        kb_layout.setSpacing(4)
+    def _create_keyboard(self):
+        kb_v_layout = QVBoxLayout(self.kb_container_widget)
         keyboard_rows = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
-        for row_idx, row_str in enumerate(keyboard_rows):
-            num_keys = len(row_str)
-            # Simple centering for rows with fewer keys, assuming max 10 keys wide
-            start_col = (10 - num_keys) // 2 if num_keys < 10 else 0
-            for col_idx_in_row, letter in enumerate(row_str):
-                actual_col_idx = start_col + col_idx_in_row
+        for row_str in keyboard_rows:
+            row_h_layout = QHBoxLayout()
+            row_h_layout.addStretch()
+            for letter in row_str:
                 btn = QPushButton(letter)
-                btn.setFixedSize(35, 35)
-                btn.setFont(QFont("Arial", 9, QFont.Bold))
+                btn.setFixedSize(40, 40)
+                btn.setFont(QFont("Arial", 12, QFont.Bold))
                 btn.clicked.connect(lambda checked, l=letter: self.controller.handle_single_player_guess(l) if self.controller else None)
-                kb_layout.addWidget(btn, row_idx, actual_col_idx) # Add to grid layout by row, actual_col_idx
+                row_h_layout.addWidget(btn)
                 self.keyboard_buttons[letter] = btn
-        main_layout.addWidget(kb_container_widget, alignment=Qt.AlignCenter) # Center the keyboard grid
-
-        main_layout.addStretch(1)
-
-        self.back_button = QPushButton("Back to Main Menu")
-        self.back_button.setFont(QFont("Arial", 12))
-        self.back_button.clicked.connect(self.handle_back_button_press) # Connect here, controller will set its own handler
-        main_layout.addWidget(self.back_button, alignment=Qt.AlignCenter)
-
-        self.setLayout(main_layout)
-        self.setMinimumSize(550, 480)
+            row_h_layout.addStretch()
+            kb_v_layout.addLayout(row_h_layout)
 
     def set_controller(self, controller):
         self.controller = controller
-        # Controller will connect its specific method if back_button is meant to be handled by it
-        # For now, if controller needs to handle it, it should disconnect default and connect its own,
-        # or we connect directly to controller.handle_back_to_menu_from_sp_game
         if self.controller:
-            # Disconnect previous if any, then connect to controller's method
             try: self.back_button.clicked.disconnect()
-            except TypeError: pass # No connection to disconnect
+            except TypeError: pass
             self.back_button.clicked.connect(self.controller.handle_back_to_menu_from_sp_game)
 
-
-    def handle_back_button_press(self): # Default action if controller not set or doesn't override
+    def handle_back_button_press(self):
         if self.controller:
             self.controller.handle_back_to_menu_from_sp_game()
         else:
-            # Fallback if controller is not set, though ideally it always should be
             if self.main_window:
                 self.main_window.show_view("MainMenu")
-
 
     def update_display(self, masked_word, timer_text, incorrect_text, status_text, player_wins, total_rounds, current_round_num, attempted_letters, current_word_upper, round_over, game_over, timer_color="black"):
         self.word_label.setText(" ".join(list(masked_word)) if masked_word else "_ _ _")
         self.timer_label.setText(timer_text)
         self.timer_label.setStyleSheet(f"color: {timer_color}; font-size: 16pt; font-family: Arial;")
         self.incorrect_label.setText(incorrect_text)
-        self.set_status(status_text) # Uses its own method for color
+        self.set_status(status_text)
         self.score_label.setText(f"Score: {player_wins}/{total_rounds}")
         self.round_label.setText(f"Round: {current_round_num + 1}/{total_rounds}")
         self.update_keyboard(attempted_letters, current_word_upper if current_word_upper else "", round_over or game_over)
@@ -189,33 +144,27 @@ class QtSinglePlayer1v1GameView(QWidget):
         incorrect_style = "QPushButton { background-color: #f44336; color: white; border: 1px solid #D32F2F; }"
         disabled_default_style = "QPushButton { background-color: #F5F5F5; color: #A0A0A0; border: 1px solid #E0E0E0; }"
 
-        # Ensure current_word_upper is actually uppercase for reliable comparison
         final_word_to_check = current_word_upper.upper() if current_word_upper else ""
 
         for letter, btn in self.keyboard_buttons.items():
             letter_lower = letter.lower()
 
-            if disable_all:  # Round or Game is Over - Keyboard is informational
+            if disable_all:
                 btn.setEnabled(False)
                 if final_word_to_check and final_word_to_check != "_ _ _":
                     if letter_lower in final_word_to_check.lower():
                         btn.setStyleSheet(correct_style)
-                    elif letter_lower in attempted_letters: # Attempted and not in the final word
+                    elif letter_lower in attempted_letters:
                         btn.setStyleSheet(incorrect_style)
-                    else: # Not attempted, and not in the final word (though less likely to be styled)
+                    else:
                         btn.setStyleSheet(disabled_default_style)
-                else: # Final word not available, use generic disabled style
-                    # If already colored by feedback_guess, preserve it, otherwise generic disable
+                else:
                     if btn.styleSheet() != correct_style and btn.styleSheet() != incorrect_style:
                         btn.setStyleSheet(disabled_default_style)
-                    # else, its existing color (from feedback_guess) remains.
-            else:  # Game is in progress
+            else:
                 if letter_lower in attempted_letters:
-                    # feedback_guess has already set the style and disabled the button.
-                    # Do not override the style here mid-round.
-                    btn.setEnabled(False) # Ensure it stays disabled
+                    btn.setEnabled(False)
                 else:
-                    # This letter has not been attempted in the current round, so reset to default and enable.
                     btn.setEnabled(True)
                     btn.setStyleSheet(default_style)
 
@@ -232,7 +181,7 @@ class QtSinglePlayer1v1GameView(QWidget):
         self.status_label.setStyleSheet(f"color: {color}; font-size: 14pt; font-family: Arial;")
 
     def show_match_found_countdown(self, countdown_callback, opponent_name="Opponent", countdown_seconds=5):
-        self._close_dialogs() # Ensure no old dialogs are lingering
+        self._close_dialogs()
         self.match_found_dialog = MatchFoundDialog(opponent_name, countdown_seconds, countdown_callback, self.main_window)
         self.match_found_dialog.exec_()
 
@@ -243,13 +192,17 @@ class QtSinglePlayer1v1GameView(QWidget):
 
     def _close_dialogs(self):
         if self.match_found_dialog:
-            if self.match_found_dialog.isVisible(): self.match_found_dialog.accept() # or .close() or .reject()
-            self.match_found_dialog.deleteLater() # Important for PyQt resource management
+            if self.match_found_dialog.isVisible(): self.match_found_dialog.accept()
+            self.match_found_dialog.deleteLater()
             self.match_found_dialog = None
         if self.game_over_dialog:
             if self.game_over_dialog.isVisible(): self.game_over_dialog.accept()
             self.game_over_dialog.deleteLater()
             self.game_over_dialog = None
 
-    def on_hide_cleanup(self): # Called by controller or MainWindow when view is hidden
+    def on_hide_cleanup(self):
         self._close_dialogs()
+        for letter, btn in self.keyboard_buttons.items():
+            btn.setEnabled(True)
+            btn.setStyleSheet("")
+        self.set_status("Waiting to start...", color="blue")

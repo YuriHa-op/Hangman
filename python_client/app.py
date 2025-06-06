@@ -11,8 +11,9 @@ from views.qt_leaderboard_view import QtLeaderboardView
 from views.qt_match_history_view import QtMatchHistoryView
 # from views.qt_single_player_game_view import QtSinglePlayerGameView # Old solo game view
 from views.qt_single_player_1v1_game_view import QtSinglePlayer1v1GameView # New 1v1 game view
-# Placeholder for other views - will be created later
-# from views.qt_multiplayer_queue_view import QtMultiplayerQueueView
+from views.qt_multiplayer_queue_view import QtMultiplayerQueueView
+from views.qt_multiplayer_game_view import QtMultiplayerGameView
+from views.qt_multiplayer_game_results_view import QtMultiplayerGameResultsView
 
 # Import Controllers
 from controllers.login_controller import LoginController
@@ -20,8 +21,9 @@ from controllers.main_menu_controller import MainMenuController
 from controllers.leaderboard_controller import LeaderboardController
 from controllers.match_history_controller import MatchHistoryController
 from controllers.single_player_game_controller import SinglePlayerGameController
-# Placeholder for other controllers
-# from controllers.multiplayer_queue_controller import MultiplayerQueueController
+from controllers.multiplayer_queue_controller import MultiplayerQueueController
+from controllers.multiplayer_game_controller import MultiplayerGameController
+from controllers.multiplayer_game_results_controller import MultiplayerGameResultsController
 
 # Placeholder for the main PyQt5 window - this will be expanded
 class MainWindow(QMainWindow):
@@ -29,7 +31,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.model = model
         self.setWindowTitle("Hangman Game - PyQt Edition")
-        self.setGeometry(100, 100, 700, 550) # Slightly wider for match history
+        self.setGeometry(100, 100, 800, 600)
 
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
@@ -77,6 +79,24 @@ class MainWindow(QMainWindow):
         single_player_game_controller = SinglePlayerGameController(self.model, single_player_1v1_game_view)
         single_player_1v1_game_view.set_controller(single_player_game_controller)
         self.add_view("SinglePlayer1v1Game", single_player_1v1_game_view, single_player_game_controller)
+
+        # Multiplayer Queue View
+        multiplayer_queue_view = QtMultiplayerQueueView(main_window=self)
+        multiplayer_queue_controller = MultiplayerQueueController(self.model, multiplayer_queue_view)
+        multiplayer_queue_view.set_controller(multiplayer_queue_controller)
+        self.add_view("MultiplayerQueue", multiplayer_queue_view, multiplayer_queue_controller)
+
+        # Multiplayer Game View
+        multiplayer_game_view = QtMultiplayerGameView(main_window=self)
+        multiplayer_game_controller = MultiplayerGameController(self.model, multiplayer_game_view)
+        multiplayer_game_view.set_controller(multiplayer_game_controller)
+        self.add_view("MultiplayerGame", multiplayer_game_view, multiplayer_game_controller)
+
+        # Multiplayer Game Results View
+        multiplayer_results_view = QtMultiplayerGameResultsView(main_window=self)
+        multiplayer_results_controller = MultiplayerGameResultsController(self.model, multiplayer_results_view)
+        multiplayer_results_view.set_controller(multiplayer_results_controller)
+        self.add_view("MultiplayerGameResults", multiplayer_results_view, multiplayer_results_controller)
 
         # TODO: Instantiate and add other views and controllers here
         # Example for a placeholder view that might exist:
@@ -180,6 +200,15 @@ class MainWindow(QMainWindow):
     def create_single_player_game_controller(self, view):
         # This now refers to the controller for the 1v1 game
         return self.controllers.get("SinglePlayer1v1Game")
+
+    def create_multiplayer_queue_controller(self, view):
+        return self.controllers.get("MultiplayerQueue")
+
+    def create_multiplayer_game_controller(self, view):
+        return self.controllers.get("MultiplayerGame")
+
+    def create_multiplayer_game_results_controller(self, view):
+        return self.controllers.get("MultiplayerGameResults")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

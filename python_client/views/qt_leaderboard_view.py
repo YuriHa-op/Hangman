@@ -1,37 +1,20 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QWidget, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView
 from PyQt5.QtCore import Qt
+from PyQt5 import uic
+import os
 
 class QtLeaderboardView(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
         self.controller = None # Will be set by MainWindow
-        self._init_ui()
-    def _init_ui(self):
-        self.setWindowTitle('Leaderboard - Hangman')
-        layout = QVBoxLayout()
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        
+        ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_leaderboard_view.ui')
+        uic.loadUi(ui_path, self)
 
-        title_label = QLabel('Leaderboard')
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 20px; font-weight: bold; margin-bottom: 10px;")
-        layout.addWidget(title_label)
-
-        self.leaderboard_table = QTableWidget()
-        self.leaderboard_table.setColumnCount(2)
-        self.leaderboard_table.setHorizontalHeaderLabels(['Username', 'Wins'])
+        self.leaderboard_table = self.findChild(QTableWidget, "leaderboard_table")
         self.leaderboard_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.leaderboard_table.setEditTriggers(QTableWidget.NoEditTriggers) # Read-only
-        self.leaderboard_table.setAlternatingRowColors(True)
-        layout.addWidget(self.leaderboard_table)
-
-        self.back_button = QPushButton('Back to Main Menu')
-        self.back_button.setStyleSheet("padding: 8px 15px; font-size: 14px; margin-top: 10px;")
-        # Connection will be handled by the controller or MainWindow
-        layout.addWidget(self.back_button, alignment=Qt.AlignCenter)
-
-        self.setLayout(layout)
+        self.back_button = self.findChild(QPushButton, "back_button")
 
     def set_controller(self, controller):
         self.controller = controller

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainMenuView</class>
+ <widget class="QWidget" name="MainMenuView">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Hangman - Main Menu</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>300</height>
+   </size>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="title_label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 24px; font-weight: bold; margin-bottom: 20px;</string>
+     </property>
+     <property name="text">
+      <string>Main Menu</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="single_player_button">
+     <property name="styleSheet">
+      <string notr="true">padding: 10px; font-size: 16px;</string>
+     </property>
+     <property name="text">
+      <string>Single Player Game</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="multiplayer_button">
+     <property name="styleSheet">
+      <string notr="true">padding: 10px; font-size: 16px;</string>
+     </property>
+     <property name="text">
+      <string>Multiplayer Game</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="leaderboard_button">
+     <property name="styleSheet">
+      <string notr="true">padding: 10px; font-size: 16px;</string>
+     </property>
+     <property name="text">
+      <string>Leaderboard</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="match_history_button">
+     <property name="styleSheet">
+      <string notr="true">padding: 10px; font-size: 16px;</string>
+     </property>
+     <property name="text">
+      <string>Match History</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="logout_button">
+     <property name="styleSheet">
+      <string notr="true">padding: 10px; font-size: 16px; margin-top: 20px;</string>
+     </property>
+     <property name="text">
+      <string>Logout</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui> 

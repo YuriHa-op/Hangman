@@ -127,6 +127,10 @@ public class MultiplayerGameModel {
             }
             return 0;
         }
+
+        public String getGameId() {
+            return getStringFromGameState("gameId", null);
+        }
     }
 
     private final GameService gameService;
@@ -203,6 +207,15 @@ public class MultiplayerGameModel {
             } catch (Exception e) {
                 System.err.println("Error signaling player ready for first round: " + e.getMessage());
             }
+        }
+    }
+
+    public String getMatchDetails(String gameId) {
+        try {
+            return gameService.getMatchDetails(gameId);
+        } catch (Exception e) {
+            System.err.println("Error getting match details: " + e.getMessage());
+            return null;
         }
     }
 } 

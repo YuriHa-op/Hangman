@@ -16,6 +16,7 @@ class GameModel:
         self.username = None
         self.lobby_state = None
         self.game_state = None
+        self.last_game_id = None
 
     def _get_game_service(self):
         orb = CORBA.ORB_init([
@@ -193,9 +194,15 @@ class GameModel:
     def send_multiplayer_guess(self, guess):
         if not self.username:
             return False
-        # Convert GameModule.Bool to Python boolean
-        result = self.game_service.sendMultiplayerGuess(self.username, guess)
-        return result == GameModule.BOOL_TRUE
+        try:
+            # Convert the guess to lowercase before sending to the server
+            result = self.game_service.sendMultiplayerGuess(self.username, guess.lower())
+            is_correct_guess = (result == GameModule.BOOL_TRUE)
+            return is_correct_guess
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return False
 
     def start_multiplayer_next_round(self):
         if self.username:
@@ -272,6 +279,42 @@ class GameModel:
         game_data = self.get_mp_game_state_data()
         return game_data.get("sessionResult", "ONGOING")
 
+    def get_mp_game_id(self):
+        game_data = self.get_mp_game_state_data()
+        return game_data.get("gameId", None)
+
     def get_mp_player_finish_times(self):
         game_data = self.get_mp_game_state_data()
-        return game_data.get("allPlayerFinishTimes", {}) 
+        return game_data.get("allPlayerFinishTimes", {})
+
+    def get_mp_player_finish_times(self):
+        game_data = self.get_mp_game_state_data()
+        return game_data.get("allPlayerFinishTimes", {})
+
+    def set_last_game_id(self, game_id):
+        self.last_game_id = game_id
+
+    def get_last_game_id(self):
+        return self.last_game_id
+
+    def get_ranked_players_for_game(self, game_id):
+        details = self.get_match_details(game_id)
+        if not details:
+            return []
+        if isinstance(details, str):
+            try:
+                details = json.loads(details)
+            except Exception as e:
+                print("[ERROR] Could not parse match details JSON:", e)
+                return []
+        # Now details is a dict
+        player_scores = {player: 0 for player in details.get('players', [])}
+        for round_info in details.get('rounds', []):
+            winner = round_info.get('winner')
+            if winner:
+                player_scores[winner] = player_scores.get(winner, 0) + 1
+        ranked = sorted(player_scores.items(), key=lambda x: x[1], reverse=True)
+        return [
+            {"rank": i+1, "name": name, "score": score}
+            for i, (name, score) in enumerate(ranked)
+        ] 

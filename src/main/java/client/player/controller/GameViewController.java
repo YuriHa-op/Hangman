@@ -9,7 +9,6 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -69,7 +68,7 @@ public class GameViewController implements GameModel.MatchListener {
     private GameStatePoller gameStatePoller;
     private GameTimerHelper gameTimerHelper;
     @FXML
-    private GridPane keyboardGrid;
+    private VBox keyboardGrid;
     @FXML
     private Button keyQ, keyW, keyE, keyR, keyT, keyY, keyU, keyI, keyO, keyP;
     @FXML

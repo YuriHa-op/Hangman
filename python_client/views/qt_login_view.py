@@ -1,57 +1,27 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
+from PyQt5.QtWidgets import QWidget, QMessageBox, QLineEdit, QPushButton
 from PyQt5.QtCore import Qt
+from PyQt5 import uic
+import os
 
 class QtLoginView(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window # To allow switching views
         self.login_controller = None # Will be set by MainWindow after instantiation
-        self._init_ui()
-
-    def _init_ui(self):
-        self.setWindowTitle('Login - Hangman')
-        self.setGeometry(300, 300, 300, 200) # x, y, width, height
-
-        layout = QVBoxLayout()
-        layout.setContentsMargins(20, 20, 20, 20) # Add some padding
-        layout.setSpacing(15) # Spacing between widgets
-
-        # Title
-        title_label = QLabel('Hangman Game Login')
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
-        layout.addWidget(title_label)
-
-        # Username
-        self.username_label = QLabel('Username:')
-        self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Enter your username")
-        layout.addWidget(self.username_label)
-        layout.addWidget(self.username_input)
-
-        # Password
-        self.password_label = QLabel('Password:')
-        self.password_input = QLineEdit()
-        self.password_input.setEchoMode(QLineEdit.Password)
-        self.password_input.setPlaceholderText("Enter your password")
-        layout.addWidget(self.password_label)
-        layout.addWidget(self.password_input)
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        self.login_button = QPushButton('Login')
-        self.login_button.clicked.connect(self.handle_login)
-        self.login_button.setStyleSheet("padding: 8px 15px; font-size: 14px;")
-
-        self.create_account_button = QPushButton('Create Account')
-        self.create_account_button.clicked.connect(self.handle_create_account)
-        self.create_account_button.setStyleSheet("padding: 8px 15px; font-size: 14px;")
         
-        button_layout.addWidget(self.login_button)
-        button_layout.addWidget(self.create_account_button)
-        layout.addLayout(button_layout)
+        # Get the absolute path to the .ui file
+        ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_login_view.ui')
+        uic.loadUi(ui_path, self)
 
-        self.setLayout(layout)
+        # Find widgets by their object names
+        self.username_input = self.findChild(QLineEdit, 'username_input')
+        self.password_input = self.findChild(QLineEdit, 'password_input')
+        self.login_button = self.findChild(QPushButton, 'login_button')
+        self.create_account_button = self.findChild(QPushButton, 'create_account_button')
+
+        # Connect signals to slots
+        self.login_button.clicked.connect(self.handle_login)
+        self.create_account_button.clicked.connect(self.handle_create_account)
 
     def handle_login(self):
         if not self.login_controller:

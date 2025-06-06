@@ -246,7 +246,7 @@ public class MultiplayerGameState {
 
     public boolean isPlayerFinished(String username) {
         return playerFinishTimes.containsKey(username) ||
-               playerMisses.getOrDefault(username, 0) >= 5 ||
+               playerMisses.getOrDefault(username, 0) >= 6 ||
                (playerProgress.containsKey(username) && !playerProgress.get(username).toString().contains("_"));
     }
 
@@ -361,6 +361,24 @@ public class MultiplayerGameState {
 
     public synchronized void recordPlayerJoined(String username) {
         allPlayersEver.add(username);
+    }
+
+    public String getGameId() {
+        return this.gameId;
+    }
+
+    public synchronized void removePlayer(String username) {
+        players.remove(username);
+        playerScores.remove(username);
+        playerProgress.remove(username);
+        playerGuesses.remove(username);
+        playerIncorrectGuesses.remove(username);
+        playerFinishTimes.remove(username);
+        playerMisses.remove(username);
+        playerWinStreaks.remove(username);
+        playerRoundWins.remove(username);
+        playerCurrentWords.remove(username);
+        playerReady.remove(username);
     }
 
     public void setPlayerReady(String username) {

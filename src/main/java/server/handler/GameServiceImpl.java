@@ -324,6 +324,7 @@ public class GameServiceImpl extends GameServicePOA {
             }
 
             sb.append(",\"gameState\":{");
+            sb.append("\"gameId\":\"").append(gameState.getGameId()).append("\",");
             sb.append("\"currentRound\":").append(gameState.getCurrentRound()).append(",");
             sb.append("\"roundInProgress\":").append(gameState.isRoundInProgress()).append(",");
             sb.append("\"remainingTime\":").append(gameState.getRemainingTime()).append(",");

@@ -101,6 +101,12 @@ public class MultiplayerGameManager {
         MultiplayerLobby lobby = getLobbyByPlayer(username);
         if (lobby != null) {
             lobby.removePlayer(username);
+
+            MultiplayerGameState game = activeGames.get(lobby.getLobbyId());
+            if (game != null) {
+                game.removePlayer(username);
+            }
+
             if (lobby.getPlayers().isEmpty()) {
                 activeLobbies.remove(lobby.getLobbyId());
                 activeGames.remove(lobby.getLobbyId());

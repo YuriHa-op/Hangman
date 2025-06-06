@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="10" prefWidth="450" prefHeight="400" stylesheets="@../GameView.css" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.player.view.results.GameDetailsViewController">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15" />
+    </padding>
+
+    <Label text="Match Details" styleClass="header-label">
+        <font>
+            <Font name="Minecraftia" size="20.0" />
+        </font>
+    </Label>
+
+    <TableView fx:id="detailsTable" prefHeight="300.0">
+        <columns>
+            <TableColumn fx:id="roundColumn" prefWidth="75.0" text="Round" />
+            <TableColumn fx:id="wordColumn" prefWidth="200.0" text="Word" />
+            <TableColumn fx:id="winnerColumn" prefWidth="150.0" text="Winner" />
+        </columns>
+    </TableView>
+</VBox> 
