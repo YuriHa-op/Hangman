@@ -31,9 +31,6 @@
    </property>
    <item>
     <widget class="QLabel" name="title_label">
-     <property name="styleSheet">
-      <string notr="true">font-size: 18px; font-weight: bold; margin-bottom: 10px;</string>
-     </property>
      <property name="text">
       <string>Hangman Game Login</string>
      </property>
@@ -77,9 +74,6 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="login_button">
-       <property name="styleSheet">
-        <string notr="true">padding: 8px 15px; font-size: 14px;</string>
-       </property>
        <property name="text">
         <string>Login</string>
        </property>
@@ -87,9 +81,6 @@
      </item>
      <item>
       <widget class="QPushButton" name="create_account_button">
-       <property name="styleSheet">
-        <string notr="true">padding: 8px 15px; font-size: 14px;</string>
-       </property>
        <property name="text">
         <string>Create Account</string>
        </property>

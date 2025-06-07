@@ -131,6 +131,26 @@ public class MultiplayerGameModel {
         public String getGameId() {
             return getStringFromGameState("gameId", null);
         }
+
+        @SuppressWarnings("unchecked")
+        public List<String> getAllPlayersEver() {
+            if (gameState == null || !gameState.containsKey("allPlayersEver")) return new ArrayList<>(getPlayers());
+            Object playersObj = gameState.get("allPlayersEver");
+            if (playersObj instanceof List) {
+                return (List<String>) playersObj;
+            }
+            return new ArrayList<>(getPlayers());
+        }
+
+        @SuppressWarnings("unchecked")
+        public List<String> getGameEvents() {
+            if (gameState == null || !gameState.containsKey("gameEvents")) return new ArrayList<>();
+            Object eventsObj = gameState.get("gameEvents");
+            if (eventsObj instanceof List) {
+                return (List<String>) eventsObj;
+            }
+            return new ArrayList<>();
+        }
     }
 
     private final GameService gameService;
@@ -176,6 +196,16 @@ public class MultiplayerGameModel {
 
     public void setLobbyStateListener(LobbyStateListener listener) {
         this.lobbyStateListener = listener;
+    }
+
+    public void leaveGame() {
+        if (username != null && !username.isEmpty()) {
+            try {
+                gameService.leaveMultiplayerGame(username);
+            } catch (Exception e) {
+                System.err.println("Error leaving multiplayer game: " + e.getMessage());
+            }
+        }
     }
 
     public GameService getGameService() {

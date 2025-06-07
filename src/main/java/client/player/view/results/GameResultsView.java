@@ -19,6 +19,7 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,7 +54,7 @@ public class GameResultsView {
             stage.setTitle("Game Results");
             stage.setScene(new Scene(root));
             
-            populateScores(finalScores);
+            populateScores(playerNames, finalScores);
 
             stage.showAndWait();
         } catch (IOException e) {
@@ -61,22 +62,23 @@ public class GameResultsView {
         }
     }
 
-    private void populateScores(Map<String, Integer> finalScores) {
+    private void populateScores(List<String> allPlayers, Map<String, Integer> finalScores) {
         rankColumn.setCellValueFactory(new PropertyValueFactory<>("rank"));
         playerColumn.setCellValueFactory(new PropertyValueFactory<>("playerName"));
         scoreColumn.setCellValueFactory(new PropertyValueFactory<>("score"));
 
-        List<Map.Entry<String, Integer>> sortedScores = finalScores.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .collect(Collectors.toList());
+        List<PlayerScoreEntry> scoreEntries = allPlayers.stream()
+            .map(playerName -> new PlayerScoreEntry(0, playerName, finalScores.getOrDefault(playerName, 0)))
+            .sorted(Comparator.comparingInt(PlayerScoreEntry::getScore).reversed())
+            .collect(Collectors.toList());
 
-        List<PlayerScoreEntry> scoreEntries = new ArrayList<>();
-        int rank = 1;
-        for (Map.Entry<String, Integer> entry : sortedScores) {
-            scoreEntries.add(new PlayerScoreEntry(rank++, entry.getKey(), entry.getValue()));
+        ObservableList<PlayerScoreEntry> finalEntries = FXCollections.observableArrayList();
+        for (int i = 0; i < scoreEntries.size(); i++) {
+            PlayerScoreEntry current = scoreEntries.get(i);
+            finalEntries.add(new PlayerScoreEntry(i + 1, current.getPlayerName(), current.getScore()));
         }
 
-        scoresTable.setItems(FXCollections.observableArrayList(scoreEntries));
+        scoresTable.setItems(finalEntries);
     }
 
     @FXML

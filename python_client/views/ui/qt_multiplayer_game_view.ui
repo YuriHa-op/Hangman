@@ -21,6 +21,42 @@
      </property>
      <layout class="QVBoxLayout" name="left_layout">
       <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="leave_button">
+          <property name="text">
+           <string/>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>24</width>
+            <height>24</height>
+           </size>
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
        <widget class="QLabel" name="status_label">
         <property name="text">
          <string>Game in Progress...</string>
@@ -88,13 +124,6 @@
       </item>
       <item>
        <widget class="QWidget" name="virtual_keyboard_container" native="true"/>
-      </item>
-      <item>
-       <widget class="QPushButton" name="main_menu_button">
-        <property name="text">
-         <string>Back to Main Menu (Forfeit)</string>
-        </property>
-       </widget>
       </item>
      </layout>
     </widget>

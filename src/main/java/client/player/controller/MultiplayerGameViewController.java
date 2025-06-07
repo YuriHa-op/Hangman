@@ -34,6 +34,7 @@ import javafx.animation.Animation;
 import javafx.animation.ParallelTransition;
 import client.player.helper.AfkCheckDialog;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javafx.animation.TranslateTransition;
 
 public class MultiplayerGameViewController implements MultiplayerGameModel.LobbyStateListener {
     @FXML private StackPane root;
@@ -63,6 +64,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private String povPlayer = null; // Whose POV is being shown
     private StackPane spectateOverlay = null;
     private Map<String, Animation> activeAnimations = new HashMap<>(); // Store active animations
+    private int lastEventCount = 0;
 
     // AFK Dialog related fields
     private static final long AFK_DIALOG_COOLDOWN_MS = 20000; // 20 seconds cooldown
@@ -158,6 +160,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         scoresPanel.getChildren().clear();
         playerScoreLabels.clear();
         gameStarted = false;
+        lastEventCount = 0;
     }
 
     private void resetKeyboard() {
@@ -247,7 +250,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 final String gameId = state.getGameId();
 
                 // Prepare data for results screen
-                final List<String> playerNames = new ArrayList<>(state.getPlayers());
+                final List<String> playerNames = new ArrayList<>(state.getAllPlayersEver());
                 final Map<String, Integer> finalScores = new HashMap<>(state.getScoresFromGameState());
 
                 Runnable showResultsAndGoHome = () -> {
@@ -390,6 +393,19 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 } else {
                     gameTimerHelper.setTime(serverRemainingTime);
                 }
+            }
+
+            // Process Game Events
+            List<String> events = state.getGameEvents();
+            if (events != null && events.size() > lastEventCount) {
+                List<String> newEvents = events.subList(lastEventCount, events.size());
+                for (String event : newEvents) {
+                    // Don't show the user their own leave message
+                    if (!event.contains(model.getUsername())) {
+                        showNotification(event);
+                    }
+                }
+                lastEventCount = events.size();
             }
         });
     }
@@ -596,13 +612,8 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     @FXML
     public void handleBackToMenu() {
         stopPolling();
-        if (model != null && model.getUsername() != null) {
-            try {
-                model.getGameService().endGameSession(model.getUsername());
-                model.getGameService().cleanupPlayerSession(model.getUsername());
-            } catch (Exception e) {
-                System.err.println("Error cleaning up session: " + e.getMessage());
-            }
+        if (model != null) {
+            model.leaveGame();
         }
         if (onBackToMenu != null) {
             onBackToMenu.run();
@@ -879,5 +890,41 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         afkDialogCooldownActive.set(true);
         afkDialogCooldownTimer.playFromStart(); // Restart the cooldown timer
         System.out.println("AFK Dialog cooldown started.");
+    }
+
+    private void showNotification(String message) {
+        if (root == null) return;
+
+        Label notificationLabel = new Label(message);
+        notificationLabel.setStyle(
+            "-fx-background-color: rgba(45, 45, 45, 0.95); " +
+            "-fx-text-fill: white; " +
+            "-fx-font-size: 14px; " +
+            "-fx-padding: 10 20 10 20; " +
+            "-fx-background-radius: 15; " +
+            "-fx-border-radius: 15;"
+        );
+        notificationLabel.setEffect(new DropShadow(10, Color.BLACK));
+
+        StackPane.setAlignment(notificationLabel, javafx.geometry.Pos.TOP_CENTER);
+        notificationLabel.setTranslateY(-100); // Start off-screen
+
+        root.getChildren().add(notificationLabel);
+
+        // Animate in
+        TranslateTransition slideIn = new TranslateTransition(Duration.millis(400), notificationLabel);
+        slideIn.setToY(20); // Slide to 20px from the top
+
+        // Pause
+        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.seconds(3));
+
+        // Animate out
+        TranslateTransition slideOut = new TranslateTransition(Duration.millis(400), notificationLabel);
+        slideOut.setToY(-100);
+
+        // Chain animations
+        SequentialTransition sequence = new SequentialTransition(slideIn, pause, slideOut);
+        sequence.setOnFinished(e -> root.getChildren().remove(notificationLabel));
+        sequence.play();
     }
 } 

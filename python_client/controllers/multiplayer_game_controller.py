@@ -31,6 +31,7 @@ class MultiplayerGameController(BaseController):
         self.game_state_timer.timeout.connect(self.poll_game_state)
         self.game_over = False
         self.is_between_rounds = False
+        self.last_event_count = 0
 
         self.afk_pre_check_timer = QTimer()
         self.afk_pre_check_timer.setSingleShot(True)
@@ -45,6 +46,7 @@ class MultiplayerGameController(BaseController):
         self.game_over = False
         self.is_between_rounds = False
         self.round_at_afk_check_start = -1
+        self.last_event_count = 0
         self.afk_pre_check_timer.stop()
         self.thread_pool.clear()
         
@@ -77,6 +79,16 @@ class MultiplayerGameController(BaseController):
         current_username = self.model.get_username()
         self.view.update_view_from_state(lobby_state, current_username)
 
+        # Process Game Events for notifications
+        game_events = game_data.get("gameEvents", [])
+        if len(game_events) > self.last_event_count:
+            new_events = game_events[self.last_event_count:]
+            for event in new_events:
+                # To avoid showing own leave message after returning to menu
+                if current_username not in event:
+                    self.view.display_game_event(event)
+            self.last_event_count = len(game_events)
+            
         game_winner = game_data.get("gameWinner", "")
 
         if game_winner and not self.game_over:
@@ -184,8 +196,8 @@ class MultiplayerGameController(BaseController):
             worker = NextRoundWorker(self.model)
             self.thread_pool.start(worker)
 
-    def forfeit_and_go_back(self):
-        self.model.cleanup_player_session()
+    def leave_game_and_go_back(self):
+        self.model.leave_multiplayer_game()
         self.on_hide()
         self.view.main_window.show_view("MainMenu")
 

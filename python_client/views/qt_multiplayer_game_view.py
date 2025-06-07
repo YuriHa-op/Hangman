@@ -1,9 +1,65 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                             QPushButton, QGridLayout, QFrame, QScrollArea, QDialog)
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+                             QPushButton, QGridLayout, QFrame, QScrollArea, QDialog, QMessageBox)
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QPropertyAnimation, QRect
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5 import uic
 import os
+
+class NotificationWidget(QFrame):
+    def __init__(self, parent, message):
+        super().__init__(parent)
+        self.parent = parent
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setStyleSheet("""
+            QFrame {
+                background-color: rgba(105, 105, 105, 0.95); /* Darker Gray */
+                border-radius: 10px;
+            }
+        """)
+
+        layout = QVBoxLayout()
+        self.label = QLabel(message)
+        self.label.setAlignment(Qt.AlignCenter)
+        font = QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        self.label.setFont(font)
+        self.label.setStyleSheet("color: white; background-color: transparent;")
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+        self.setMinimumWidth(300)
+        self.adjustSize()
+        self.hide()
+
+    def show_notification(self):
+        parent_width = self.parent.width()
+        self_width = self.width()
+        start_x = int((parent_width - self_width) / 2)
+        
+        self.move(start_x, -self.height())
+        self.show()
+
+        self.anim_down = QPropertyAnimation(self, b"geometry")
+        self.anim_down.setDuration(300)
+        start_pos = QRect(start_x, -self.height(), self.width(), self.height())
+        end_pos = QRect(start_x, 20, self.width(), self.height())
+        self.anim_down.setStartValue(start_pos)
+        self.anim_down.setEndValue(end_pos)
+        self.anim_down.start()
+
+        QTimer.singleShot(3000, self.hide_notification)
+
+    def hide_notification(self):
+        start_pos = self.geometry()
+        end_pos = QRect(start_pos.x(), -self.height(), start_pos.width(), start_pos.height())
+        
+        self.anim_up = QPropertyAnimation(self, b"geometry")
+        self.anim_up.setDuration(300)
+        self.anim_up.setStartValue(start_pos)
+        self.anim_up.setEndValue(end_pos)
+        self.anim_up.finished.connect(self.deleteLater)
+        self.anim_up.start()
 
 class AfkDialog(QDialog):
     yes_clicked = pyqtSignal()
@@ -223,9 +279,9 @@ class QtMultiplayerGameView(QWidget):
         self.my_score_label = self.findChild(QLabel, 'my_score_label')
         self.round_label = self.findChild(QLabel, 'round_label')
         self.my_masked_word_label = self.findChild(QLabel, 'my_masked_word_label')
-        self.main_menu_button = self.findChild(QPushButton, 'main_menu_button')
         self.virtual_keyboard_container = self.findChild(QWidget, 'virtual_keyboard_container')
         self.scroll_area_layout = self.findChild(QVBoxLayout, 'scroll_area_layout')
+        self.leave_button = self.findChild(QPushButton, 'leave_button')
 
         # Create and add the virtual keyboard
         self.virtual_keyboard = VirtualKeyboard()
@@ -235,10 +291,26 @@ class QtMultiplayerGameView(QWidget):
         
         # Connect signals
         self.virtual_keyboard.letterClicked.connect(self.make_guess)
-        self.main_menu_button.clicked.connect(self.back_to_main_menu)
+        if self.leave_button:
+            self.leave_button.clicked.connect(self.confirm_leave_game)
+            self.setup_leave_button_icon()
 
         self.right_panel.hide()
         self.virtual_keyboard.update_keyboard(set(), set(), enabled=False)
+
+    def setup_leave_button_icon(self):
+        # Go up one level from 'views' to the 'python_client' directory, then into 'assets'
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        icon_path = os.path.join(base_path, 'assets', 'leave.png')
+        if os.path.exists(icon_path):
+            self.leave_button.setIcon(QIcon(icon_path))
+            # Text is already set to empty in the .ui file, but we can ensure it here.
+            self.leave_button.setText("")
+            self.leave_button.setToolTip("Leave Game")
+        else:
+            print(f"Warning: Icon not found at {icon_path}. Displaying text instead.")
+            # Fallback text if icon is not found
+            self.leave_button.setText("Leave")
 
     def set_controller(self, controller):
         self.controller = controller
@@ -247,9 +319,18 @@ class QtMultiplayerGameView(QWidget):
         if self.controller:
             self.controller.make_guess(guess)
 
+    def confirm_leave_game(self):
+        reply = QMessageBox.question(self, 'Confirm Leave',
+                                     "Are you sure you want to leave the game? This action cannot be undone.",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            if self.controller:
+                self.controller.leave_game_and_go_back()
+
     def back_to_main_menu(self):
         if self.controller:
-            self.controller.forfeit_and_go_back()
+            self.controller.leave_game_and_go_back()
 
     def update_view_from_state(self, game_state, current_player_username):
         if not game_state:
@@ -298,7 +379,6 @@ class QtMultiplayerGameView(QWidget):
 
         if game_winner:
             self.status_label.setText(f"Game Over! Winner is {game_winner}!")
-            self.main_menu_button.setText("Back to Main Menu")
         elif not game_data.get("roundInProgress", True):
             winner_text = f"Round Over! Winner: {round_winner}" if round_winner else "Round Over! No winner."
             self.status_label.setText(winner_text)
@@ -349,7 +429,6 @@ class QtMultiplayerGameView(QWidget):
         self.round_label.setText("Round: -")
         self.my_masked_word_label.setText("_ _ _")
         self.right_panel.hide()
-        self.main_menu_button.setText("Back to Main Menu (Forfeit)")
         
         # Reset the virtual keyboard completely
         self.virtual_keyboard.update_keyboard(set(), set(), enabled=False)
@@ -427,4 +506,9 @@ class QtMultiplayerGameView(QWidget):
             self._game_over_dialog.show()
 
     def _clear_game_over_dialog(self, result):
-        self._game_over_dialog = None 
+        self._game_over_dialog = None
+
+    def display_game_event(self, event_message):
+        # Use main_window as parent so notification appears on top of the whole view
+        notification = NotificationWidget(self.main_window, event_message)
+        notification.show_notification() 

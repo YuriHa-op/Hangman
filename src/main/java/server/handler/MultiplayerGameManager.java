@@ -105,6 +105,8 @@ public class MultiplayerGameManager {
             MultiplayerGameState game = activeGames.get(lobby.getLobbyId());
             if (game != null) {
                 game.removePlayer(username);
+                game.addGameEvent(username + " has left the game.");
+                logMessage("Player " + username + " removed from game in lobby " + lobby.getLobbyId());
             }
 
             if (lobby.getPlayers().isEmpty()) {
@@ -293,6 +295,39 @@ public class MultiplayerGameManager {
 
     public boolean isPlayerInMultiplayer(String username) {
         return getLobbyByPlayer(username) != null;
+    }
+
+    public synchronized void leaveMultiplayerGame(String username) {
+        MultiplayerLobby lobby = getLobbyByPlayer(username);
+        if (lobby == null) {
+            logMessage("Player " + username + " tried to leave but was not in a lobby.");
+            return;
+        }
+
+        MultiplayerGameState game = activeGames.get(lobby.getLobbyId());
+        
+        // Remove player from lobby and game state
+        lobby.removePlayer(username);
+        if (game != null) {
+            game.removePlayer(username);
+            game.addGameEvent(username + " has left the game.");
+            logMessage("Player " + username + " removed from game in lobby " + lobby.getLobbyId());
+
+            // Check for win condition after player leaves
+            if (game.getPlayers().size() == 1 && lobby.isStarted()) {
+                String winner = game.getPlayers().get(0);
+                game.setGameWinner(winner);
+                logMessage("Player " + winner + " is the last one remaining. Declaring winner.");
+                // The existing logic in startNextRound will handle DB updates and cleanup
+                startNextRound(winner); 
+            }
+        }
+
+        // If lobby becomes empty, clean it up immediately
+        if (lobby.getPlayers().isEmpty()) {
+            logMessage("Lobby " + lobby.getLobbyId() + " is empty. Cleaning up.");
+            cleanupGame(lobby.getLobbyId());
+        }
     }
 
     // Additional methods for game state, guesses, win condition, etc. will be added as needed.

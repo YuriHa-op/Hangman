@@ -2,6 +2,7 @@ package server.handler;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MultiplayerGameState {
     private final String lobbyId;
@@ -30,6 +31,7 @@ public class MultiplayerGameState {
     private boolean gameWinProcessed = false;
     private boolean roundPotentiallyStalled = false;
     private final Map<String, Boolean> playerReady = new ConcurrentHashMap<>();
+    private final List<String> gameEvents = new CopyOnWriteArrayList<>();
 
     public MultiplayerGameState(String lobbyId, List<String> players, WordManager wordManager, int roundTimeSeconds) {
         this.lobbyId = lobbyId;
@@ -315,6 +317,12 @@ public class MultiplayerGameState {
         this.gameWinProcessed = gameWinProcessed;
     }
 
+    public synchronized void setGameWinner(String winnerUsername) {
+        if (this.gameWinner == null) {
+            this.gameWinner = winnerUsername;
+        }
+    }
+
     public Map<String, String> getAllMaskedWords() {
         Map<String, String> map = new HashMap<>();
         for (String player : players) {
@@ -398,5 +406,20 @@ public class MultiplayerGameState {
         for (String player : players) {
             playerReady.put(player, false);
         }
+    }
+
+    public void addGameEvent(String event) {
+        this.gameEvents.add(event);
+        if (this.gameEvents.size() > 10) {
+            this.gameEvents.remove(0);
+        }
+    }
+
+    public List<String> getGameEvents() {
+        return new ArrayList<>(this.gameEvents);
+    }
+
+    public List<String> getAllPlayersEver() {
+        return new ArrayList<>(allPlayersEver);
     }
 } 

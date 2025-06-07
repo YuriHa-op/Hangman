@@ -290,7 +290,9 @@ public class GameServiceImpl extends GameServicePOA {
 
     public String getMultiplayerLobbyState(String username) {
         MultiplayerLobby lobby = multiplayerGameManager.getLobbyByPlayer(username);
-        if (lobby == null) return "{\"state\":\"NOMATCH\"}";
+        if (lobby == null) {
+            return "{\"state\":\"NOMATCH\"}";
+        }
 
         MultiplayerGameState gameState = multiplayerGameManager.getGameState(username);
 
@@ -299,168 +301,56 @@ public class GameServiceImpl extends GameServicePOA {
             multiplayerGameManager.scheduleCleanupIfGameOver(lobby.getLobbyId());
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"state\":\"")
-          .append(lobby.isStarted() ? "STARTED" : "WAITING")
-          .append("\",");
-        
-        // Add basic lobby info
-        sb.append("\"players\":[");
-        for (int i = 0; i < lobby.getPlayers().size(); i++) {
-            sb.append("\"").append(lobby.getPlayers().get(i)).append("\"");
-            if (i < lobby.getPlayers().size() - 1) sb.append(",");
-        }
-        sb.append("],");
-        sb.append("\"maxPlayers\":").append(lobby.getMaxPlayers()).append(",");
-        sb.append("\"creationTime\":").append(lobby.getCreationTime()).append(",");
-        sb.append("\"queueTimeSeconds\":").append(multiplayerGameManager.getQueueTimeSeconds());
+        Map<String, Object> stateMap = new LinkedHashMap<>();
+        stateMap.put("state", lobby.isStarted() ? "STARTED" : "WAITING");
+        stateMap.put("players", lobby.getPlayers());
+        stateMap.put("maxPlayers", lobby.getMaxPlayers());
+        stateMap.put("creationTime", lobby.getCreationTime());
+        stateMap.put("queueTimeSeconds", multiplayerGameManager.getQueueTimeSeconds());
 
-        // Add game state if game has started
         if (gameState != null) {
-            // If we fetch a game state and it's NOT potentially stalled (e.g., new round started, winner declared)
-            // then cancel any outstanding stall check for this lobby.
             if (!gameState.isRoundPotentiallyStalled()) {
-                multiplayerGameManager.cancelStallCheckTimer(lobby.getLobbyId()); // Method needs to be public or called internally by manager
+                multiplayerGameManager.cancelStallCheckTimer(lobby.getLobbyId());
             }
 
-            sb.append(",\"gameState\":{");
-            sb.append("\"gameId\":\"").append(gameState.getGameId()).append("\",");
-            sb.append("\"currentRound\":").append(gameState.getCurrentRound()).append(",");
-            sb.append("\"roundInProgress\":").append(gameState.isRoundInProgress()).append(",");
-            sb.append("\"remainingTime\":").append(gameState.getRemainingTime()).append(",");
-            sb.append("\"maskedWord\":\"").append(gameState.getMaskedWord(username)).append("\",");
-
-            // Add all players' masked words for spectate mode
-            sb.append("\"maskedWords\":{");
-            Map<String, String> maskedWords = gameState.getAllMaskedWords();
-            Iterator<Map.Entry<String, String>> mwIt = maskedWords.entrySet().iterator();
-            while (mwIt.hasNext()) {
-                Map.Entry<String, String> entry = mwIt.next();
-                sb.append("\"").append(entry.getKey()).append("\":\"").append(entry.getValue()).append("\"");
-                if (mwIt.hasNext()) sb.append(",");
+            Map<String, Object> gameStateMap = new LinkedHashMap<>();
+            gameStateMap.put("gameId", gameState.getGameId());
+            gameStateMap.put("currentRound", gameState.getCurrentRound());
+            gameStateMap.put("roundInProgress", gameState.isRoundInProgress());
+            gameStateMap.put("remainingTime", gameState.getRemainingTime());
+            gameStateMap.put("maskedWord", gameState.getMaskedWord(username));
+            gameStateMap.put("maskedWords", gameState.getAllMaskedWords());
+            gameStateMap.put("incorrectGuessesMap", gameState.getAllIncorrectGuesses());
+            gameStateMap.put("scores", gameState.getScores());
+            gameStateMap.put("guesses", gameState.getPlayerGuesses(username));
+            gameStateMap.put("roundWinner", gameState.getRoundWinner());
+            
+            Map<String, Integer> playerRoundWins = new HashMap<>();
+            for(String p : lobby.getPlayers()) {
+                playerRoundWins.put(p, gameState.getPlayerRoundWins(p));
             }
-            sb.append("},");
+            gameStateMap.put("playerRoundWins", playerRoundWins);
 
-            // Add all players' incorrect guesses for spectate mode
-            sb.append("\"incorrectGuessesMap\":{");
-            Map<String, Integer> incorrectGuessesMap = gameState.getAllIncorrectGuesses();
-            Iterator<Map.Entry<String, Integer>> igIt = incorrectGuessesMap.entrySet().iterator();
-            while (igIt.hasNext()) {
-                Map.Entry<String, Integer> entry = igIt.next();
-                sb.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
-                if (igIt.hasNext()) sb.append(",");
-            }
-            sb.append("},");
-
-            // Add scores
-            sb.append("\"scores\":{");
-            Map<String, Integer> scores = gameState.getScores();
-            Iterator<Map.Entry<String, Integer>> it = scores.entrySet().iterator();
-            while (it.hasNext()) {
-                Map.Entry<String, Integer> entry = it.next();
-                sb.append("\"").append(entry.getKey()).append("\":")
-                  .append(entry.getValue());
-                if (it.hasNext()) sb.append(",");
-            }
-            sb.append("},");
-
-            // Add player guesses
-            sb.append("\"guesses\":[");
-            Set<Character> guesses = gameState.getPlayerGuesses(username);
-            Iterator<Character> guessIt = guesses.iterator();
-            while (guessIt.hasNext()) {
-                sb.append("\"").append(guessIt.next()).append("\"");
-                if (guessIt.hasNext()) sb.append(",");
-            }
-            sb.append("],");
-
-            // Add round winner
-            sb.append("\"roundWinner\":\"").append(gameState.getRoundWinner()).append("\",");
-
-            // Add player round wins
-            sb.append("\"playerRoundWins\":{");
-            List<String> allPlayers = lobby.getPlayers();
-            for (int i = 0; i < allPlayers.size(); i++) {
-                String p = allPlayers.get(i);
-                sb.append("\"").append(p).append("\":").append(gameState.getPlayerRoundWins(p));
-                if (i < allPlayers.size() - 1) sb.append(",");
-            }
-            sb.append("},");
-
-            // Add game winner
-            sb.append("\"gameWinner\":\"").append(gameState.getGameWinner() != null ? gameState.getGameWinner() : "").append("\",");
-
-            // Add sessionResult for this player
-            String sessionResult = "";
             String gameWinner = gameState.getGameWinner();
+            gameStateMap.put("gameWinner", gameWinner != null ? gameWinner : "");
+            
+            String sessionResult = "ONGOING";
             if (gameWinner != null && !gameWinner.isEmpty()) {
-                if (gameWinner.equals(username)) {
-                    sessionResult = "WIN";
-                } else {
-                    sessionResult = "LOSE";
-                }
-            } else {
-                sessionResult = "ONGOING";
+                sessionResult = gameWinner.equals(username) ? "WIN" : "LOSE";
             }
-            sb.append("\"sessionResult\":\"").append(sessionResult).append("\"");
+            gameStateMap.put("sessionResult", sessionResult);
+            
+            gameStateMap.put("playerGuessesMap", gameState.getAllPlayerGuesses());
+            gameStateMap.put("allCurrentWords", gameState.getAllCurrentWords());
+            gameStateMap.put("playerWinStreaks", gameState.getPlayerWinStreaks());
+            gameStateMap.put("allPlayerFinishTimes", gameState.getAllPlayerFinishTimes());
+            gameStateMap.put("gameEvents", gameState.getGameEvents());
+            gameStateMap.put("allPlayersEver", gameState.getAllPlayersEver());
 
-            // Add all players' guessed letters for spectate mode
-            sb.append(",\"playerGuessesMap\":{");
-            Map<String, Set<Character>> playerGuessesMap = gameState.getAllPlayerGuesses();
-            Iterator<Map.Entry<String, Set<Character>>> pgIt = playerGuessesMap.entrySet().iterator();
-            while (pgIt.hasNext()) {
-                Map.Entry<String, Set<Character>> entry = pgIt.next();
-                sb.append("\"").append(entry.getKey()).append("\":[");
-                Iterator<Character> charIt = entry.getValue().iterator();
-                while (charIt.hasNext()) {
-                    sb.append("\"").append(charIt.next()).append("\"");
-                    if (charIt.hasNext()) sb.append(",");
-                }
-                sb.append("]");
-                if (pgIt.hasNext()) sb.append(",");
-            }
-            sb.append("},");
-
-            // Add all players' current word for spectate mode (NO leading comma)
-            sb.append("\"allCurrentWords\":{");
-            Map<String, String> allCurrentWords = gameState.getAllCurrentWords();
-            Iterator<Map.Entry<String, String>> cwIt = allCurrentWords.entrySet().iterator();
-            while (cwIt.hasNext()) {
-                Map.Entry<String, String> entry = cwIt.next();
-                sb.append("\"").append(entry.getKey()).append("\":\"").append(entry.getValue()).append("\"");
-                if (cwIt.hasNext()) sb.append(",");
-            }
-            sb.append("}");
-
-            // ***** ADDING playerWinStreaks HERE *****
-            sb.append(",\"playerWinStreaks\":{");
-            Map<String, Integer> playerWinStreaks = gameState.getPlayerWinStreaks();
-            Iterator<Map.Entry<String, Integer>> pwsIt = playerWinStreaks.entrySet().iterator();
-            while (pwsIt.hasNext()) {
-                Map.Entry<String, Integer> entry = pwsIt.next();
-                sb.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
-                if (pwsIt.hasNext()) sb.append(",");
-            }
-            sb.append("}");
-            // ***** END playerWinStreaks *****
-
-            // ***** ADDING allPlayerFinishTimes HERE *****
-            sb.append(",\"allPlayerFinishTimes\":{");
-            Map<String, Long> allPlayerFinishTimes = gameState.getAllPlayerFinishTimes(); // Assuming this method exists
-            Iterator<Map.Entry<String, Long>> pftIt = allPlayerFinishTimes.entrySet().iterator();
-            while (pftIt.hasNext()) {
-                Map.Entry<String, Long> entry = pftIt.next();
-                sb.append("\"").append(entry.getKey()).append("\":").append(entry.getValue());
-                if (pftIt.hasNext()) sb.append(",");
-            }
-            sb.append("}");
-            // ***** END allPlayerFinishTimes *****
-
-            sb.append("}");
+            stateMap.put("gameState", gameStateMap);
         }
-        
-        sb.append("}");
-        return sb.toString();
+
+        return gson.toJson(stateMap);
     }
 
     public Bool sendMultiplayerGuess(String username, char letter) {
@@ -496,12 +386,16 @@ public class GameServiceImpl extends GameServicePOA {
 
     @Override
     public void playerReadyForFirstRound(String username) {
-        // Option 2: Route based on game mode
-        if (multiplayerGameManager != null && multiplayerGameManager.isPlayerInMultiplayer(username)) {
+        if (multiplayerGameManager.isPlayerInMultiplayer(username)) {
             multiplayerGameManager.playerReadyForFirstRound(username);
         } else {
             gameManager.signalPlayerReadyAndPotentiallyStartFirstRound(username);
         }
+    }
+
+    @Override
+    public void leaveMultiplayerGame(String username) {
+        multiplayerGameManager.leaveMultiplayerGame(username);
     }
 
 }

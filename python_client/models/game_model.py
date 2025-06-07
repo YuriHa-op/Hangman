@@ -211,6 +211,16 @@ class GameModel:
             return result == GameModule.BOOL_TRUE
         return False
 
+    def leave_multiplayer_game(self):
+        if self.username:
+            try:
+                self.game_service.leaveMultiplayerGame(self.username)
+                return True
+            except Exception as e:
+                print(f"Error leaving multiplayer game: {e}")
+                return False
+        return False
+
     # Utility to get current username
     def get_username(self):
         return self.username

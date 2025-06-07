@@ -13,6 +13,16 @@ class QtLoginView(QWidget):
         ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_login_view.ui')
         uic.loadUi(ui_path, self)
 
+        # Load and apply the QSS stylesheet
+        try:
+            style_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'style', 'minecraft_style.qss')
+            with open(style_path, 'r') as f:
+                self.setStyleSheet(f.read())
+        except FileNotFoundError:
+            print("Stylesheet not found. Make sure 'minecraft_style.qss' is in the 'style' directory.")
+        except Exception as e:
+            print(f"Error loading stylesheet: {e}")
+
         # Find widgets by their object names
         self.username_input = self.findChild(QLineEdit, 'username_input')
         self.password_input = self.findChild(QLineEdit, 'password_input')

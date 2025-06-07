@@ -100,5 +100,6 @@ module GameModule {
 
         // Client signals ready after match found dialog for 1v1 and multiplayer
         void playerReadyForFirstRound(in string username);
+        void leaveMultiplayerGame(in string username);
     };
 };
