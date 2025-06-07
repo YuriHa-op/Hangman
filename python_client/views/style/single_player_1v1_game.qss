@@ -1,0 +1,110 @@
+/* JJK Battle HUD Theme */
+
+SinglePlayer1v1GameView {
+    font-family: "JujutsuKaisen";
+    background-color: #1a1a1a; /* Dark background */
+}
+
+/* Player and Opponent HUDs */
+#player_hud_widget, #opponent_hud_widget {
+    background-color: rgba(30, 30, 30, 0.7);
+    border: 2px solid #E53935; /* Red border */
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.hud_name_label {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+QProgressBar {
+    border: 2px solid #5a5a5a;
+    border-radius: 5px;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+    background-color: #2a2a2a;
+}
+
+QProgressBar::chunk {
+    background-color: #4CAF50; /* Green for health */
+}
+
+/* Container for the word */
+#word_container_widget {
+    background-color: rgba(30, 30, 30, 0.7);
+    border: 2px solid #E53935; /* Red border */
+    border-radius: 10px;
+    padding: 20px;
+}
+
+#word_container_widget[roundStatus="win"] {
+    background-color: rgba(76, 175, 80, 0.8);
+    border: 2px solid #4CAF50;
+}
+
+#word_container_widget[roundStatus="lose"] {
+    background-color: rgba(211, 47, 47, 0.8);
+    border: 2px solid #d32f2f;
+}
+
+/* Center area for word display */
+#word_label {
+    font-size: 60px;
+    font-weight: bold;
+    color: #FFD700; /* Gold/Yellow */
+    letter-spacing: 10px;
+}
+
+/* Top bar with timer and round info */
+#timer_label, #round_label {
+    font-size: 28px;
+    color: #ffffff;
+}
+
+/* Status Label - for ROUND START, KO, etc. */
+#status_label {
+    font-size: 40px;
+    font-weight: bold;
+    color: #E53935; /* Red for emphasis */
+    text-transform: uppercase;
+}
+
+/* Keyboard Styling */
+#kb_container_widget QPushButton {
+    background-color: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #FFD700;
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 45px;
+    min-height: 45px;
+}
+
+#kb_container_widget QPushButton:hover {
+    background-color: #4a4a4a;
+}
+
+#kb_container_widget QPushButton:disabled {
+    background-color: #1f1f1f;
+    color: #5a5a5a;
+    border-color: #5a5a5a;
+}
+
+/* Back Button */
+#back_button {
+    background-color: transparent;
+    color: #FFD700;
+    border: 2px solid #FFD700;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#back_button:hover {
+    background-color: #FFD700;
+    color: #000000;
+} 

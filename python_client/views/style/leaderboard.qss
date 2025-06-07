@@ -1,0 +1,106 @@
+/* General Styling for LeaderboardView */
+LeaderboardView, #title_label, .rank_label, .name_label, .score_label, #leaderboard_table, #back_button, QHeaderView::section {
+    font-family: "Minecraftia";
+}
+
+LeaderboardView {
+    background-color: #1A1A2E; /* Dark blue-purple background */
+}
+
+#title_label {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
+    margin-bottom: 20px;
+}
+
+/* Styling for the Top 3 Podium */
+#podium_container {
+    background-color: #2F2A5A; /* Slightly lighter purple */
+    border-radius: 15px;
+    padding: 10px;
+}
+
+.podium_place_widget {
+    background-color: transparent;
+}
+
+.rank_label {
+    font-size: 18px;
+    font-weight: bold;
+    color: #E0E0E0;
+}
+
+.name_label {
+    font-size: 16px;
+    color: #FFFFFF;
+}
+
+.score_label {
+    font-size: 20px;
+    font-weight: bold;
+    color: #FDD835; /* Gold color for score */
+}
+
+#first_place_avatar_label, #second_place_avatar_label, #third_place_avatar_label {
+    border: 3px solid #FDD835; /* Gold border for avatars */
+    border-radius: 40px; /* Circular avatars */
+    min-width: 80px;
+    max-width: 80px;
+    min-height: 80px;
+    max-height: 80px;
+}
+
+#first_place_widget .rank_label {
+    color: #FDD835; /* Gold for 1st place rank */
+}
+
+#second_place_widget .rank_label {
+    color: #C0C0C0; /* Silver for 2nd place rank */
+}
+
+#third_place_widget .rank_label {
+    color: #CD7F32; /* Bronze for 3rd place rank */
+}
+
+
+/* Leaderboard Table Styling */
+#leaderboard_table {
+    background-color: #2F2A5A;
+    color: #FFFFFF;
+    border: none;
+    gridline-color: #1A1A2E;
+    font-size: 14px;
+}
+
+QHeaderView::section {
+    background-color: #1A1A2E;
+    color: #FFFFFF;
+    padding: 5px;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#leaderboard_table::item {
+    padding: 10px 5px;
+}
+
+#leaderboard_table::item:alternate {
+    background-color: #3D376E;
+}
+
+/* Back Button */
+#back_button {
+    background-color: #E94560; /* A contrasting pink/red */
+    color: #FFFFFF;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#back_button:hover {
+    background-color: #FC5A75;
+} 

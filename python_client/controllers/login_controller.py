@@ -16,8 +16,8 @@ class LoginController(BaseController):
                 # self.view.show_error("Login failed. Please check your credentials.")
                 self.view.show_login_error("Login failed. Please check your credentials.")
         except AlreadyLoggedInException as e:
-            # self.view.show_error(f"Login failed: {e.reason}")
-            self.view.show_login_error(f"Login failed: {e.reason}")
+            # Display a user-friendly message instead of the raw exception.
+            self.view.show_login_error("This user is already logged in on another device.")
         except Exception as e:
             # print(f"An unexpected error occurred during login: {e}") # For debugging
             # self.view.show_error("An unexpected error occurred. Please try again.")

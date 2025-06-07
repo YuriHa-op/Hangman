@@ -48,7 +48,7 @@ class MatchHistoryController(BaseController):
                 details_json = self.model.get_match_details(game_id)
 
             if details_json and details_json.strip() and details_json != "null":
-                self.view.show_details_dialog(details_json)
+                self.view.display_match_details(details_json)
             else:
                 message = f"No details found for this {self.active_mode} match."
                 print(f"[MatchHistoryController] {message}")

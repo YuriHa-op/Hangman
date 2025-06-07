@@ -659,6 +659,7 @@ public class GameManager {
             }
         }
 
+        /*
         // --- NEW: Auto-advance through all missed rounds for both players ---
         List<String> bothPlayers = new ArrayList<>();
         bothPlayers.add(username);
@@ -688,6 +689,7 @@ public class GameManager {
                 }
             }
         }
+        */
 
         String maskedWord = getMaskedWord(username);
         dto.maskedWord = (maskedWord != null) ? maskedWord : "";

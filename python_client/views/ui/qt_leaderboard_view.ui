@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>500</width>
+    <height>700</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
-    <number>15</number>
+    <number>20</number>
    </property>
    <property name="leftMargin">
     <number>20</number>
@@ -31,15 +31,174 @@
    </property>
    <item>
     <widget class="QLabel" name="title_label">
-     <property name="styleSheet">
-      <string notr="true">font-size: 20px; font-weight: bold; margin-bottom: 10px;</string>
-     </property>
      <property name="text">
-      <string>Leaderboard</string>
+      <string>LEADERBOARD</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="podium_container" native="true">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QWidget" name="second_place_widget" native="true">
+        <property name="class" stdset="0">
+         <string>podium_place_widget</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <item alignment="Qt::AlignHCenter">
+          <widget class="QLabel" name="second_place_rank_label">
+           <property name="text">
+            <string>2nd</string>
+           </property>
+           <property name="class" stdset="0">
+            <string>rank_label</string>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignHCenter">
+          <widget class="QLabel" name="second_place_avatar_label">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="second_place_name_label">
+           <property name="text">
+            <string>Player 2</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="class" stdset="0">
+            <string>name_label</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="second_place_score_label">
+           <property name="text">
+            <string>0</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="class" stdset="0">
+            <string>score_label</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="first_place_widget" native="true">
+        <property name="class" stdset="0">
+         <string>podium_place_widget</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <item alignment="Qt::AlignHCenter">
+          <widget class="QLabel" name="first_place_rank_label">
+           <property name="text">
+            <string>1st</string>
+           </property>
+           <property name="class" stdset="0">
+            <string>rank_label</string>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignHCenter">
+          <widget class="QLabel" name="first_place_avatar_label">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="first_place_name_label">
+           <property name="text">
+            <string>Player 1</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="class" stdset="0">
+            <string>name_label</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="first_place_score_label">
+           <property name="text">
+            <string>0</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="class" stdset="0">
+            <string>score_label</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="third_place_widget" native="true">
+        <property name="class" stdset="0">
+         <string>podium_place_widget</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_4">
+         <item alignment="Qt::AlignHCenter">
+          <widget class="QLabel" name="third_place_rank_label">
+           <property name="text">
+            <string>3rd</string>
+           </property>
+           <property name="class" stdset="0">
+            <string>rank_label</string>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignHCenter">
+          <widget class="QLabel" name="third_place_avatar_label">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="third_place_name_label">
+           <property name="text">
+            <string>Player 3</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="class" stdset="0">
+            <string>name_label</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="third_place_score_label">
+           <property name="text">
+            <string>0</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+           <property name="class" stdset="0">
+            <string>score_label</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
@@ -55,7 +214,12 @@
      </attribute>
      <column>
       <property name="text">
-       <string>Username</string>
+       <string>Rank</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Name</string>
       </property>
      </column>
      <column>
@@ -67,9 +231,6 @@
    </item>
    <item alignment="Qt::AlignCenter">
     <widget class="QPushButton" name="back_button">
-     <property name="styleSheet">
-      <string notr="true">padding: 8px 15px; font-size: 14px; margin-top: 10px;</string>
-     </property>
      <property name="text">
       <string>Back to Main Menu</string>
      </property>

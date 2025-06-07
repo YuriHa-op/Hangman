@@ -26,4 +26,4 @@ public class GameDetailsViewController {
             detailsTable.setItems(FXCollections.observableArrayList(details.getRounds()));
         }
     }
-} 
+}

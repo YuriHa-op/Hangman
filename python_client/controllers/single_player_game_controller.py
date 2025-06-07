@@ -36,6 +36,7 @@ class SinglePlayerGameController(BaseController):
         self.full_round_time = 30 # Default, should be fetched (e.g., from GameStateDTO.roundTime if available or fixed config)
         self.total_rounds = 3 # Assuming a best of 3, from Tkinter version's "Score: X/3"
         self.max_incorrect_guesses = 5 # As per Tkinter view
+        self.opponent_score = 0
 
     def on_show(self):
         super().on_show()
@@ -77,6 +78,7 @@ class SinglePlayerGameController(BaseController):
         self.current_server_round_processed_for_next_attempt = -1
         self.attempted_letters_current_round.clear()
         self.current_actual_word_revealed = ""
+        self.opponent_score = 0
         if self.dialog_completion_event: # Clear event if it exists
             self.dialog_completion_event.set() # Unblock if anyone is waiting, then clear
         self.dialog_completion_event = None
@@ -99,12 +101,10 @@ class SinglePlayerGameController(BaseController):
         # Reset view to a clean state for a new game
         self.view.update_display(
             masked_word="_ _ _", timer_text="Time: --", incorrect_text=f"Incorrect: 0/{self.max_incorrect_guesses}",
-            status_text="Initializing...", player_wins=0, total_rounds=self.total_rounds,
-            current_round_num=0, attempted_letters=set(), current_word_upper="",
-            round_over=False, game_over=False
+            status_text="Initializing...", player_wins=0, opponent_wins=0, total_rounds=self.total_rounds,
+            current_round_num=1, attempted_letters=set(), current_word_upper="",
+            round_over=False, game_over=False, is_new_round=True
         )
-        self.view.update_keyboard(set(), "", disable_all=False)
-
 
         self.polling_thread = threading.Thread(target=self._initialize_and_poll_game_loop, daemon=True)
         self.polling_thread.start()
@@ -231,13 +231,13 @@ class SinglePlayerGameController(BaseController):
                 server_current_round = state.currentRound
                 status_text = "Guess the word!"
                 timer_display_text = f"Time: {state.remainingTime}s"
-                timer_color = "black"
+                timer_color = "white"
                 if state.remainingTime <= 10 and state.remainingTime > 5 : timer_color = "orange"
                 if state.remainingTime <= 5: timer_color = "red"
                 if state.remainingTime == self.full_round_time and state.roundOver == GameModule.BOOL_FALSE and state.gameOver == GameModule.BOOL_FALSE :
                      timer_display_text = "Time: --" # Before first real tick
 
-
+                is_new_round = server_current_round != self.last_processed_server_round_for_word_clear
                 # Handle actual word revelation (for keyboard coloring at round end)
                 if hasattr(state, 'actualWord') and state.actualWord and state.actualWord != "_ _ _":
                     self.current_actual_word_revealed = state.actualWord.upper()
@@ -273,17 +273,47 @@ class SinglePlayerGameController(BaseController):
                     "incorrect_text": f"Incorrect: {state.incorrectGuesses}/{self.max_incorrect_guesses}", # Assuming DTO has incorrectGuesses
                     "status_text": status_text,
                     "player_wins": state.playerWins,
+                    "opponent_wins": self.opponent_score,
                     "total_rounds": self.total_rounds, # Or state.maxRounds if available
                     "current_round_num": state.currentRound,
                     "attempted_letters": self.attempted_letters_current_round.copy(), # Send a copy
                     "current_word_upper": self.current_actual_word_revealed,
                     "round_over": state.roundOver == GameModule.BOOL_TRUE,
                     "game_over": state.gameOver == GameModule.BOOL_TRUE,
-                    "timer_color": timer_color
+                    "timer_color": timer_color,
+                    "is_new_round": is_new_round,
+                    "round_result_status": "ONGOING" # Default status
                 }
                 
                 # Handle Round Over
                 if state.roundOver == GameModule.BOOL_TRUE and state.gameOver == GameModule.BOOL_FALSE:
+                    my_username = self.model.get_username()
+                    round_result = "ONGOING"
+                    if state.roundWinner:
+                        if state.roundWinner == my_username:
+                            round_result = "WIN"
+                        elif state.roundWinner != "NONE":
+                            round_result = "LOSE"
+                        else: # "NONE"
+                            round_result = "DRAW"
+                    
+                    # If no winner, check for timeout/loss by incorrect guesses
+                    if round_result == "ONGOING" or round_result == "DRAW":
+                        # At round end, the server should provide the actual word.
+                        actual_word = ""
+                        if hasattr(state, 'actualWord') and state.actualWord:
+                            actual_word = state.actualWord.upper().replace(" ", "")
+                        
+                        masked_word = state.maskedWord.replace(" ", "")
+
+                        # If the actual word is known and matches the masked word, it's a win.
+                        if actual_word and masked_word == actual_word:
+                            round_result = "WIN"
+                        else:
+                            # Otherwise, if the round is over and the word isn't guessed, it's a loss.
+                            round_result = "LOSE"
+
+                    view_update_payload["round_result_status"] = round_result
                     status_text = self._determine_round_status_text(state)
                     view_update_payload["status_text"] = status_text
                     view_update_payload["current_word_upper"] = state.actualWord.upper() if hasattr(state, 'actualWord') and state.actualWord else self.current_actual_word_revealed
@@ -291,6 +321,12 @@ class SinglePlayerGameController(BaseController):
                     if state.sessionResult == "ONGOING": # Check if more rounds
                         # Logic to attempt to start a new round
                         if server_current_round > self.current_server_round_processed_for_next_attempt:
+                            # This block runs once when a round is officially over.
+                            # Let's update our tracked opponent score here.
+                            my_username = self.model.get_username()
+                            if state.roundWinner and state.roundWinner != "NONE" and state.roundWinner != my_username:
+                                self.opponent_score += 1
+
                             if self.polling_active:
                                 try: 
                                     print(f"[SP1v1Controller] Round {server_current_round} ended. Attempting to start next round.")

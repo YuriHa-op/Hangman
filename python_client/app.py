@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
+from PyQt5.QtCore import QSize
 import sys
 from models.game_model import GameModel
 # from views.app_view import HangmanApp # Updated import for HangmanApp # TODO: Will be replaced with PyQt5 main window
@@ -31,7 +32,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.model = model
         self.setWindowTitle("Hangman Game - PyQt Edition")
-        self.setGeometry(100, 100, 800, 600)
+        # self.setGeometry(100, 100, 800, 600) # Removed to allow LoginView to set fixed size
 
         self.stacked_widget = QStackedWidget()
         self.setCentralWidget(self.stacked_widget)
@@ -118,8 +119,21 @@ class MainWindow(QMainWindow):
             if self.current_view_name and self.current_view_name in self.controllers and hasattr(self.controllers[self.current_view_name], 'on_hide'):
                 self.controllers[self.current_view_name].on_hide()
             
-            self.stacked_widget.setCurrentWidget(self.views[view_name])
+            # Unset fixed size from previous view (e.g., Login) to allow resizing
+            self.setMinimumSize(0, 0)
+            self.setMaximumSize(16777215, 16777215)
+            
+            current_widget = self.views[view_name]
+            self.stacked_widget.setCurrentWidget(current_widget)
             self.current_view_name = view_name
+            
+            # Resize window to fit the new view's size.
+            self.resize(current_widget.size())
+
+            # If the new view is the login view, make the window fixed size again.
+            # The login view itself sets this, but we ensure it here as well for consistency.
+            if view_name == "Login":
+                self.setFixedSize(current_widget.size())
             
             if view_name in self.controllers and hasattr(self.controllers[view_name], 'on_show'):
                 self.controllers[view_name].on_show()

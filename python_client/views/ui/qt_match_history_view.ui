@@ -6,36 +6,33 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>700</width>
-    <height>500</height>
+    <width>1200</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Match History - Hangman</string>
+   <string>Mission Archive</string>
   </property>
-  <layout class="QVBoxLayout" name="main_layout">
+  <layout class="QVBoxLayout" name="main_layout" stretch="0,0,1,0">
    <property name="spacing">
-    <number>10</number>
+    <number>15</number>
    </property>
    <property name="leftMargin">
-    <number>15</number>
+    <number>20</number>
    </property>
    <property name="topMargin">
-    <number>15</number>
+    <number>20</number>
    </property>
    <property name="rightMargin">
-    <number>15</number>
+    <number>20</number>
    </property>
    <property name="bottomMargin">
-    <number>15</number>
+    <number>20</number>
    </property>
    <item>
     <widget class="QLabel" name="title_label">
-     <property name="styleSheet">
-      <string notr="true">font-size: 20px; font-weight: bold; margin-bottom: 10px;</string>
-     </property>
      <property name="text">
-      <string>Match History</string>
+      <string>MISSION ARCHIVE</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -43,80 +40,124 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="history_type_label">
-       <property name="text">
-        <string>History Type:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="history_type_combo"/>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
+    <widget class="QWidget" name="mission_tabs_container" native="true">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QPushButton" name="multiplayer_button">
+        <property name="text">
+         <string>Multiplayer Missions</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="singleplayer_button">
+        <property name="text">
+         <string>Solo Missions</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <widget class="QTableWidget" name="history_table">
-     <property name="editTriggers">
-      <set>QAbstractItemView::NoEditTriggers</set>
-     </property>
-     <property name="selectionBehavior">
-      <enum>QAbstractItemView::SelectRows</enum>
-     </property>
-     <property name="sortingEnabled">
-      <bool>true</bool>
-     </property>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-     <column>
-      <property name="text">
-       <string>Date/Time</string>
+    <widget class="QWidget" name="main_content_container" native="true">
+     <layout class="QHBoxLayout" name="main_content_layout" stretch="1,2">
+      <property name="spacing">
+       <number>15</number>
       </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Players</string>
+      <property name="leftMargin">
+       <number>0</number>
       </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Winner</string>
+      <property name="topMargin">
+       <number>0</number>
       </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Rounds</string>
+      <property name="rightMargin">
+       <number>0</number>
       </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Details</string>
+      <property name="bottomMargin">
+       <number>0</number>
       </property>
-     </column>
+      <item>
+       <widget class="QWidget" name="mission_list_container" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <item>
+          <widget class="QTableWidget" name="mission_list_table">
+           <property name="editTriggers">
+            <set>QAbstractItemView::NoEditTriggers</set>
+           </property>
+           <property name="selectionMode">
+            <enum>QAbstractItemView::SingleSelection</enum>
+           </property>
+           <property name="selectionBehavior">
+            <enum>QAbstractItemView::SelectRows</enum>
+           </property>
+           <column>
+            <property name="text">
+             <string>Date</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>Outcome</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="briefing_container" native="true">
+        <layout class="QVBoxLayout" name="briefing_layout">
+         <item>
+          <widget class="QLabel" name="briefing_title_label">
+           <property name="text">
+            <string>MISSION BRIEFING</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="briefing_content_label">
+           <property name="text">
+            <string>Select a mission from the list to view its details.</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="briefing_details_label">
+           <property name="text">
+            <string>ROUND RESULTS</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTableWidget" name="rounds_table"/>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
    <item alignment="Qt::AlignCenter">
     <widget class="QPushButton" name="back_button">
-     <property name="styleSheet">
-      <string notr="true">padding: 8px 15px; font-size: 14px; margin-top: 10px;</string>
-     </property>
      <property name="text">
-      <string>Back to Main Menu</string>
+      <string>Return to Menu</string>
      </property>
     </widget>
    </item>
