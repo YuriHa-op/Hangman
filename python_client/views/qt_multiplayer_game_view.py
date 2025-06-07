@@ -238,7 +238,7 @@ class QtMultiplayerGameView(QWidget):
         self.main_menu_button.clicked.connect(self.back_to_main_menu)
 
         self.right_panel.hide()
-        self.virtual_keyboard.update_keyboard([], "", enabled=False)
+        self.virtual_keyboard.update_keyboard(set(), set(), enabled=False)
 
     def set_controller(self, controller):
         self.controller = controller
@@ -342,17 +342,24 @@ class QtMultiplayerGameView(QWidget):
             widget.update_widget(player_score, player_masked_word, player_is_finished)
 
     def reset_view(self):
-        self.status_label.setText("Game has ended. Returning to menu...")
-        self.timer_label.setText("Time: 0")
+        # Reset labels to initial state
+        self.status_label.setText("Connecting to game...")
+        self.timer_label.setText("Time: -")
         self.my_score_label.setText("Your Score: 0")
-        self.round_label.setText("Round: 1")
+        self.round_label.setText("Round: -")
         self.my_masked_word_label.setText("_ _ _")
-        self.virtual_keyboard.update_keyboard([], "", enabled=False)
+        self.right_panel.hide()
         self.main_menu_button.setText("Back to Main Menu (Forfeit)")
+        
+        # Reset the virtual keyboard completely
+        self.virtual_keyboard.update_keyboard(set(), set(), enabled=False)
 
-        for _ in range(self.scroll_area_layout.count()):
-            widget = self.scroll_area_layout.takeAt(0).widget()
+        # Thoroughly clear all opponent player widgets
+        for widget in list(self.player_status_widgets.values()):
             widget.deleteLater()
+        self.player_status_widgets.clear()
+
+        # Close any open dialogs associated with this view
         self.close_all_dialogs()
 
     def close_all_dialogs(self):
