@@ -56,8 +56,28 @@ class MultiplayerGameController(BaseController):
     def on_hide(self):
         self.game_state_timer.stop()
         self.afk_pre_check_timer.stop()
-        self.view.close_all_dialogs()
         
+        # First close all dialogs to ensure proper clean up of UI elements
+        if self.view:
+            self.view.close_all_dialogs()
+            
+            # Explicitly clean up animation references
+            if hasattr(self.view, 'round_transition_animation') and self.view.round_transition_animation:
+                try:
+                    self.view.round_transition_animation.hide()
+                    self.view.round_transition_animation.deleteLater()
+                    self.view.round_transition_animation = None
+                except:
+                    pass
+                
+            if hasattr(self.view, '_confetti_effect') and self.view._confetti_effect:
+                try:
+                    self.view._confetti_effect.stop_animation()
+                    self.view._confetti_effect = None
+                except:
+                    pass
+        
+        # Wait for all worker threads to complete before continuing
         self.thread_pool.waitForDone(-1)
         self.thread_pool.clear()
 

@@ -1,0 +1,97 @@
+QWidget#MultiplayerQueueView {
+    background-color: transparent;
+    font-family: "Jujutsu Kaisen";
+    font-size: 22px;
+}
+
+QLabel, QPushButton, QListWidget, QProgressBar {
+    font-family: "Jujutsu Kaisen";
+    font-size: 22px;
+    background: transparent;
+}
+
+QLabel {
+    color: #e0e0e0;
+    background-color: transparent;
+}
+
+QLabel#status_label {
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffffff;
+    padding: 10px;
+    background-color: #5c1010;
+    border-radius: 8px;
+    margin: 5px;
+}
+
+QLabel#players_list_label {
+    font-size: 22px;
+    font-weight: bold;
+    color: #e0e0e0;
+    margin-top: 10px;
+    background-color: #5c1010;
+    border-radius: 8px;
+    padding: 8px;
+    margin: 5px;
+}
+
+QLabel#countdown_label {
+    font-size: 22px;
+    font-weight: bold;
+    color: #e0e0e0;
+    background-color: #5c1010;
+    border-radius: 8px;
+    padding: 8px;
+    margin: 5px;
+}
+
+QListWidget {
+    background-color: transparent;
+    border: none;
+    color: #e0e0e0;
+    border-radius: 5px;
+    max-height: 400px;
+}
+
+QListWidget::item {
+    padding: 10px;
+    border-radius: 8px;
+    margin: 5px;
+    background-color: #000000; /* Black background for player containers */
+}
+
+QListWidget::item:hover {
+    background-color: #2d2d2d; /* Dark gray on hover */
+}
+
+QProgressBar {
+    border: 2px solid #0f3460;
+    border-radius: 5px;
+    text-align: center;
+    color: #ffffff;
+    background-color: transparent; /* Transparent background */
+    padding: 2px;
+}
+
+QProgressBar::chunk {
+    background-color: #5372f0;
+    width: 20px;
+    margin: 1px;
+    border-radius: 3px;
+}
+
+QPushButton#back_button {
+    background-color: #e94560; /* Contrasting pink/red */
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    margin-top: 10px;
+}
+
+QPushButton#back_button:hover {
+    background-color: #f05471; /* Lighter shade on hover */
+} 

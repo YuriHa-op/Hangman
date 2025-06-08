@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1200</width>
-    <height>800</height>
+    <width>1000</width>
+    <height>700</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,19 +15,19 @@
   </property>
   <layout class="QVBoxLayout" name="main_layout" stretch="0,0,1,0,0,0">
    <property name="spacing">
-    <number>10</number>
+    <number>6</number>
    </property>
    <property name="leftMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <property name="topMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <property name="rightMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <property name="bottomMargin">
-    <number>20</number>
+    <number>15</number>
    </property>
    <item>
     <layout class="QHBoxLayout" name="top_info_layout">
@@ -66,11 +66,23 @@
    <item>
     <layout class="QHBoxLayout" name="huds_layout" stretch="1,0,1">
      <property name="spacing">
-      <number>20</number>
+      <number>12</number>
      </property>
      <item>
       <widget class="QWidget" name="player_hud_widget" native="true">
        <layout class="QVBoxLayout" name="player_hud_layout">
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>6</number>
+        </property>
+        <property name="rightMargin">
+         <number>8</number>
+        </property>
+        <property name="bottomMargin">
+         <number>6</number>
+        </property>
         <item>
          <widget class="QLabel" name="player_name_label">
           <property name="text">
@@ -98,7 +110,7 @@
       <widget class="QLabel" name="score_label">
        <property name="font">
         <font>
-         <pointsize>20</pointsize>
+         <pointsize>16</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -114,6 +126,18 @@
      <item>
       <widget class="QWidget" name="opponent_hud_widget" native="true">
        <layout class="QVBoxLayout" name="opponent_hud_layout">
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>6</number>
+        </property>
+        <property name="rightMargin">
+         <number>8</number>
+        </property>
+        <property name="bottomMargin">
+         <number>6</number>
+        </property>
         <item>
          <widget class="QLabel" name="opponent_name_label">
           <property name="text">
@@ -145,6 +169,18 @@
    <item>
     <widget class="QWidget" name="word_container_widget" native="true">
      <layout class="QVBoxLayout" name="verticalLayout_word">
+      <property name="leftMargin">
+       <number>8</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>8</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
       <item>
        <widget class="QLabel" name="word_label">
         <property name="text">

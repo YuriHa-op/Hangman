@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
 from PyQt5.QtCore import QSize
 import sys
+import os
 from models.game_model import GameModel
 # from views.app_view import HangmanApp # Updated import for HangmanApp # TODO: Will be replaced with PyQt5 main window
 # Specific view and controller imports are handled within HangmanApp (app_view.py)
@@ -25,6 +26,21 @@ from controllers.single_player_game_controller import SinglePlayerGameController
 from controllers.multiplayer_queue_controller import MultiplayerQueueController
 from controllers.multiplayer_game_controller import MultiplayerGameController
 from controllers.multiplayer_game_results_controller import MultiplayerGameResultsController
+
+def load_stylesheet(app, style_name):
+    """Load a QSS stylesheet from the assets directory"""
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    style_path = os.path.join(base_path, 'assets', style_name)
+    
+    if os.path.exists(style_path):
+        with open(style_path, "r") as f:
+            style = f.read()
+            app.setStyleSheet(style)
+        print(f"Applied stylesheet: {style_name}")
+        return True
+    else:
+        print(f"Warning: Style sheet not found at {style_path}")
+        return False
 
 # Placeholder for the main PyQt5 window - this will be expanded
 class MainWindow(QMainWindow):
@@ -114,6 +130,20 @@ class MainWindow(QMainWindow):
             self.controllers[name] = controller
         self.stacked_widget.addWidget(view_widget)
 
+    def set_window_background(self, image_path=None):
+        if image_path and os.path.exists(image_path):
+            style = f"""
+                MainWindow {{
+                    background-image: url({image_path.replace('\\', '/')});
+                    background-position: center;
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                }}
+            """
+            self.setStyleSheet(style)
+        else:
+            self.setStyleSheet("") # Clear background
+
     def show_view(self, view_name):
         if view_name in self.views:
             if self.current_view_name and self.current_view_name in self.controllers and hasattr(self.controllers[self.current_view_name], 'on_hide'):
@@ -123,6 +153,14 @@ class MainWindow(QMainWindow):
             self.setMinimumSize(0, 0)
             self.setMaximumSize(16777215, 16777215)
             
+            # Set background for multiplayer game view
+            if view_name == "MultiplayerGame":
+                base_path = os.path.dirname(os.path.abspath(__file__))
+                image_path = os.path.join(base_path, 'assets', 'img.png')
+                self.set_window_background(image_path)
+            else:
+                self.set_window_background(None) # Remove for other views
+
             current_widget = self.views[view_name]
             self.stacked_widget.setCurrentWidget(current_widget)
             self.current_view_name = view_name
@@ -192,10 +230,7 @@ class MainWindow(QMainWindow):
         self.cleanup_on_exit()
         super().closeEvent(event)
 
-# This is for views that might have used a controller_factory argument.
-# Since MainWindow now creates controllers, this might not be strictly needed
-# if views are consistently passed their controllers or main_window.
-# Keeping it in case some view was designed to call it.
+
     def create_login_controller(self, view):
         # This was in QtLoginView, assuming it might call controller_factory.create_login_controller()
         # However, MainWindow now directly assigns login_view.login_controller.
@@ -227,12 +262,10 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     model = GameModel()
-    # app_view = HangmanApp(model) # Pass model to HangmanApp constructor
-    main_window = MainWindow(model) # Create the main PyQt5 window
 
-    # app_view.setup_frames_and_controllers() # Call the setup method on HangmanApp
-    # app_view.show_frame("Login") # Start with the login view
-    # app_view.run()  # Start the Tkinter main loop
+    
+    main_window = MainWindow(model) # Create the main PyQt5 window
+    
     app.aboutToQuit.connect(main_window.cleanup_on_exit) # Connect to signal for graceful shutdown
     
     main_window.show() # Show the main window

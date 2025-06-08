@@ -41,8 +41,7 @@ class MultiplayerQueueController(BaseController):
                 # Lobby was disbanded or player was removed
                 self.lobby_state_timer.stop()
                 self.countdown_timer.stop()
-                # Optionally show a message box
-                self.view.main_window.show_view("MainMenu")
+                self.view.show_no_match_dialog()
 
     def update_timer(self, creation_time_ms, queue_time_sec):
         self.total_queue_time = queue_time_sec
