@@ -3,10 +3,13 @@ package server.controller;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
-import server.handler.GameServiceImpl;
-import server.handler.AdminServiceImpl;
+import javafx.scene.text.TextFlow;
+import server.handler.service.GameServiceImpl;
+import server.handler.service.AdminServiceImpl;
 import server.ServerMain;
 
 import java.time.Duration;
@@ -19,11 +22,13 @@ public class ServerMainController {
     @FXML private Button startButton;
     @FXML private Button pauseButton;
     @FXML private Button stopButton;
+    @FXML private Button restartButton;
     @FXML private Text activePlayersText;
     @FXML private Text activeGamesText;
     @FXML private Text uptimeText;
     @FXML private Text memoryUsageText;
-    @FXML private TextArea serverLogsArea;
+    @FXML private ScrollPane scrollPane;
+    @FXML private TextFlow serverLogsArea;
     @FXML private Button clearLogsButton;
 
     private ServerMain serverMain;
@@ -36,6 +41,14 @@ public class ServerMainController {
     private boolean isPaused = false;
     private boolean isRunning = false;
 
+    // Log level colors
+    private static final String INFO_COLOR = "log-info";
+    private static final String WARN_COLOR = "log-warn";
+    private static final String ERROR_COLOR = "log-error";
+    private static final String SUCCESS_COLOR = "log-success";
+    private static final String DEBUG_COLOR = "log-debug";
+    private static final String TIMESTAMP_COLOR = "log-timestamp";
+
     public void setServerMain(ServerMain serverMain) {
         this.serverMain = serverMain;
         this.gameService = null; // Will be set after server is started
@@ -43,7 +56,9 @@ public class ServerMainController {
     }
 
     public void initialize() {
-        // Do not create a new ServerMain here
+        // Ensure scroll pane properly sizes TextFlow width
+        serverLogsArea.prefWidthProperty().bind(scrollPane.widthProperty().subtract(20));
+        
         // Set up periodic stats update
         statsTimer = new Timer(true);
         statsTimer.scheduleAtFixedRate(new TimerTask() {
@@ -58,19 +73,25 @@ public class ServerMainController {
     private void handleStartServer() {
         if (isPaused) {
             // Resume server
-            isPaused = false;
-            isRunning = true;
-            // Add paused duration to totalUptime
-            if (pauseStartTime != null) {
-                Duration pausedDuration = Duration.between(pauseStartTime, Instant.now());
-                serverStartTime = serverStartTime.plus(pausedDuration);
+            try {
+                serverMain.resumeServer();
+                isPaused = false;
+                isRunning = true;
+                // Add paused duration to totalUptime
+                if (pauseStartTime != null) {
+                    Duration pausedDuration = Duration.between(pauseStartTime, Instant.now());
+                    serverStartTime = serverStartTime.plus(pausedDuration);
+                }
+                serverStatusText.setText("Online");
+                serverStatusText.setStyle("-fx-fill: #4CAF50;");
+                startButton.setDisable(true);
+                pauseButton.setDisable(false);
+                stopButton.setDisable(false);
+                restartButton.setDisable(false);
+                logInfo("Server resumed");
+            } catch (Exception e) {
+                logError("Error resuming server: " + e.getMessage());
             }
-            serverStatusText.setText("Online");
-            serverStatusText.setStyle("-fx-fill: #4CAF50;");
-            startButton.setDisable(true);
-            pauseButton.setDisable(false);
-            stopButton.setDisable(false);
-            logMessage("Server resumed");
         } else {
             // Start new server
             try {
@@ -86,28 +107,36 @@ public class ServerMainController {
                 startButton.setDisable(true);
                 pauseButton.setDisable(false);
                 stopButton.setDisable(false);
-                logMessage("Server started successfully");
-                logMessage("GameService and AdminService registered successfully");
+                restartButton.setDisable(false);
+                logSuccess("Server started successfully");
+                logInfo("GameService and AdminService registered and ready to accept connections");
             } catch (Exception e) {
-                logMessage("Error starting server: " + e.getMessage());
+                logError("Error starting server: " + e.getMessage());
             }
         }
     }
 
     @FXML
     private void handlePauseServer() {
-        isPaused = true;
-        isRunning = false;
-        pauseStartTime = Instant.now();
-        // Add time since last start to totalUptime
-        if (serverStartTime != null) {
-            totalUptime = totalUptime.plus(Duration.between(serverStartTime, pauseStartTime));
+        try {
+            serverMain.pauseServer();
+            isPaused = true;
+            isRunning = false;
+            pauseStartTime = Instant.now();
+            // Add time since last start to totalUptime
+            if (serverStartTime != null) {
+                totalUptime = totalUptime.plus(Duration.between(serverStartTime, pauseStartTime));
+            }
+            serverStatusText.setText("Paused");
+            serverStatusText.setStyle("-fx-fill: #FFC107;");
+            startButton.setDisable(false);
+            pauseButton.setDisable(true);
+            stopButton.setDisable(false);
+            restartButton.setDisable(false);
+            logWarn("Server paused - new connections will be rejected");
+        } catch (Exception e) {
+            logError("Error pausing server: " + e.getMessage());
         }
-        serverStatusText.setText("Paused");
-        serverStatusText.setStyle("-fx-fill: #FFC107;");
-        startButton.setDisable(false);
-        pauseButton.setDisable(true);
-        logMessage("Server paused");
     }
 
     @FXML
@@ -129,32 +158,88 @@ public class ServerMainController {
             startButton.setDisable(false);
             pauseButton.setDisable(true);
             stopButton.setDisable(true);
-            logMessage("Server stopped");
+            restartButton.setDisable(true);
+            
+            // Reset stats
+            activePlayersText.setText("0");
+            activeGamesText.setText("0");
+            
+            logInfo("Server stopped");
         } catch (Exception e) {
-            logMessage("Error stopping server: " + e.getMessage());
+            logError("Error stopping server: " + e.getMessage());
+        }
+    }
+    
+    @FXML
+    private void handleRestartServer() {
+        try {
+            logInfo("Restarting server...");
+            
+            // First stop the server
+            serverMain.stopServer();
+            
+            // Reset uptime and timing variables - important change here
+            serverStartTime = null;
+            pauseStartTime = null;
+            totalUptime = Duration.ZERO;
+            
+            // Wait a bit for resources to be released
+            Thread.sleep(2000);
+            
+            // Start the server again
+            serverMain.startServer();
+            this.gameService = serverMain.getGameService();
+            this.adminService = serverMain.getAdminService();
+            
+            // Reset server time
+            serverStartTime = Instant.now();
+            isPaused = false;
+            isRunning = true;
+            
+            // Update UI
+            serverStatusText.setText("Online");
+            serverStatusText.setStyle("-fx-fill: #4CAF50;");
+            startButton.setDisable(true);
+            pauseButton.setDisable(false);
+            stopButton.setDisable(false);
+            restartButton.setDisable(false);
+            
+            logSuccess("Server restarted successfully");
+        } catch (Exception e) {
+            logError("Error restarting server: " + e.getMessage());
+            
+            // Reset UI to offline state in case of failure
+            serverStatusText.setText("Offline");
+            serverStatusText.setStyle("-fx-fill: #ff4444;");
+            startButton.setDisable(false);
+            pauseButton.setDisable(true);
+            stopButton.setDisable(true);
+            restartButton.setDisable(true);
         }
     }
 
     @FXML
     private void handleClearLogs() {
-        serverLogsArea.clear();
+        serverLogsArea.getChildren().clear();
     }
 
     private void updateStats() {
-        if (isRunning && !isPaused) {
-            Platform.runLater(() -> {
-                try {
-                    // Update active players
+        Platform.runLater(() -> {
+            try {
+                // Always update memory usage regardless of server state
+                long usedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
+                memoryUsageText.setText(usedMemory + " MB");
+                
+                // Only update player and game stats when server is running and not paused
+                if (isRunning && !isPaused) {
                     if (gameService != null) {
+                        // Get active player count from both single & multi mode
                         int activePlayers = gameService.getActivePlayers();
                         activePlayersText.setText(String.valueOf(activePlayers));
 
-                        // Update active games
+                        // Get active games from both single & multi mode
                         int activeGames = gameService.getActiveGames();
                         activeGamesText.setText(String.valueOf(activeGames));
-                    } else {
-                        activePlayersText.setText("0");
-                        activeGamesText.setText("0");
                     }
 
                     // Update uptime
@@ -166,23 +251,63 @@ public class ServerMainController {
                             uptime.toHours(),
                             uptime.toMinutes() % 60,
                             uptime.getSeconds() % 60));
-
-                    // Update memory usage
-                    long usedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
-                    memoryUsageText.setText(usedMemory + " MB");
-                } catch (Exception e) {
-                    logMessage("Error updating stats: " + e.getMessage());
                 }
-            });
-        }
+            } catch (Exception e) {
+                logError("Error updating stats: " + e.getMessage());
+            }
+        });
     }
 
+    // Enhanced logging methods with different levels
     public void logMessage(String message) {
+        logInfo(message);
+    }
+
+    public void logInfo(String message) {
+        logWithLevel(message, "INFO", INFO_COLOR);
+    }
+
+    public void logWarn(String message) {
+        logWithLevel(message, "WARN", WARN_COLOR);
+    }
+
+    public void logError(String message) {
+        logWithLevel(message, "ERROR", ERROR_COLOR);
+    }
+
+    public void logSuccess(String message) {
+        logWithLevel(message, "SUCCESS", SUCCESS_COLOR);
+    }
+
+    public void logDebug(String message) {
+        logWithLevel(message, "DEBUG", DEBUG_COLOR);
+    }
+
+    private void logWithLevel(String message, String level, String styleClass) {
         Platform.runLater(() -> {
-            String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
-            serverLogsArea.appendText("[" + timestamp + "] " + message + "\n");
+            // Create timestamp
+            Text timestamp = new Text(
+                java.time.LocalDateTime.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                )
+            );
+            timestamp.getStyleClass().add(TIMESTAMP_COLOR);
+            
+            // Create log level
+            Text levelText = new Text(" [" + level + "] ");
+            levelText.getStyleClass().add(styleClass);
+            
+            // Create message
+            Text messageText = new Text(message + "\n");
+            messageText.getStyleClass().add(styleClass);
+            
+            // Add to TextFlow
+            serverLogsArea.getChildren().addAll(
+                new Text("["), timestamp, new Text("] "), levelText, messageText
+            );
+            
             // Auto-scroll to bottom
-            serverLogsArea.setScrollTop(Double.MAX_VALUE);
+            scrollPane.setVvalue(1.0);
         });
     }
 

@@ -7,12 +7,12 @@ import org.omg.CosNaming.NamingContextExtHelper;
 import org.omg.PortableServer.POA;
 import org.omg.PortableServer.POAHelper;
 
-import server.handler.AdminServiceImpl;
-import server.handler.GameServiceImpl;
-import server.handler.MatchResultDAO;
-import server.handler.PlayerManager;
-import server.handler.SinglePlayerMatchResultDAO;
-import server.handler.WordManager;
+import server.handler.service.AdminServiceImpl;
+import server.handler.service.GameServiceImpl;
+import server.handler.data.MatchResultDAO;
+import server.handler.core.PlayerManager;
+import server.handler.data.SinglePlayerMatchResultDAO;
+import server.handler.core.WordManager;
 
 // Generated IDL bindings
 import GameModule.GameService;

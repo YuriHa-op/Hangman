@@ -141,7 +141,7 @@ The Java server is the core of the application, handling all game logic, player 
     3.  **ORB Execution:** Starts the ORB in a new thread (`orb.run()`). The ORB then listens for incoming client requests.
     4.  **Server Control:** Provides methods like `stopServer()` to shut down the ORB and `getGameService()` to access the game service instance locally (primarily for the UI controller).
 
-### 4.2. `server.handler.GameServiceImpl.java`
+### 4.2. `server.handler.service.GameServiceImpl.java`
 
 *   **Role:** This is the powerhouse of the server. It's the concrete implementation of the `GameService` interface defined in the IDL (it extends `GameServicePOA`). All client interactions pass through this class.
 *   **How it Works:**
@@ -155,7 +155,7 @@ The Java server is the core of the application, handling all game logic, player 
     *   **Database Interaction:** Initializes and uses DAO objects (`MatchResultDAO`, `SinglePlayerMatchResultDAO`) for persisting and retrieving game history. Also directly instantiates these DAOs with JDBC connection strings (MySQL).
     *   **Multiplayer State Serialization:** The `getMultiplayerLobbyState` method manually constructs a JSON string representing the lobby and game state. This is a bit unusual for a CORBA service (which typically relies on IDL-defined structs) and could be an area for refactoring to use IDL structs or a more robust JSON library if the structure is complex.
 
-### 4.3. `server.handler.PlayerManager.java` (and related DB interactions)
+### 4.3. `server.handler.core.PlayerManager.java` (and related DB interactions)
 
 *   **Role:** Manages all aspects related to players.
 *   **How it Works:**
@@ -167,7 +167,7 @@ The Java server is the core of the application, handling all game logic, player 
     *   **Settings Management:** Updates and retrieves game settings like waiting time and round time.
     *   **Database Interaction:** Persists player information in the MySQL database. SQL queries for these operations would be defined within this class or a dedicated PlayerDAO (though DAOs seem to be mainly for match results).
 
-### 4.4. `server.handler.WordManager.java`
+### 4.4. `server.handler.core.WordManager.java`
 
 *   **Role:** Manages the dictionary of words used in the game.
 *   **How it Works:**
@@ -175,7 +175,7 @@ The Java server is the core of the application, handling all game logic, player 
     *   **Word Operations:** Provides methods to add, update, delete, and retrieve words. These are likely admin-level functions.
     *   **Random Word Selection:** Supplies random words to the `GameManager` and `MultiplayerGameManager` when new games or rounds start.
 
-### 4.5. `server.handler.GameManager.java` (Single-Player)
+### 4.5. `server.handler.core.GameManager.java` (Single-Player)
 
 *   **Role:** Manages the lifecycle and state of single-player Hangman games.
 *   **How it Works:**
@@ -244,7 +244,7 @@ sequenceDiagram
 
 ```
 
-### 4.6. `server.handler.MultiplayerGameManager.java`
+### 4.6. `server.handler.core.MultiplayerGameManager.java`
 
 *   **Role:** Manages multiplayer game lobbies, synchronization, and game progression.
 *   **How it Works:**

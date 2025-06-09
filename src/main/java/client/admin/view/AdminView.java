@@ -32,9 +32,9 @@ public class AdminView {
             stage.setScene(scene);
             stage.setTitle("Admin Panel - What's The Word");
             stage.setResizable(true);
-            stage.setMinWidth(1000);
-            stage.setMinHeight(950);
-            stage.setWidth(1000);
+            stage.setMinWidth(600);
+            stage.setMinHeight(850);
+            stage.setWidth(800);
             stage.setHeight(950);
         } catch (Exception e) {
             System.err.println("Error loading AdminView: " + e.getMessage());

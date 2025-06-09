@@ -34,7 +34,7 @@ public class ConfettiHelper {
         parent.getChildren().add(confettiPane);
         confettiPane.toFront();
 
-        int confettiCount = 150;
+        int confettiCount = 200;
         Random random = new Random();
 
         double centerX = parent.getWidth() / 2.0;

@@ -4,6 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Text?>
+<?import javafx.scene.text.TextFlow?>
 
 <VBox spacing="20" style="-fx-background-color: #2b2b2b;" xmlns:fx="http://javafx.com/fxml"
       fx:controller="server.controller.ServerMainController">
@@ -21,6 +22,8 @@
         <Button fx:id="pauseButton" text="Pause" onAction="#handlePauseServer" 
                 styleClass="server-button" disable="true"/>
         <Button fx:id="stopButton" text="Stop" onAction="#handleStopServer" 
+                styleClass="server-button" disable="true"/>
+        <Button fx:id="restartButton" text="Restart" onAction="#handleRestartServer" 
                 styleClass="server-button" disable="true"/>
     </HBox>
 
@@ -56,8 +59,11 @@
             <Button fx:id="clearLogsButton" text="Clear Logs" onAction="#handleClearLogs" 
                     styleClass="server-button"/>
         </HBox>
-        <TextArea fx:id="serverLogsArea" editable="false" wrapText="true" 
-                  styleClass="server-logs" VBox.vgrow="ALWAYS"/>
+        
+        <!-- Replace TextArea with ScrollPane containing TextFlow for styled logs -->
+        <ScrollPane fx:id="scrollPane" fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="server-logs-container">
+            <TextFlow fx:id="serverLogsArea" styleClass="server-logs" />
+        </ScrollPane>
     </VBox>
 
 </VBox> 

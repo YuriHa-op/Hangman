@@ -407,14 +407,14 @@ public class PlayersLeaderboardController {
             }
             
             refreshPlayerList();
-            
+
             StringBuilder summaryMessage = new StringBuilder();
             if (!successfullyDeletedUsernames.isEmpty()) {
                 summaryMessage.append("Successfully deleted ").append(successfullyDeletedUsernames.size()).append(" player(s):\n");
                 for (String name : successfullyDeletedUsernames) {
                     summaryMessage.append("- ").append(name).append("\n");
                 }
-                outputCallback.accept(successfullyDeletedUsernames.size() + " player(s) deleted.");
+                 outputCallback.accept(successfullyDeletedUsernames.size() + " player(s) deleted.");
             }
             if (!failedToDeleteUsernames.isEmpty()) {
                 summaryMessage.append("Failed to delete ").append(failedToDeleteUsernames.size()).append(" player(s):\n");
