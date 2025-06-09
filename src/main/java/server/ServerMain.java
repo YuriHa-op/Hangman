@@ -2,6 +2,8 @@ package server;
 
 import GameModule.GameService;
 import GameModule.GameServiceHelper;
+import AdminModule.AdminService;
+import AdminModule.AdminServiceHelper;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -16,12 +18,24 @@ import org.omg.PortableServer.POAHelper;
 import server.controller.ServerMainController;
 import javafx.scene.image.Image;
 import server.handler.GameServiceImpl;
+import server.handler.AdminServiceImpl;
+import server.handler.WordManager;
+import server.handler.PlayerManager;
+import server.handler.MatchResultDAO;
+import server.handler.SinglePlayerMatchResultDAO;
 
 public class ServerMain extends Application {
     private ORB orb;
     private POA rootPOA;
     private GameServiceImpl gameService;
+    private AdminServiceImpl adminService;
     private ServerMainController controller;
+    
+    // Shared resources
+    private WordManager wordManager;
+    private PlayerManager playerManager;
+    private MatchResultDAO matchResultDAO;
+    private SinglePlayerMatchResultDAO singlePlayerMatchResultDAO;
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -50,18 +64,57 @@ public class ServerMain extends Application {
             rootPOA = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
             rootPOA.the_POAManager().activate();
 
-            gameService = new GameServiceImpl();
-            gameService.setLogCallback(controller::logMessage);
+            // Initialize shared resources
+            wordManager = new WordManager();
+            playerManager = new PlayerManager();
+            matchResultDAO = new MatchResultDAO(
+                "jdbc:mysql://localhost:3306/game",
+                "root",
+                ""
+            );
+            singlePlayerMatchResultDAO = new SinglePlayerMatchResultDAO(
+                "jdbc:mysql://localhost:3306/game",
+                "root",
+                ""
+            );
 
-            org.omg.CORBA.Object ref = rootPOA.servant_to_reference(gameService);
-            GameService href = GameServiceHelper.narrow(ref);
+            // Initialize services with shared resources
+            gameService = new GameServiceImpl(
+                wordManager,
+                playerManager,
+                matchResultDAO,
+                singlePlayerMatchResultDAO
+            );
+            gameService.setLogCallback(controller::logMessage);
+            
+            adminService = new AdminServiceImpl(
+                wordManager, 
+                playerManager, 
+                matchResultDAO, 
+                singlePlayerMatchResultDAO
+            );
+            adminService.setLogCallback(controller::logMessage);
+
+            // Register GameService
+            org.omg.CORBA.Object gameRef = rootPOA.servant_to_reference(gameService);
+            GameService gameHref = GameServiceHelper.narrow(gameRef);
+
+            // Register AdminService
+            org.omg.CORBA.Object adminRef = rootPOA.servant_to_reference(adminService);
+            AdminService adminHref = AdminServiceHelper.narrow(adminRef);
 
             org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
             NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
 
-            String name = "GameService";
-            NameComponent path[] = ncRef.to_name(name);
-            ncRef.rebind(path, href);
+            // Bind GameService
+            String gameName = "GameService";
+            NameComponent[] gamePath = ncRef.to_name(gameName);
+            ncRef.rebind(gamePath, gameHref);
+            
+            // Bind AdminService
+            String adminName = "AdminService";
+            NameComponent[] adminPath = ncRef.to_name(adminName);
+            ncRef.rebind(adminPath, adminHref);
 
             controller.logMessage("Server initialized and ready to start");
             new Thread(() -> {
@@ -90,6 +143,10 @@ public class ServerMain extends Application {
 
     public GameServiceImpl getGameService() {
         return gameService;
+    }
+    
+    public AdminServiceImpl getAdminService() {
+        return adminService;
     }
 
     @Override

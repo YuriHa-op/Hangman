@@ -1,6 +1,6 @@
 package client.admin.view;
 
-import GameModule.GameService;
+import AdminModule.AdminService;
 import client.admin.controller.SystemStatisticsController;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -15,10 +15,10 @@ public class SystemStatisticsView {
     private Stage stage;
     private SystemStatisticsController controller;
     private Consumer<String> outputCallback;
-    private GameService gameService;
+    private AdminService adminService;
 
-    public SystemStatisticsView(GameService gameService, Consumer<String> outputCallback) {
-        this.gameService = gameService;
+    public SystemStatisticsView(AdminService adminService, Consumer<String> outputCallback) {
+        this.adminService = adminService;
         this.outputCallback = outputCallback;
         this.stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL);
@@ -31,7 +31,7 @@ public class SystemStatisticsView {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/SystemStatisticsView.fxml"));
             Parent root = loader.load();
             controller = loader.getController();
-            controller.setGameService(gameService);
+            controller.setAdminService(adminService);
             controller.setOutputCallback(outputCallback);
             controller.setStage(stage);
 

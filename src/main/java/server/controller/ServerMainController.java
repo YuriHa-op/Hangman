@@ -6,6 +6,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.text.Text;
 import server.handler.GameServiceImpl;
+import server.handler.AdminServiceImpl;
 import server.ServerMain;
 
 import java.time.Duration;
@@ -27,6 +28,7 @@ public class ServerMainController {
 
     private ServerMain serverMain;
     private GameServiceImpl gameService;
+    private AdminServiceImpl adminService;
     private Timer statsTimer;
     private Instant serverStartTime;
     private Instant pauseStartTime;
@@ -37,6 +39,7 @@ public class ServerMainController {
     public void setServerMain(ServerMain serverMain) {
         this.serverMain = serverMain;
         this.gameService = null; // Will be set after server is started
+        this.adminService = null; // Will be set after server is started
     }
 
     public void initialize() {
@@ -73,6 +76,7 @@ public class ServerMainController {
             try {
                 serverMain.startServer();
                 this.gameService = serverMain.getGameService(); // Set after server is started
+                this.adminService = serverMain.getAdminService(); // Set after server is started
                 serverStartTime = Instant.now();
                 totalUptime = Duration.ZERO;
                 isRunning = true;
@@ -83,6 +87,7 @@ public class ServerMainController {
                 pauseButton.setDisable(false);
                 stopButton.setDisable(false);
                 logMessage("Server started successfully");
+                logMessage("GameService and AdminService registered successfully");
             } catch (Exception e) {
                 logMessage("Error starting server: " + e.getMessage());
             }

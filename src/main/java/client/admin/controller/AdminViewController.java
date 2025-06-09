@@ -1,6 +1,7 @@
 package client.admin.controller;
 
-import GameModule.GameService;
+import AdminModule.AdminService;
+import client.admin.model.AdminConnection;
 import client.admin.model.Player;
 import client.admin.view.SystemStatisticsView;
 import client.admin.view.WordManagementView;
@@ -25,7 +26,8 @@ public class AdminViewController {
     private TextArea outputArea;
 
     private Stage stage;
-    private GameService gameService;
+    private AdminConnection adminConnection;
+    private AdminService adminService;
     private Runnable onLogout;
     private WordManagementView wordManagementView;
     private PlayerManagementView playerManagementView;
@@ -33,10 +35,18 @@ public class AdminViewController {
     public void setStage(Stage stage) {
         this.stage = stage;
     }
+    
+    public void setAdminConnection(AdminConnection adminConnection) {
+        this.adminConnection = adminConnection;
+        if (adminConnection != null && adminConnection.isConnected()) {
+            this.adminService = adminConnection.getAdminService();
+            initializeViews();
+        }
+    }
 
-    public void setGameService(GameService gameService) {
-        this.gameService = gameService;
-        // Initialize views after gameService is set
+    public void setAdminService(AdminService adminService) {
+        this.adminService = adminService;
+        // Initialize views after adminService is set
         initializeViews();
     }
 
@@ -45,36 +55,36 @@ public class AdminViewController {
     }
 
 private void initializeViews() {
-    if (gameService != null) {
-        wordManagementView = new WordManagementView(gameService, this::appendToOutput);
-        playerManagementView = new PlayerManagementView(gameService, this::appendToOutput);
+    if (adminService != null) {
+        wordManagementView = new WordManagementView(adminService, this::appendToOutput);
+        playerManagementView = new PlayerManagementView(adminService, this::appendToOutput);
     } else {
-        appendToOutput("Error: Game service is not initialized");
+        appendToOutput("Error: Admin service is not initialized");
     }
 }
 
     @FXML
     public void initialize() {
-        // Views will be initialized when gameService is set
+        // Views will be initialized when adminService is set
     }
 
     @FXML
     public void handleViewPlayers() {
-        if (gameService == null) {
-            showErrorDialog("Error", "Game service is not initialized.");
+        if (adminService == null) {
+            showErrorDialog("Error", "Admin service is not initialized.");
             return;
         }
         try {
-            // Parse player data from GameService
-            String playersList = gameService.viewPlayers();
+            // Parse player data from AdminService
+            String playersList = adminService.viewPlayers();
             List<Player> players = parsePlayers(playersList);
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/PlayerLeaderboardsView.fxml"));
             Parent root = loader.load();
             PlayersLeaderboardController controller = loader.getController();
             
-            // Set GameService and OutputCallback for the PlayerLeaderboardsController
-            controller.setGameService(this.gameService);
+            // Set AdminService and OutputCallback for the PlayerLeaderboardsController
+            controller.setAdminService(this.adminService);
             controller.setOutputCallback(this::appendToOutput);
             
             controller.setPlayers(players);
@@ -108,7 +118,7 @@ private void initializeViews() {
                 Player player = new Player();
 
                 // Example line: "Username: user1 | Wins: 10 | Status: Online | Role: Player"
-                // Adjust parsing based on the exact format from gameService.viewPlayers()
+                // Adjust parsing based on the exact format from adminService.viewPlayers()
                 
                 int usernameStart = line.indexOf("Username: ") + "Username: ".length();
                 int usernameEnd = line.indexOf(" | Wins:");
@@ -222,18 +232,38 @@ private void initializeViews() {
 
     @FXML
     public void handleViewLeaderboard() {
-        appendToOutput("Coming soon: Game Hosting Feature.");
+        // Call the method to show player leaderboard
+        handleViewPlayers();
     }
 
     @FXML
     public void handleViewStatistics() {
         try {
-            SystemStatisticsView statisticsView = new SystemStatisticsView(gameService, this::appendToOutput);
-            statisticsView.initialize(); // Initialize might be called internally or not needed if FXML controller
+            SystemStatisticsView statisticsView = new SystemStatisticsView(adminService, this::appendToOutput);
+            statisticsView.initialize();
             statisticsView.show();
-            appendToOutput("Viewing system statistics and settings...");
         } catch (Exception e) {
-            appendToOutput("Error showing statistics: " + e.getMessage());
+            showErrorDialog("Error", "Failed to show system statistics: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    public void handleViewMatchHistory() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/AdminMatchHistoryView.fxml"));
+            Parent root = loader.load();
+            AdminMatchHistoryController controller = loader.getController();
+            controller.setAdminService(adminService);
+            controller.setOutputCallback(this::appendToOutput);
+            
+            Stage stage = new Stage();
+            stage.setScene(new Scene(root));
+            stage.setTitle("Match History");
+            stage.setWidth(900);
+            stage.setHeight(700);
+            stage.show();
+        } catch (Exception e) {
+            showErrorDialog("Error", "Failed to show match history: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -241,18 +271,25 @@ private void initializeViews() {
     @FXML
     public void handleLogout() {
         if (onLogout != null) {
+            // Ensure connection is closed
+            if (adminConnection != null) {
+                adminConnection.disconnect();
+            }
+            
+            // Close the stage if available
+            if (stage != null) {
+                stage.close();
+            }
+            
+            // Run the onLogout callback
             onLogout.run();
         }
     }
 
     private void appendToOutput(String text) {
         Platform.runLater(() -> {
-            if (outputArea != null) {
-                outputArea.appendText(text + "\n");
-                outputArea.setScrollTop(Double.MAX_VALUE);
-            } else {
-                System.out.println("Admin Output: " + text); // Fallback if outputArea is not yet initialized
-            }
+            outputArea.appendText(text + "\n");
+            outputArea.setScrollTop(Double.MAX_VALUE); // Scroll to bottom
         });
     }
 }

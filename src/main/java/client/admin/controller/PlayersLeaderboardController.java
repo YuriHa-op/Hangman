@@ -3,7 +3,7 @@ package client.admin.controller;
 import client.admin.model.Player;
 import client.admin.view.PlayerManagementView;
 import client.admin.view.AdminMatchHistoryView;
-import GameModule.GameService;
+import AdminModule.AdminService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -55,7 +55,7 @@ public class PlayersLeaderboardController {
 
     private List<Player> allPlayers = new ArrayList<>();
     private ObservableList<Player> filteredPlayers;
-    private GameService gameService;
+    private AdminService adminService;
     private Consumer<String> outputCallback;
     private Timeline refreshTimeline;
 
@@ -146,9 +146,9 @@ public class PlayersLeaderboardController {
 
                         historyButton.setOnAction(event -> {
                             Player player = getItem();
-                            if (player != null && gameService != null && outputCallback != null) {
+                            if (player != null && adminService != null && outputCallback != null) {
                                 AdminMatchHistoryView historyView = new AdminMatchHistoryView();
-                                historyView.showPlayerHistory(gameService, player.getUsername(), outputCallback, (Stage) playersListView.getScene().getWindow());
+                                historyView.showPlayerHistory(adminService, player.getUsername(), outputCallback, (Stage) playersListView.getScene().getWindow());
                             } else {
                                 if (outputCallback != null) outputCallback.accept("Cannot show history: Player, service or output not available.");
                             }
@@ -214,8 +214,8 @@ public class PlayersLeaderboardController {
         refreshTimeline.setCycleCount(Timeline.INDEFINITE);
     }
 
-    public void setGameService(GameService gameService) {
-        this.gameService = gameService;
+    public void setAdminService(AdminService adminService) {
+        this.adminService = adminService;
     }
 
     public void setOutputCallback(Consumer<String> outputCallback) {
@@ -270,12 +270,12 @@ public class PlayersLeaderboardController {
     }
 
     public void refreshPlayerList() {
-        if (gameService == null) {
-            if (outputCallback != null) outputCallback.accept("Cannot refresh player list: GameService not available.");
+        if (adminService == null) {
+            if (outputCallback != null) outputCallback.accept("Cannot refresh player list: AdminService not available.");
             return;
         }
         try {
-            String playersData = gameService.viewPlayers();
+            String playersData = adminService.viewPlayers();
             this.allPlayers = parsePlayers(playersData);
             filterPlayers();
         } catch (Exception e) {
@@ -351,10 +351,10 @@ public class PlayersLeaderboardController {
 
     @FXML
     private void handleAddPlayer() {
-        if (gameService == null || outputCallback == null) {
+        if (adminService == null || outputCallback == null) {
              showAlertDialog(Alert.AlertType.ERROR, "Error", "Cannot add player: Service or output not ready."); return;
         }
-        PlayerManagementView playerManagementView = new PlayerManagementView(gameService, outputCallback, this::refreshPlayerList);
+        PlayerManagementView playerManagementView = new PlayerManagementView(adminService, outputCallback, this::refreshPlayerList);
         playerManagementView.showAddPlayer();
     }
 
@@ -363,10 +363,10 @@ public class PlayersLeaderboardController {
         ObservableList<Player> selectedPlayers = playersListView.getSelectionModel().getSelectedItems();
         if (selectedPlayers.size() == 1) {
             Player selectedPlayer = selectedPlayers.get(0);
-            if (gameService == null || outputCallback == null) {
+            if (adminService == null || outputCallback == null) {
                 showAlertDialog(Alert.AlertType.ERROR, "Error", "Cannot update player: Service or output not ready."); return;
             }
-            PlayerManagementView playerManagementView = new PlayerManagementView(gameService, outputCallback, this::refreshPlayerList);
+            PlayerManagementView playerManagementView = new PlayerManagementView(adminService, outputCallback, this::refreshPlayerList);
             playerManagementView.showUpdatePlayerFor(selectedPlayer.getUsername()); 
         } else {
             showAlertDialog(Alert.AlertType.WARNING, "Update Player", "Please select exactly one player to update.");
@@ -381,7 +381,7 @@ public class PlayersLeaderboardController {
             showAlertDialog(Alert.AlertType.WARNING, "Delete Player", "Please select one or more players to delete.");
             return;
         }
-        if (gameService == null || outputCallback == null) {
+        if (adminService == null || outputCallback == null) {
             showAlertDialog(Alert.AlertType.ERROR, "Error", "Cannot delete player: Service or output not ready."); return;
         }
 
@@ -396,7 +396,7 @@ public class PlayersLeaderboardController {
 
             for (Player player : selectedPlayers) {
                 try {
-                    if (gameService.deletePlayer(player.getUsername()) == GameModule.Bool.BOOL_TRUE) {
+                    if (adminService.deletePlayer(player.getUsername()) == AdminModule.Bool.BOOL_TRUE) {
                         successfullyDeletedUsernames.add(player.getUsername());
                     } else {
                         failedToDeleteUsernames.add(player.getUsername() + " (failed by service)");
@@ -407,19 +407,21 @@ public class PlayersLeaderboardController {
             }
             
             refreshPlayerList();
-
+            
             StringBuilder summaryMessage = new StringBuilder();
             if (!successfullyDeletedUsernames.isEmpty()) {
                 summaryMessage.append("Successfully deleted ").append(successfullyDeletedUsernames.size()).append(" player(s):\n");
-                successfullyDeletedUsernames.forEach(name -> summaryMessage.append("- ").append(name).append("\n"));
-                 outputCallback.accept(successfullyDeletedUsernames.size() + " player(s) deleted.");
+                for (String name : successfullyDeletedUsernames) {
+                    summaryMessage.append("- ").append(name).append("\n");
+                }
+                outputCallback.accept(successfullyDeletedUsernames.size() + " player(s) deleted.");
             }
             if (!failedToDeleteUsernames.isEmpty()) {
                 summaryMessage.append("Failed to delete ").append(failedToDeleteUsernames.size()).append(" player(s):\n");
                 failedToDeleteUsernames.forEach(name -> summaryMessage.append("- ").append(name).append("\n"));
             }
             if (summaryMessage.length() > 0) {
-                showAlertDialog(Alert.AlertType.INFORMATION, "Deletion Result", summaryMessage.toString());
+                showAlertDialog(Alert.AlertType.INFORMATION, "Delete Player Results", summaryMessage.toString());
             }
         }
     }

@@ -1,7 +1,7 @@
 package client.admin.controller;
 
-import GameModule.GameService;
-import GameModule.Bool;
+import AdminModule.AdminService;
+import AdminModule.Bool;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
@@ -32,7 +32,7 @@ public class PlayerManagementController {
     @FXML
     private VBox secondStage;
 
-    private GameService gameService;
+    private AdminService adminService;
     private Consumer<String> outputCallback;
     private Stage stage;
     private String selectedUpdateType;
@@ -53,8 +53,8 @@ public class PlayerManagementController {
         }
     }
 
-    public void setGameService(GameService gameService) {
-        this.gameService = gameService;
+    public void setAdminService(AdminService adminService) {
+        this.adminService = adminService;
     }
 
     public void setOutputCallback(Consumer<String> outputCallback) {
@@ -88,8 +88,8 @@ public class PlayerManagementController {
 
     @FXML
     public void handleCheckPlayer() {
-        if (gameService == null) {
-            showError("Error", "Game service is not initialized");
+        if (adminService == null) {
+            showError("Error", "Admin service is not initialized");
             return;
         }
 
@@ -106,7 +106,7 @@ public class PlayerManagementController {
         }
 
         try {
-            String playersList = gameService.viewPlayers();
+            String playersList = adminService.viewPlayers();
             if (playerExists(username, playersList)) {
                 existingUsername = username;
                 enableSelectedField(selectedUpdateType);
@@ -159,7 +159,7 @@ public class PlayerManagementController {
                         showError("Error", "New username cannot be empty");
                         return;
                     }
-                    success = gameService.updatePlayerUsername(existingUsername, newUsername);
+                    success = adminService.updatePlayerUsername(existingUsername, newUsername);
                     break;
                 case "Password":
                     String newPassword = passwordField.getText().trim();
@@ -167,7 +167,7 @@ public class PlayerManagementController {
                         showError("Error", "New password cannot be empty");
                         return;
                     }
-                    success = gameService.updatePlayerPassword(existingUsername, newPassword);
+                    success = adminService.updatePlayerPassword(existingUsername, newPassword);
                     break;
                 case "Wins":
                     String wins = winsField.getText().trim();
@@ -175,7 +175,7 @@ public class PlayerManagementController {
                         showError("Error", "Wins cannot be empty");
                         return;
                     }
-                    success = gameService.updatePlayerWins(existingUsername, Integer.parseInt(wins));
+                    success = adminService.updatePlayerWins(existingUsername, Integer.parseInt(wins));
                     break;
                 default: 
                     showError("Error", "Update type not selected. Please go back and select what to update.");
@@ -202,31 +202,17 @@ public class PlayerManagementController {
     }
 
     private boolean playerExists(String username, String playersList) {
-        String normalizedUsername = username.toLowerCase().trim();
-        String[] lines = playersList.split("\n");
-
-        for (String line : lines) {
-            if (line.contains("Username:")) {
-                int start = line.indexOf("Username:") + 10;
-                int end = line.indexOf("|", start);
-                if (end > start) {
-                    String playerName = line.substring(start, end).trim().toLowerCase();
-                    if (playerName.equals(normalizedUsername)) {
-                        return true;
-                    }
-                }
-            }
+        if (playersList == null) {
+            return false;
         }
-        return false;
+
+        // Simple check - if the username appears anywhere in the player list
+        // Could be improved with regex for exact matching
+        return playersList.toLowerCase().contains("username: " + username.toLowerCase());
     }
 
     @FXML
     public void handleAddPlayer() {
-        if (gameService == null) {
-            showError("Error", "Game service is not initialized");
-            return;
-        }
-
         String username = usernameField.getText().trim();
         String password = passwordField.getText().trim();
 
@@ -236,7 +222,7 @@ public class PlayerManagementController {
         }
 
         try {
-            Bool success = gameService.createPlayer(username, password);
+            Bool success = adminService.createPlayer(username, password);
             if (success == Bool.BOOL_TRUE) {
                 outputCallback.accept("Player created successfully: " + username);
                 if (onSuccessfulActionCallback != null) {
@@ -256,65 +242,39 @@ public class PlayerManagementController {
 
     @FXML
     public void handleDeletePlayer() {
-        if (gameService == null) {
-            showError("Error", "Game service is not initialized");
-            return;
-        }
-
         String username = usernameField.getText().trim();
-
         if (username.isEmpty()) {
             showError("Error", "Username cannot be empty");
             return;
         }
 
-        try {
-            String playersList = gameService.viewPlayers();
-            if (!playerExists(username, playersList)) {
-                showError("Error", "Player '" + username + "' does not exist");
-                return;
-            }
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Confirm Delete");
+        confirmDialog.setHeaderText(null);
+        confirmDialog.setContentText("Are you sure you want to delete player '" + username + "'?");
+        confirmDialog.getDialogPane().getStyleClass().add("minecraft-dialog"); // Assuming this CSS class exists
 
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Confirm Deletion");
-            confirm.setHeaderText("Delete player: " + username);
-            confirm.setContentText("Are you sure you want to delete this player?");
-            
-            DialogPane dialogPane = confirm.getDialogPane();
-            dialogPane.getStyleClass().add("minecraft-dialog");
-            dialogPane.getStylesheets().add(getClass().getResource("/client/admin/view/player-management.css").toExternalForm());
-            
-            ButtonType yesButton = new ButtonType("Yes", ButtonBar.ButtonData.OK_DONE);
-            ButtonType noButton = new ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE);
-            confirm.getButtonTypes().setAll(yesButton, noButton);
-
-            for (ButtonType buttonType : confirm.getButtonTypes()) {
-                Button button = (Button) dialogPane.lookupButton(buttonType);
-                if (buttonType == yesButton) {
-                    button.getStyleClass().add("minecraft-button-delete");
-                } else {
-                    button.getStyleClass().add("minecraft-button-cancel");
+        confirmDialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                try {
+                    Bool success = adminService.deletePlayer(username);
+                    if (success == Bool.BOOL_TRUE) {
+                        outputCallback.accept("Player deleted successfully: " + username);
+                        if (onSuccessfulActionCallback != null) {
+                            onSuccessfulActionCallback.run();
+                        }
+                        if (stage != null) {
+                            stage.close();
+                        }
+                    } else {
+                        showError("Error", "Failed to delete player. Player might not exist.");
+                    }
+                } catch (Exception e) {
+                    showError("Error", "Failed to delete player: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
-
-            if (confirm.showAndWait().get() == yesButton) {
-                Bool success = gameService.deletePlayer(username);
-                if (success == Bool.BOOL_TRUE) {
-                    outputCallback.accept("Player deleted successfully: " + username);
-                    if (onSuccessfulActionCallback != null) {
-                        onSuccessfulActionCallback.run();
-                    }
-                    if (stage != null) {
-                        stage.close();
-                    }
-                } else {
-                    showError("Error", "Failed to delete player");
-                }
-            }
-        } catch (Exception e) {
-            showError("Error", "Failed to delete player: " + e.getMessage());
-            e.printStackTrace();
-        }
+        });
     }
 
     private void showError(String title, String message) {
@@ -322,7 +282,7 @@ public class PlayerManagementController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
-        alert.getDialogPane().getStyleClass().add("minecraft-dialog");
+        alert.getDialogPane().getStyleClass().add("minecraft-dialog"); // Assuming this CSS class exists
         alert.showAndWait();
     }
 } 

@@ -1,265 +1,291 @@
 package client.admin.controller;
 
-    import client.admin.model.WordManagementModel;
-    import GameModule.Bool;
-    import javafx.collections.FXCollections;
-    import javafx.collections.ObservableList;
-    import javafx.fxml.FXML;
-    import javafx.fxml.FXMLLoader;
-    import javafx.scene.Scene;
-    import javafx.scene.control.*;
-    import javafx.stage.Modality;
-    import javafx.stage.Stage;
-    import GameModule.GameService;
+import AdminModule.AdminService;
+import client.admin.model.WordManagementModel;
+import client.admin.model.Word;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.util.Callback;
+import AdminModule.Bool;
 
-    import java.io.IOException;
-    import java.util.List;
-    import java.util.function.Consumer;
+import java.io.IOException;
+import java.util.List;
+import java.util.function.Consumer;
 
-    public class WordManagementController {
-        @FXML
-        private Label titleLabel;
-        @FXML
-        private TextField searchField;
-        @FXML
-        private ListView<String> wordListView;
-        @FXML
-        private TextField newWordField;
-        @FXML
-        private TextField updatedWordField;
-        @FXML
-        private Label currentWordLabel;
-        @FXML
-        private Label wordToDeleteLabel;
-        @FXML
-        private Button closeButton;
+public class WordManagementController {
+    @FXML private TableView<Word> wordsTable;
+    @FXML private TableColumn<Word, String> wordColumn;
+    @FXML private TableColumn<Word, Void> updateColumn;
+    @FXML private TableColumn<Word, Void> deleteColumn;
+    @FXML private TextField newWordField;
+    @FXML private TextField wordToUpdateField;
+    @FXML private TextField updatedWordField;
+    @FXML private Button addButton;
+    @FXML private Button updateButton;
+    @FXML private Button deleteButton;
+    @FXML private TextField searchField;
+    @FXML private Label statusLabel;
+    @FXML private TabPane tabPane;
 
-        private Stage stage;
-        private Consumer<String> outputCallback;
-        private WordManagementModel model;
-        private ObservableList<String> filteredWords = FXCollections.observableArrayList();
-        private Stage currentDialogStage;
-        private GameService gameService;
+    private WordManagementModel model;
+    private AdminService adminService;
+    private ObservableList<Word> wordsList = FXCollections.observableArrayList();
+    private Consumer<String> outputCallback;
+    private Stage stage;
 
-        @FXML
-        public void initialize() {
-            if (gameService != null) {
-                model = new WordManagementModel(gameService);
-            } else {
-                model = new WordManagementModel();
-            }
-            wordListView.setItems(filteredWords);
+    @FXML
+    public void initialize() {
+        wordColumn.setCellValueFactory(new PropertyValueFactory<>("word"));
+        wordsTable.setItems(wordsList);
+        setupTableColumns();
 
-            searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-                filterWords(newValue);
-            });
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filterWords(newValue);
+        });
+    }
 
-            if (closeButton != null) {
-                closeButton.setOnAction(event -> handleClose());
-            }
-        }
+    public void setAdminService(AdminService adminService) {
+        this.adminService = adminService;
+        this.model = new WordManagementModel(adminService);
+        loadWords(); // Reload words whenever adminService is set or changed
+    }
 
-        public void setStage(Stage stage) {
-            this.stage = stage;
-        }
+    public void setOutputCallback(Consumer<String> outputCallback) {
+        this.outputCallback = outputCallback;
+    }
 
-        public void setOutputCallback(Consumer<String> outputCallback) {
-            this.outputCallback = outputCallback;
-        }
+    public void setStage(Stage stage) {
+        this.stage = stage;
+    }
 
-        public void setGameService(GameService gameService) {
-            this.gameService = gameService;
-            this.model = new WordManagementModel(gameService);
-        }
-
-        public void loadWords() {
-            model.loadWords();
-            filterWords("");
-            updateTitle();
-        }
-
-        private void updateTitle() {
-            titleLabel.setText("Word Management - " + filteredWords.size() + " of " + model.getWordCount() + " words");
-        }
-
-        private void filterWords(String searchText) {
-            List<String> filtered = model.searchWords(searchText);
-            filteredWords.setAll(filtered);
-            updateTitle();
-        }
-
-        @FXML
-        public void prepareAddWord() {
-            try {
-                FXMLLoader loader = new FXMLLoader();
-                loader.setLocation(getClass().getResource("/client/admin/view/AddWordDialog.fxml"));
-                loader.setController(this);
-
-                Scene scene = new Scene(loader.load());
-                scene.getStylesheets().add(getClass().getResource("/client/admin/view/word-management.css").toExternalForm());
-
-                currentDialogStage = new Stage();
-                currentDialogStage.initModality(Modality.APPLICATION_MODAL);
-                currentDialogStage.setTitle("Add Word");
-                currentDialogStage.setScene(scene);
-                currentDialogStage.showAndWait();
-            } catch (IOException e) {
-                showError("Error", "Could not open add word dialog: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        @FXML
-        public void handleAddWord() {
-            String newWord = newWordField.getText().trim();
-            try {
-                if (model.addWord(newWord) == Bool.BOOL_TRUE) {
-                    if (outputCallback != null) {
-                        outputCallback.accept("Added word: " + newWord);
-                    }
-                    closeDialog();
-                    refreshWordList();
-                }
-            } catch (IllegalArgumentException e) {
-                showError("Error", e.getMessage());
-            } catch (IOException e) {
-            } catch (Exception e) {
-                showError("Error", "Failed to add word: " + e.getMessage());
-            }
-        }
-
-        @FXML
-        public void prepareUpdateWord() {
-            String selectedWord = wordListView.getSelectionModel().getSelectedItem();
-            if (selectedWord == null) {
-                showError("Selection Required", "Please select a word to update");
-                return;
-            }
-
-            try {
-                FXMLLoader loader = new FXMLLoader();
-                loader.setLocation(getClass().getResource("/client/admin/view/UpdateWordDialog.fxml"));
-                loader.setController(this);
-
-                Scene scene = new Scene(loader.load());
-                scene.getStylesheets().add(getClass().getResource("/client/admin/view/word-management.css").toExternalForm());
-
-                currentWordLabel.setText("Current word: " + selectedWord);
-                updatedWordField.setText(selectedWord);
-
-                currentDialogStage = new Stage();
-                currentDialogStage.initModality(Modality.APPLICATION_MODAL);
-                currentDialogStage.setTitle("Update Word");
-                currentDialogStage.setScene(scene);
-                currentDialogStage.showAndWait();
-            } catch (IOException e) {
-                showError("Error", "Could not open update word dialog: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        @FXML
-        public void handleUpdateWord() {
-            String oldWord = currentWordLabel.getText().replace("Current word: ", "");
-            String newWord = updatedWordField.getText().trim();
-
-            try {
-                if (model.updateWord(oldWord, newWord) == Bool.BOOL_TRUE) {
-                    if (outputCallback != null) {
-                        outputCallback.accept("Updated word from '" + oldWord + "' to '" + newWord + "'");
-                    }
-                    closeDialog();
-                    refreshWordList();
-                }
-            } catch (IllegalArgumentException e) {
-                showError("Error", e.getMessage());
-            } catch (IOException e) {
-            } catch (Exception e) {
-                showError("Error", "Failed to update word: " + e.getMessage());
-            }
-        }
-
-        @FXML
-        public void prepareDeleteWord() {
-            String selectedWord = wordListView.getSelectionModel().getSelectedItem();
-            if (selectedWord == null) {
-                showError("Selection Required", "Please select a word to delete");
-                return;
-            }
-
-            try {
-                FXMLLoader loader = new FXMLLoader();
-                loader.setLocation(getClass().getResource("/client/admin/view/DeleteWordDialog.fxml"));
-                loader.setController(this);
-
-                Scene scene = new Scene(loader.load());
-                scene.getStylesheets().add(getClass().getResource("/client/admin/view/word-management.css").toExternalForm());
-
-                wordToDeleteLabel.setText(selectedWord);
-
-                currentDialogStage = new Stage();
-                currentDialogStage.initModality(Modality.APPLICATION_MODAL);
-                currentDialogStage.setTitle("Delete Word");
-                currentDialogStage.setScene(scene);
-                currentDialogStage.showAndWait();
-            } catch (IOException e) {
-                showError("Error", "Could not open delete word dialog: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-
-        @FXML
-        public void handleDeleteWord() {
-            String wordToDelete = wordToDeleteLabel.getText();
-            try {
-                if (model.deleteWord(wordToDelete) == Bool.BOOL_TRUE) {
-                    if (outputCallback != null) {
-                        outputCallback.accept("Deleted word: " + wordToDelete);
-                    }
-                    closeDialog();
-                    refreshWordList();
-                }
-            } catch (IllegalArgumentException e) {
-                showError("Error", e.getMessage());
-            } catch (IOException e) {
-            } catch (Exception e) {
-                showError("Error", "Failed to delete word: " + e.getMessage());
-            }
-        }
-
-        @FXML
-        public void handleCancel() {
-            if (currentDialogStage != null) {
-                currentDialogStage.close();
-            }
-        }
-
-        @FXML
-        public void handleClose() {
-            if (stage != null) {
-                stage.close();
-            }
-        }
-
-        private void closeDialog() {
-            if (currentDialogStage != null) {
-                currentDialogStage.close();
-            }
-        }
-
-        private void refreshWordList() {
-            loadWords();
-            if (outputCallback != null) {
-                outputCallback.accept("Word list refreshed");
-            }
-        }
-
-        private void showError(String title, String message) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.getDialogPane().getStyleClass().add("error-dialog");
-            alert.showAndWait();
+    public void loadWords() {
+        try {
+            List<String> words = model.getAllWords();
+            updateWordsList(words);
+            showStatus("Loaded " + words.size() + " words");
+        } catch (Exception e) {
+            showError("Error loading words: " + e.getMessage());
         }
     }
+
+    private void updateWordsList(List<String> words) {
+        Platform.runLater(() -> {
+            wordsList.clear();
+            for (String word : words) {
+                wordsList.add(new Word(word));
+            }
+        });
+    }
+
+    private void filterWords(String searchText) {
+        try {
+            List<String> filteredWords = model.searchWords(searchText);
+            updateWordsList(filteredWords);
+            showStatus("Found " + filteredWords.size() + " words");
+        } catch (Exception e) {
+            showError("Error filtering words: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleAddWord() {
+        String word = newWordField.getText().trim();
+        if (word.isEmpty()) {
+            showError("Word cannot be empty");
+            return;
+        }
+
+        try {
+            Bool result = model.addWord(word);
+            if (result == Bool.BOOL_TRUE) {
+                newWordField.clear();
+                loadWords();
+                showStatus("Word '" + word + "' added successfully");
+                if (outputCallback != null) {
+                    outputCallback.accept("Word added: " + word);
+                }
+                tabPane.getSelectionModel().select(0); // Switch to view tab
+            } else {
+                showError("Failed to add word");
+            }
+        } catch (Exception e) {
+            showError("Error adding word: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleUpdateWord() {
+        String oldWord = wordToUpdateField.getText().trim();
+        String newWord = updatedWordField.getText().trim();
+
+        if (oldWord.isEmpty() || newWord.isEmpty()) {
+            showError("Both fields must be filled");
+            return;
+        }
+
+        try {
+            Bool result = model.updateWord(oldWord, newWord);
+            if (result == Bool.BOOL_TRUE) {
+                wordToUpdateField.clear();
+                updatedWordField.clear();
+                loadWords();
+                showStatus("Word updated successfully");
+                if (outputCallback != null) {
+                    outputCallback.accept("Word updated: " + oldWord + " -> " + newWord);
+                }
+                tabPane.getSelectionModel().select(0); // Switch to view tab
+            } else {
+                showError("Failed to update word");
+            }
+        } catch (Exception e) {
+            showError("Error updating word: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleDeleteWord() {
+        Word selectedWord = wordsTable.getSelectionModel().getSelectedItem();
+        if (selectedWord == null) {
+            showError("Select a word to delete");
+            return;
+        }
+
+        try {
+            Bool result = model.deleteWord(selectedWord.getWord());
+            if (result == Bool.BOOL_TRUE) {
+                loadWords();
+                showStatus("Word '" + selectedWord.getWord() + "' deleted successfully");
+                if (outputCallback != null) {
+                    outputCallback.accept("Word deleted: " + selectedWord.getWord());
+                }
+            } else {
+                showError("Failed to delete word");
+            }
+        } catch (Exception e) {
+            showError("Error deleting word: " + e.getMessage());
+        }
+    }
+
+    private void setupTableColumns() {
+        // Add update button column
+        updateColumn.setCellFactory(param -> new TableCell<Word, Void>() {
+            private final Button updateBtn = new Button("Update");
+
+            {
+                updateBtn.setOnAction(event -> {
+                    Word word = getTableView().getItems().get(getIndex());
+                    wordToUpdateField.setText(word.getWord());
+                    updatedWordField.clear();
+                    updatedWordField.requestFocus();
+                    tabPane.getSelectionModel().select(2); // Switch to update tab (index 2)
+                });
+                updateBtn.getStyleClass().add("action-button");
+                updateBtn.setPrefWidth(90);
+                updateBtn.setPrefHeight(30);
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(updateBtn);
+                }
+            }
+        });
+
+        // Add delete button column
+        deleteColumn.setCellFactory(param -> new TableCell<Word, Void>() {
+            private final Button deleteBtn = new Button("Delete");
+
+            {
+                deleteBtn.setOnAction(event -> {
+                    Word word = getTableView().getItems().get(getIndex());
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+                            "Are you sure you want to delete the word '" + word.getWord() + "'?",
+                            ButtonType.YES, ButtonType.NO);
+                    alert.showAndWait().ifPresent(response -> {
+                        if (response == ButtonType.YES) {
+                            try {
+                                Bool result = model.deleteWord(word.getWord());
+                                if (result == Bool.BOOL_TRUE) {
+                                    loadWords();
+                                    showStatus("Word '" + word.getWord() + "' deleted successfully");
+                                    if (outputCallback != null) {
+                                        outputCallback.accept("Word deleted: " + word.getWord());
+                                    }
+                                } else {
+                                    showError("Failed to delete word");
+                                }
+                            } catch (Exception e) {
+                                showError("Error deleting word: " + e.getMessage());
+                            }
+                        }
+                    });
+                });
+                deleteBtn.getStyleClass().add("dialog-button-delete");
+                deleteBtn.setPrefWidth(90);
+                deleteBtn.setPrefHeight(30);
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(deleteBtn);
+                }
+            }
+        });
+    }
+
+    public void prepareAddWord() {
+        if (tabPane != null) {
+            tabPane.getSelectionModel().select(1); // Switch to Add Word tab
+        }
+    }
+
+    public void prepareUpdateWord() {
+        if (tabPane != null) {
+            tabPane.getSelectionModel().select(2); // Switch to Update Word tab
+        }
+    }
+
+    public void prepareDeleteWord() {
+        if (tabPane != null && wordsTable != null) {
+            tabPane.getSelectionModel().select(0); // Switch to View Words tab
+        }
+    }
+
+    private void showStatus(String message) {
+        Platform.runLater(() -> {
+            statusLabel.setText(message);
+            statusLabel.setStyle("-fx-text-fill: green;");
+        });
+    }
+
+    private void showError(String message) {
+        Platform.runLater(() -> {
+            statusLabel.setText(message);
+            statusLabel.setStyle("-fx-text-fill: red;");
+        });
+    }
+
+    @FXML
+    public void handleCancel() {
+        if (stage != null) {
+            stage.close();
+        }
+    }
+}

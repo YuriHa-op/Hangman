@@ -161,24 +161,49 @@ class ConfettiEffect(QWidget):
             self.stop_animation()
     
     def stop_animation(self):
-        """Stop the animation and hide widget"""
+        """Stop the animation and safely clean up"""
         try:
-            if self.timer.isActive():
-                self.timer.stop()
+            # Store reference to timer locally and clear instance reference
+            local_timer = None
+            if hasattr(self, 'timer'):
+                local_timer = self.timer
+                self.timer = None  # Clear reference immediately
+            
+            # Stop the timer using the local reference
+            if local_timer is not None:
+                try:
+                    if local_timer.isActive():
+                        local_timer.stop()
+                    
+                    # Disconnect any signals before deletion
+                    try:
+                        local_timer.timeout.disconnect()
+                    except:
+                        # Already disconnected or connection doesn't exist
+                        pass
+                except RuntimeError:
+                    # Timer already deleted, nothing to do
+                    pass
+            
+            # Clear particles to prevent additional painting operations
+            if hasattr(self, 'particles'):
+                self.particles = []
             
             # Check if widget is still valid before trying to hide/delete it
-            if not self.isVisible():
-                return
-            
             try:
-                self.hide()
+                if self.isVisible():
+                    self.hide()
+                
+                # Queue for deletion but don't reference self anymore
                 self.deleteLater()
             except RuntimeError:
-                # Widget already deleted, just ignore
+                # Widget already deleted, nothing to do
                 pass
         except Exception as e:
-            print(f"Error stopping confetti animation: {str(e)}")
-            traceback.print_exc()
+            # Only print non-"wrapped C/C++ object" errors to reduce log noise
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error stopping confetti animation: {str(e)}")
+                traceback.print_exc()
     
     def paintEvent(self, event):
         """Draw all the confetti particles"""

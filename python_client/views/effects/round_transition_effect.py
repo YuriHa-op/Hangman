@@ -22,27 +22,15 @@ class RoundTransitionEffect(QWidget):
         self.hide()
     
     def start_animation(self, duration=1000):
-        """Start the transition animation"""
+        """Start the animation sequence"""
         self.show()
+        self.raise_()
         
-        # Create animation to fade in and out
-        self.fade_anim = QPropertyAnimation(self, b"windowOpacity")
-        self.fade_anim.setDuration(duration)
-        self.fade_anim.setStartValue(0)
-        self.fade_anim.setKeyValueAt(0.4, 0.8)  # Peak opacity at 40% of the animation
-        self.fade_anim.setEndValue(0)
-        self.fade_anim.setEasingCurve(QEasingCurve.OutCubic)
-        
-        # Connect cleanup
-        self.fade_anim.finished.connect(self._cleanup)
-        
-        # Start animation
-        self.fade_anim.start()
-        
-    def _cleanup(self):
-        """Clean up resources when animation is done"""
-        self.hide()
-        self.deleteLater()
+        # Set a timer to hide the effect after the duration
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.cleanup)
+        self.timer.start(duration)
     
     def set_text(self, text):
         """Set the text to display during transition"""
@@ -62,4 +50,46 @@ class RoundTransitionEffect(QWidget):
         
         # Draw text in white
         painter.setPen(Qt.white)
-        painter.drawText(self.rect(), Qt.AlignCenter, self.text) 
+        painter.drawText(self.rect(), Qt.AlignCenter, self.text)
+    
+    def cleanup(self):
+        """Clean up resources safely"""
+        try:
+            # Store reference to timer locally and set instance variable to None first
+            # to prevent multiple accesses to a potentially deleted timer
+            local_timer = None
+            if hasattr(self, 'timer'):
+                local_timer = self.timer
+                self.timer = None  # Clear reference immediately
+            
+            # Now work with the local reference
+            if local_timer is not None:
+                try:
+                    if local_timer.isActive():
+                        local_timer.stop()
+                    
+                    # Try to disconnect signals
+                    try:
+                        local_timer.timeout.disconnect()
+                    except:
+                        pass
+                except RuntimeError:
+                    # Timer already deleted, nothing to do
+                    pass
+            
+            # Hide if visible - use try/except to catch deleted widget errors
+            try:
+                if self.isVisible():
+                    self.hide()
+            
+                # Queue for deletion
+                self.deleteLater()
+            except RuntimeError:
+                # Widget already deleted, nothing to do
+                pass
+        except Exception as e:
+            # Suppress specific "wrapped C/C++ object" errors to reduce log noise
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error cleaning up round transition effect: {e}")
+                import traceback
+                traceback.print_exc() 

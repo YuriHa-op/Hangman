@@ -9,7 +9,7 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.text.Text?>
 
-<VBox alignment="CENTER" spacing="15.0" prefWidth="800.0" prefHeight="600.0"
+<VBox alignment="CENTER" spacing="15.0" prefWidth="1000.0" prefHeight="950.0"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="client.admin.controller.AdminViewController"
       stylesheets="@admin.css"
@@ -55,7 +55,7 @@
         </VBox>
     </GridPane>
 
-    <TextArea fx:id="outputArea" editable="false" prefHeight="150.0" wrapText="true" styleClass="output-area"/>
+    <TextArea fx:id="outputArea" editable="false" prefHeight="200.0" wrapText="true" styleClass="output-area"/>
 
     <Button text="Logout" onAction="#handleLogout" styleClass="logout-button"/>
 </VBox>

@@ -1922,12 +1922,18 @@ class QtMultiplayerGameView(QWidget):
             
         current_round = game_data.get('currentRound', 0) + 1
         
-        # Detect round changes and animate
-        if self.previous_round is not None and current_round != self.previous_round:
+        # Check for game winner first - this affects round transition behavior
+        game_winner = game_data.get("gameWinner", "")
+        
+        # Only do round transition animation if there's no game winner
+        # and the round has actually changed
+        if not game_winner and self.previous_round is not None and current_round != self.previous_round:
             self.animate_round_transition()
             
+        # Update previous round after animation check
         self.previous_round = current_round
 
+        # Rest of the method remains unchanged
         scores = game_data.get("scores", {})
         my_score = scores.get(current_player_username, 0)
         self.my_score_label.setText(f"Your Score: {my_score}")
@@ -1956,7 +1962,6 @@ class QtMultiplayerGameView(QWidget):
 
         # 3. Update status label based on round/game winner
         round_winner = game_data.get("roundWinner", "")
-        game_winner = game_data.get("gameWinner", "")
 
         # Check for game winner
         if game_winner:
@@ -2060,25 +2065,35 @@ class QtMultiplayerGameView(QWidget):
         # Reset previous round tracking
         self.previous_round = None
         
-        # Clean up animations
+        # Clean up animations properly
         if hasattr(self, 'round_transition_animation') and self.round_transition_animation:
             try:
+                if hasattr(self.round_transition_animation, 'timer') and self.round_transition_animation.timer:
+                    if self.round_transition_animation.timer.isActive():
+                        self.round_transition_animation.timer.stop()
                 self.round_transition_animation.hide()
                 self.round_transition_animation.deleteLater()
-            except:
-                pass
+            except Exception:
+                pass  # Ignore errors if object is already deleted
             self.round_transition_animation = None
             
         # Clean up confetti effect more safely
         if hasattr(self, '_confetti_effect') and self._confetti_effect:
             try:
-                # Try stopping without deleting
+                # Try stopping the timer first
                 if hasattr(self._confetti_effect, 'timer') and self._confetti_effect.timer:
                     if hasattr(self._confetti_effect.timer, 'isActive') and self._confetti_effect.timer.isActive():
                         self._confetti_effect.timer.stop()
-            except:
-                pass
-            # Null the reference without calling any methods that might crash
+                        
+                # Prevent any further painting
+                if hasattr(self._confetti_effect, 'particles'):
+                    self._confetti_effect.particles = []
+                    
+                # Hide and queue for deletion
+                self._confetti_effect.hide()
+                self._confetti_effect.deleteLater()
+            except Exception:
+                pass  # Ignore errors if object is already deleted
             self._confetti_effect = None
 
         # Reset health bar
@@ -2107,6 +2122,12 @@ class QtMultiplayerGameView(QWidget):
 
         # Reset previous guesses tracking
         self._previous_guesses = set()
+        
+        # Reset win tracking properties
+        if hasattr(self, '_last_round_confetti'):
+            self._last_round_confetti = -1
+        if hasattr(self, '_last_game_winner'):
+            self._last_game_winner = None
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -2176,6 +2197,15 @@ class QtMultiplayerGameView(QWidget):
         self.game_cleaned_up_dialog = None
 
     def show_game_over_dialog(self, message, on_ok_callback):
+        """Show game over dialog with proper cleanup handling"""
+        # Close any existing game over dialog first
+        if self._game_over_dialog:
+            try:
+                self._game_over_dialog.accept()
+            except:
+                pass
+            self._game_over_dialog = None
+            
         if self._game_over_dialog is None:
             # Use main_window as parent to avoid parent deletion issues
             parent = self.main_window if self.main_window is not None else self
@@ -2192,8 +2222,22 @@ class QtMultiplayerGameView(QWidget):
             
             # Create enhanced game over dialog
             self._game_over_dialog = GameOverDialog(message, parent, word)
-            self._game_over_dialog.finished.connect(lambda _: on_ok_callback())
-            self._game_over_dialog.finished.connect(self._clear_game_over_dialog)
+            
+            # Connect callbacks with exception handling
+            def safe_callback():
+                try:
+                    on_ok_callback()
+                except Exception as e:
+                    print(f"Error in game over callback: {e}")
+                    
+            def safe_clear_dialog(result):
+                try:
+                    self._game_over_dialog = None
+                except:
+                    pass
+                    
+            self._game_over_dialog.finished.connect(lambda _: safe_callback())
+            self._game_over_dialog.finished.connect(safe_clear_dialog)
             
             # Center it on the screen
             screen_geometry = QApplication.desktop().screenGeometry()
@@ -2202,9 +2246,6 @@ class QtMultiplayerGameView(QWidget):
             self._game_over_dialog.move(x, y)
             
             self._game_over_dialog.show()
-
-    def _clear_game_over_dialog(self, result):
-        self._game_over_dialog = None
 
     def display_game_event(self, event_message):
         # Use main_window as parent so notification appears on top of the whole view
@@ -2227,37 +2268,77 @@ class QtMultiplayerGameView(QWidget):
 
     def animate_round_transition(self):
         """Animate the round transition with a flash effect"""
-        # Clean up any previous animation that might not have been garbage collected
+        # Don't show round transition if game is over (when there's a game winner)
+        if self.controller and self.controller.model and self.controller.model.game_state:
+            game_data = self.controller.model.game_state.get("gameState", {})
+            if game_data.get("gameWinner"):
+                # Skip the round transition animation for the final round
+                return
+            
+        # Clean up any previous animation that might still be active
         if hasattr(self, 'round_transition_animation') and self.round_transition_animation:
             try:
-                self.round_transition_animation.hide()
-                self.round_transition_animation.deleteLater()
-            except:
+                # Store the reference locally and clear the instance variable
+                transition = self.round_transition_animation
+                self.round_transition_animation = None
+                
+                # Now clean up using the local reference
+                if hasattr(transition, 'cleanup'):
+                    transition.cleanup()
+                else:
+                    # Fallback if cleanup method doesn't exist
+                    try:
+                        if hasattr(transition, 'timer') and transition.timer:
+                            if transition.timer.isActive():
+                                transition.timer.stop()
+                        transition.hide()
+                        transition.deleteLater()
+                    except RuntimeError:
+                        # Object already deleted, ignore
+                        pass
+            except Exception:
                 pass  # Ignore errors if object is already deleted
-            self.round_transition_animation = None
             
         # Create and start the round transition animation
-        parent = self.main_window if self.main_window is not None else self
-        transition_effect = RoundTransitionEffect(parent, text="Next Round")
-        transition_effect.resize(parent.size())
-        transition_effect.start_animation(duration=1000)
-        
-        # Store reference to prevent garbage collection
-        self.round_transition_animation = transition_effect
+        try:
+            parent = self.main_window if self.main_window is not None else self
+            transition_effect = RoundTransitionEffect(parent, text="Next Round")
+            transition_effect.resize(parent.size())
+            transition_effect.start_animation(duration=1000)
+            
+            # Store reference to prevent garbage collection
+            self.round_transition_animation = transition_effect
+        except Exception as e:
+            # Only show non-"wrapped C/C++ object" errors to reduce log noise
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error creating round transition: {e}")
+            # Don't store reference if creation failed
+            self.round_transition_animation = None
 
     def show_confetti_effect(self, duration=3000):
         """Show confetti explosion effect on win"""
         try:
             # Store and cleanup any existing confetti animation 
             if hasattr(self, '_confetti_effect') and self._confetti_effect:
+                # Store local reference and clear instance variable
+                confetti = self._confetti_effect
+                self._confetti_effect = None
+                
                 try:
-                    # Only stop the timer, avoid calling other methods
-                    if hasattr(self._confetti_effect, 'timer') and hasattr(self._confetti_effect.timer, 'isActive'):
-                        if self._confetti_effect.timer.isActive():
-                            self._confetti_effect.timer.stop()
+                    # Only try to stop the timer, avoid calling other methods
+                    if hasattr(confetti, 'timer') and hasattr(confetti.timer, 'isActive'):
+                        if confetti.timer.isActive():
+                            confetti.timer.stop()
+                        
+                    # Try harder cleanup if possible
+                    if hasattr(confetti, 'stop_animation'):
+                        try:
+                            confetti.stop_animation()
+                        except RuntimeError:
+                            # Object already deleted, ignore
+                            pass
                 except Exception:
                     pass  # Ignore errors if object is already deleted
-                self._confetti_effect = None
             
             # Create confetti effect at the game window level (main_window)
             parent = self.main_window if self.main_window is not None else self
@@ -2270,5 +2351,19 @@ class QtMultiplayerGameView(QWidget):
             # Store reference to current animation
             self._confetti_effect = confetti
         except Exception as e:
-            print(f"Error showing confetti effect: {str(e)}")
-            traceback.print_exc()
+            # Only show non-"wrapped C/C++ object" errors
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error showing confetti effect: {str(e)}")
+                traceback.print_exc()
+
+    def hideEvent(self, event):
+        """Ensure proper cleanup when the view is hidden"""
+        # Stop animations and timers before hiding
+        self.reset_view()
+        super().hideEvent(event)
+        
+    def closeEvent(self, event):
+        """Ensure proper cleanup when the view is closed"""
+        # Stop animations and timers before closing
+        self.reset_view()
+        super().closeEvent(event)

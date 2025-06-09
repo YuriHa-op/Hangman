@@ -1,6 +1,6 @@
 package client.admin.controller;
 
-import GameModule.GameService;
+import AdminModule.AdminService;
 import client.admin.model.SystemSettings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -34,7 +34,7 @@ public class SystemStatisticsController {
     @FXML
     private TextField roundTimeField;
 
-    private GameService gameService;
+    private AdminService adminService;
     private Stage stage;
     private Consumer<String> outputCallback;
     private SystemSettings currentSettings;
@@ -54,8 +54,8 @@ public class SystemStatisticsController {
         });
     }
 
-    public void setGameService(GameService gameService) {
-        this.gameService = gameService;
+    public void setAdminService(AdminService adminService) {
+        this.adminService = adminService;
     }
 
     public void setStage(Stage stage) {
@@ -69,7 +69,7 @@ public class SystemStatisticsController {
     public void loadStatistics() {
         try {
             // Fetch statistics from server
-            GameModule.SystemStatisticsDTO stats = gameService.getSystemStatistics();
+            AdminModule.SystemStatisticsDTO stats = adminService.getSystemStatistics();
             int totalGames = (int) stats.totalGames;
             int wins = (int) stats.wins;
             int losses = (int) stats.losses;
@@ -124,10 +124,10 @@ public class SystemStatisticsController {
                 return;
             }
 
-            // Update settings using the gameService
-            GameModule.Bool success = gameService.updateSettings(waitingTime, roundTime);
+            // Update settings using the adminService
+            AdminModule.Bool success = adminService.updateSettings(waitingTime, roundTime);
 
-            if (success == GameModule.Bool.BOOL_TRUE) {
+            if (success == AdminModule.Bool.BOOL_TRUE) {
                 currentSettings.setWaitingTimeSeconds(waitingTime);
                 currentSettings.setRoundTimeSeconds(roundTime);
                 outputCallback.accept("Game settings updated successfully");

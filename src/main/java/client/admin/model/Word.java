@@ -1,51 +1,43 @@
 package client.admin.model;
 
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+
 public class Word {
-    private String value;
-    private String category;
-    private int difficulty;
-
-    public Word(String value, String category, int difficulty) {
-        this.value = value;
-        this.category = category;
-        this.difficulty = difficulty;
+    private final StringProperty word;
+    
+    public Word(String word) {
+        this.word = new SimpleStringProperty(word);
     }
 
-    public String getValue() {
-        return value;
+    public String getWord() {
+        return word.get();
     }
 
-    public void setValue(String value) {
-        this.value = value;
+    public void setWord(String word) {
+        this.word.set(word);
     }
-
-    public String getCategory() {
-        return category;
+    
+    public StringProperty wordProperty() {
+        return word;
     }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public int getDifficulty() {
-        return difficulty;
-    }
-
-    public void setDifficulty(int difficulty) {
-        this.difficulty = difficulty;
-    }
-
+    
     @Override
     public String toString() {
-        return value + " (" + category + ", " + difficultyToString() + ")";
+        return getWord();
     }
-
-    private String difficultyToString() {
-        switch (difficulty) {
-            case 1: return "Easy";
-            case 2: return "Medium";
-            case 3: return "Hard";
-            default: return "Unknown";
-        }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        
+        Word other = (Word) obj;
+        return getWord().equals(other.getWord());
+    }
+    
+    @Override
+    public int hashCode() {
+        return getWord().hashCode();
     }
 }

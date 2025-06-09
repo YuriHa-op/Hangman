@@ -1,6 +1,6 @@
 package client.admin.view;
 
-import GameModule.GameService;
+import AdminModule.AdminService;
 import client.admin.controller.PlayerManagementController;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -11,18 +11,18 @@ import java.util.function.Consumer;
 public class PlayerManagementView {
     private Stage stage;
     private PlayerManagementController controller;
-    private GameService gameService;
+    private AdminService adminService;
     private Consumer<String> outputCallback;
     private Runnable onSuccessfulActionCallback;
 
-    public PlayerManagementView(GameService gameService, Consumer<String> outputCallback, Runnable onSuccessfulActionCallback) {
-        this.gameService = gameService;
+    public PlayerManagementView(AdminService adminService, Consumer<String> outputCallback, Runnable onSuccessfulActionCallback) {
+        this.adminService = adminService;
         this.outputCallback = outputCallback;
         this.onSuccessfulActionCallback = onSuccessfulActionCallback;
     }
 
-    public PlayerManagementView(GameService gameService, Consumer<String> outputCallback) {
-        this(gameService, outputCallback, null);
+    public PlayerManagementView(AdminService adminService, Consumer<String> outputCallback) {
+        this(adminService, outputCallback, null);
     }
 
     public void showAddPlayer() {
@@ -30,7 +30,7 @@ public class PlayerManagementView {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/AddPlayerView.fxml"));
             Parent root = loader.load();
             controller = loader.getController();
-            controller.setGameService(gameService);
+            controller.setAdminService(adminService);
             controller.setOutputCallback(outputCallback);
             if (onSuccessfulActionCallback != null) {
                 controller.setOnSuccessfulActionCallback(onSuccessfulActionCallback);
@@ -55,7 +55,7 @@ public class PlayerManagementView {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/UpdatePlayerView.fxml"));
             Parent root = loader.load();
             controller = loader.getController();
-            controller.setGameService(gameService);
+            controller.setAdminService(adminService);
             controller.setOutputCallback(outputCallback);
             if (onSuccessfulActionCallback != null) {
                 controller.setOnSuccessfulActionCallback(onSuccessfulActionCallback);
@@ -80,7 +80,7 @@ public class PlayerManagementView {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/UpdatePlayerView.fxml"));
             Parent root = loader.load();
             controller = loader.getController();
-            controller.setGameService(gameService);
+            controller.setAdminService(adminService);
             controller.setOutputCallback(outputCallback);
             controller.setUsernameForUpdate(username);
             if (onSuccessfulActionCallback != null) {
@@ -106,7 +106,7 @@ public class PlayerManagementView {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/DeletePlayerView.fxml"));
             Parent root = loader.load();
             controller = loader.getController();
-            controller.setGameService(gameService);
+            controller.setAdminService(adminService);
             controller.setOutputCallback(outputCallback);
             if (onSuccessfulActionCallback != null) {
                 controller.setOnSuccessfulActionCallback(onSuccessfulActionCallback);

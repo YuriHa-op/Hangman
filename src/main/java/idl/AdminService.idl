@@ -1,0 +1,52 @@
+module AdminModule {
+    enum Bool { BOOL_FALSE, BOOL_TRUE };
+    
+    typedef sequence<string> StringSeq;
+    
+    // Admin statistics
+    struct SystemStatisticsDTO {
+        long totalGames;
+        long wins;
+        long losses;
+        double winRate;
+        long waitingTime;
+        long roundTime;
+    };
+    
+    // Leaderboard entry for admin view
+    struct LeaderboardEntryDTO {
+        string username;
+        long wins;
+    };
+    
+    typedef sequence<LeaderboardEntryDTO> LeaderboardEntrySeq;
+    
+    interface AdminService {
+        // Admin player management
+        Bool createPlayer(in string username, in string password);
+        Bool deletePlayer(in string username);
+        Bool updatePlayerPassword(in string username, in string newPassword);
+        Bool updatePlayerUsername(in string username, in string newUsername);
+        Bool updatePlayerWins(in string username, in long wins);
+        string viewPlayers();
+        
+        // Admin system settings
+        Bool updateSettings(in long waitingTime, in long roundTime);
+        
+        // Admin word management
+        Bool addWord(in string word);
+        Bool updateWord(in string oldWord, in string newWord);
+        Bool deleteWord(in string word);
+        StringSeq getAllWords();
+        
+        // Admin statistics
+        SystemStatisticsDTO getSystemStatistics();
+        LeaderboardEntrySeq getLeaderboardEntries();
+        
+        // Match history admin view
+        string getMatchHistory(in string username);
+        string getMatchDetails(in string gameId);
+        string getSinglePlayerMatchHistory(in string username);
+        string getSinglePlayerMatchDetails(in string gameId);
+    };
+}; 

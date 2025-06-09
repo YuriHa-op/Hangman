@@ -19,8 +19,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import GameModule.GameStateDTO;
-import client.admin.model.SystemStatisticsDTO;
-import client.admin.model.LeaderboardEntryDTO;
+import GameModule.LeaderboardEntryDTO;
 import com.google.gson.Gson;
 
 public class GameServiceImpl extends GameServicePOA {
@@ -31,37 +30,51 @@ public class GameServiceImpl extends GameServicePOA {
     private MultiplayerGameManager multiplayerGameManager;
     private static final int MULTI_MIN_PLAYERS = 2;
     private static final int MULTI_MAX_PLAYERS = 8;
-    private final MatchResultDAO matchResultDAO = new MatchResultDAO(
-        "jdbc:mysql://localhost:3306/game",
-        "root",
-        ""
-    );
-    private final SinglePlayerMatchResultDAO singlePlayerMatchResultDAO = new SinglePlayerMatchResultDAO(
-        "jdbc:mysql://localhost:3306/game",
-        "root",
-        ""
-    );
+    private final MatchResultDAO matchResultDAO;
+    private final SinglePlayerMatchResultDAO singlePlayerMatchResultDAO;
     private final Gson gson = new Gson();
-
-                //put this hotdog in you GameServiceImpl
-
 
     public GameServiceImpl() {
         this.wordManager = new WordManager();
         this.playerManager = new PlayerManager();
+        this.singlePlayerMatchResultDAO = new SinglePlayerMatchResultDAO(
+            "jdbc:mysql://localhost:3306/game",
+            "root",
+            ""
+        );
         this.gameManager = new GameManager(wordManager, playerManager, singlePlayerMatchResultDAO);
+        
         // Initialize multiplayer manager
         int waitingTime = playerManager.getWaitingTime();
-        int minPlayers = 2;
-        int maxPlayers = 8;
-        this.multiplayerGameManager = new MultiplayerGameManager(wordManager, playerManager, minPlayers, maxPlayers, waitingTime);
+        this.multiplayerGameManager = new MultiplayerGameManager(wordManager, playerManager, 
+            MULTI_MIN_PLAYERS, MULTI_MAX_PLAYERS, waitingTime);
+        
+        // Initialize matchResultDAO
+        this.matchResultDAO = new MatchResultDAO(
+            "jdbc:mysql://localhost:3306/game",
+            "root",
+            ""
+        );
+    }
+
+    public GameServiceImpl(WordManager wordManager, PlayerManager playerManager,
+                          MatchResultDAO matchResultDAO, SinglePlayerMatchResultDAO singlePlayerMatchResultDAO) {
+        this.wordManager = wordManager;
+        this.playerManager = playerManager;
+        this.matchResultDAO = matchResultDAO;
+        this.singlePlayerMatchResultDAO = singlePlayerMatchResultDAO;
+        this.gameManager = new GameManager(wordManager, playerManager, singlePlayerMatchResultDAO);
+        
+        // Initialize multiplayer manager
+        int waitingTime = playerManager.getWaitingTime();
+        this.multiplayerGameManager = new MultiplayerGameManager(wordManager, playerManager, 
+            MULTI_MIN_PLAYERS, MULTI_MAX_PLAYERS, waitingTime);
     }
 
     public void setLogCallback(Consumer<String> callback) {
         this.logCallback = callback;
         gameManager.setLogCallback(callback);
     }
-
 
     public int getActivePlayers() {
         return gameManager.getActivePlayers();
@@ -71,12 +84,12 @@ public class GameServiceImpl extends GameServicePOA {
         return gameManager.getActiveGames();
     }
 
-
     @Override
     public Bool login(String username, String password) throws GameModule.AlreadyLoggedInException {
         return playerManager.login(username, password);
     }
 
+    @Override
     public void logout(String username) {
         playerManager.logout(username);
     }
@@ -88,9 +101,9 @@ public class GameServiceImpl extends GameServicePOA {
 
     @Override
     public String viewLeaderboard() {
-        java.util.List<LeaderboardEntryDTO> entries = playerManager.getLeaderboardEntries();
+        java.util.List<client.admin.model.LeaderboardEntryDTO> entries = playerManager.getLeaderboardEntries();
         StringBuilder leaderboard = new StringBuilder("LEADERBOARD:\n");
-        for (LeaderboardEntryDTO entry : entries) {
+        for (client.admin.model.LeaderboardEntryDTO entry : entries) {
             leaderboard.append(entry.getUsername())
                     .append(": ")
                     .append(entry.getWins())
@@ -105,46 +118,12 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public Bool createPlayer(String username, String password) {
-        return playerManager.createPlayer(username, password);
-    }
-
-    @Override
-    public Bool deletePlayer(String username) {
-        return playerManager.deletePlayer(username);
-    }
-
-    public String viewPlayers() {
-        return playerManager.viewPlayers();
-    }
-
-    @Override
     public String startGame(String username) {
         return gameManager.startGame(username);
     }
 
-    @Override
-    public Bool updatePlayerPassword(String username, String newPassword) {
-        return playerManager.updatePlayerPassword(username, newPassword);
-    }
-
-    @Override
-    public Bool updateSettings(int waitingTime, int roundTime) {
-        return playerManager.updateSettings(waitingTime, roundTime);
-    }
-
     private void endGame(String username, boolean recordStats) {
         gameManager.endGame(username, recordStats);
-    }
-
-    @Override
-    public Bool updatePlayerUsername(String username, String newUsername) {
-        return playerManager.updatePlayerUsername(username, newUsername);
-    }
-
-    @Override
-    public Bool updatePlayerWins(String username, int wins) {
-        return playerManager.updatePlayerWins(username, wins);
     }
 
     @Override
@@ -197,8 +176,7 @@ public class GameServiceImpl extends GameServicePOA {
         return gameManager.isGameSessionOver(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
-
-
+    @Override
     public String getGameSessionResult(String username) {
         return gameManager.getGameSessionResult(username);
     }
@@ -228,53 +206,6 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public Bool addWord(String word) {
-        return wordManager.addWord(word);
-    }
-
-    @Override
-    public Bool updateWord(String oldWord, String newWord) {
-        return wordManager.updateWord(oldWord, newWord);
-    }
-
-    @Override
-    public Bool deleteWord(String word) {
-        return wordManager.deleteWord(word);
-    }
-
-    @Override
-    public String[] getAllWords() {
-        List<String> words = wordManager.getWords();
-        return words.toArray(new String[0]);
-    }
-
-    @Override
-    public GameModule.SystemStatisticsDTO getSystemStatistics() {
-        SystemStatisticsDTO stats = playerManager.getSystemStatistics();
-        GameModule.SystemStatisticsDTO corbaDto = new GameModule.SystemStatisticsDTO();
-        corbaDto.totalGames = stats.getTotalGames();
-        corbaDto.wins = stats.getWins();
-        corbaDto.losses = stats.getLosses();
-        corbaDto.winRate = stats.getWinRate();
-        corbaDto.waitingTime = stats.getWaitingTime();
-        corbaDto.roundTime = stats.getRoundTime();
-        return corbaDto;
-    }
-
-    @Override
-    public GameModule.LeaderboardEntryDTO[] getLeaderboardEntries() {
-        java.util.List<LeaderboardEntryDTO> entries = playerManager.getLeaderboardEntries();
-        GameModule.LeaderboardEntryDTO[] corbaEntries = new GameModule.LeaderboardEntryDTO[entries.size()];
-        for (int i = 0; i < entries.size(); i++) {
-            LeaderboardEntryDTO entry = entries.get(i);
-            GameModule.LeaderboardEntryDTO corbaEntry = new GameModule.LeaderboardEntryDTO();
-            corbaEntry.username = entry.getUsername();
-            corbaEntry.wins = entry.getWins();
-            corbaEntries[i] = corbaEntry;
-        }
-        return corbaEntries;
-    }
-
     public void cleanupPlayerSession(String username) {
         gameManager.cleanupPlayerSession(username);
     }
@@ -283,11 +214,13 @@ public class GameServiceImpl extends GameServicePOA {
         this.multiplayerGameManager = new MultiplayerGameManager(wordManager, playerManager, MULTI_MIN_PLAYERS, MULTI_MAX_PLAYERS, queueTimeSeconds);
     }
 
+    @Override
     public String startMultiplayerGame(String username) {
         MultiplayerLobby lobby = multiplayerGameManager.joinOrCreateLobby(username);
         return lobby.getLobbyId();
     }
 
+    @Override
     public String getMultiplayerLobbyState(String username) {
         MultiplayerLobby lobby = multiplayerGameManager.getLobbyByPlayer(username);
         if (lobby == null) {
@@ -353,32 +286,35 @@ public class GameServiceImpl extends GameServicePOA {
         return gson.toJson(stateMap);
     }
 
+    @Override
     public Bool sendMultiplayerGuess(String username, char letter) {
         return multiplayerGameManager.makeGuess(username, letter) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
-    // Expose a method to start the next round in multiplayer
+    @Override
     public Bool startMultiplayerNextRound(String username) {
         return multiplayerGameManager.startNextRound(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
-    // --- Match History Service Methods ---
+    @Override
     public String getMatchHistory(String username) {
         java.util.List<server.dto.MultiplayerGameSummaryDTO> games = matchResultDAO.getGamesForPlayer(username);
         return gson.toJson(games);
     }
 
+    @Override
     public String getMatchDetails(String gameId) {
         server.dto.MultiplayerGameDetailsDTO details = matchResultDAO.getGameDetails(gameId);
         return gson.toJson(details);
     }
 
-    // --- Single Player Match History Service Methods ---
+    @Override
     public String getSinglePlayerMatchHistory(String username) {
         List<server.dto.SPSinglePlayerGameSummaryDTO> games = singlePlayerMatchResultDAO.getGamesForPlayer(username);
         return gson.toJson(games);
     }
 
+    @Override
     public String getSinglePlayerMatchDetails(String gameId) {
         server.dto.SPSinglePlayerGameDetailsDTO details = singlePlayerMatchResultDAO.getGameDetails(gameId);
         return gson.toJson(details);
@@ -398,4 +334,17 @@ public class GameServiceImpl extends GameServicePOA {
         multiplayerGameManager.leaveMultiplayerGame(username);
     }
 
+    @Override
+    public GameModule.LeaderboardEntryDTO[] getLeaderboardEntries() {
+        java.util.List<client.admin.model.LeaderboardEntryDTO> entries = playerManager.getLeaderboardEntries();
+        GameModule.LeaderboardEntryDTO[] corbaEntries = new GameModule.LeaderboardEntryDTO[entries.size()];
+        for (int i = 0; i < entries.size(); i++) {
+            client.admin.model.LeaderboardEntryDTO entry = entries.get(i);
+            GameModule.LeaderboardEntryDTO corbaEntry = new GameModule.LeaderboardEntryDTO();
+            corbaEntry.username = entry.getUsername();
+            corbaEntry.wins = entry.getWins();
+            corbaEntries[i] = corbaEntry;
+        }
+        return corbaEntries;
+    }
 }

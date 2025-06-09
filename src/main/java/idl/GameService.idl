@@ -21,16 +21,8 @@ module GameModule {
         long finishedTime;
         string opponentUsername;
     };
-    //admin settings
-    struct SystemStatisticsDTO {
-        long totalGames;
-        long wins;
-        long losses;
-        double winRate;
-        long waitingTime;
-        long roundTime;
-    };
- // player
+    
+    //player leaderboard
     struct LeaderboardEntryDTO {
         string username;
         long wins;
@@ -49,15 +41,6 @@ module GameModule {
         string viewLeaderboard();
         string getMaskedWord(in string username);
 
-        // Admin player management
-        Bool createPlayer(in string username, in string password);
-        Bool deletePlayer(in string username);
-        Bool updatePlayerPassword(in string username, in string newPassword);
-        Bool updateSettings(in long waitingTime, in long roundTime);
-        Bool updatePlayerUsername(in string username, in string newUsername);
-        Bool updatePlayerWins(in string username, in long wins);
-        string viewPlayers();
-
         //server
         long getRoundTime();
         long getWaitingTime();
@@ -75,25 +58,16 @@ module GameModule {
         // Explicit cleanup after game session ends
         void cleanupPlayerSession(in string username);
 
-        // Admin word management
-        Bool addWord(in string word);
-        Bool updateWord(in string oldWord, in string newWord);
-        Bool deleteWord(in string word);
-        StringSeq getAllWords();
-
-        SystemStatisticsDTO getSystemStatistics();
-        LeaderboardEntrySeq getLeaderboardEntries();
-
         // Multiplayer mode
         string startMultiplayerGame(in string username);
         string getMultiplayerLobbyState(in string username);
         Bool sendMultiplayerGuess(in string username, in char letter);
         Bool startMultiplayerNextRound(in string username);
 
-        // Match history (returns JSON)
+        // Match history for player
         string getMatchHistory(in string username);
         string getMatchDetails(in string gameId);
-
+        
         // Single Player Match History
         string getSinglePlayerMatchHistory(in string username);
         string getSinglePlayerMatchDetails(in string gameId);
@@ -101,5 +75,8 @@ module GameModule {
         // Client signals ready after match found dialog for 1v1 and multiplayer
         void playerReadyForFirstRound(in string username);
         void leaveMultiplayerGame(in string username);
+        
+        // Leaderboard entries for player view
+        LeaderboardEntrySeq getLeaderboardEntries();
     };
 };

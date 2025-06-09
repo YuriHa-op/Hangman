@@ -1,6 +1,6 @@
 package client.admin.controller;
 
-import GameModule.GameService;
+import AdminModule.AdminService;
 // Removed direct import of GameSummary and MatchSummary from player controller, as they are defined below if different
 // or assumed to be compatible if Admin uses the same DAO's GameSummary
 import client.player.controller.MatchDetailsDialogController; 
@@ -37,7 +37,7 @@ public class AdminMatchHistoryController {
     @FXML private ComboBox<String> historyTypeComboBox; // Added ComboBox
 
     private Stage stage;
-    private GameService gameService;
+    private AdminService adminService;
     private String targetUsername; 
     private Consumer<String> outputCallback; 
     private final Gson gson = new Gson();
@@ -45,7 +45,7 @@ public class AdminMatchHistoryController {
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     public void setStage(Stage stage) { this.stage = stage; }
-    public void setGameService(GameService gameService) { this.gameService = gameService; }
+    public void setAdminService(AdminService adminService) { this.adminService = adminService; }
     public void setTargetUsername(String username) { this.targetUsername = username; }
     public void setOutputCallback(Consumer<String> outputCallback) { this.outputCallback = outputCallback; }
 
@@ -81,8 +81,8 @@ public class AdminMatchHistoryController {
 
     // Modified loadHistory to accept a mode parameter
     public void loadHistory(String mode) { 
-        if (gameService == null || targetUsername == null) {
-            logError("GameService or Username not set. Cannot load history.");
+        if (adminService == null || targetUsername == null) {
+            logError("AdminService or Username not set. Cannot load history.");
             return;
         }
         new Thread(() -> {
@@ -90,7 +90,7 @@ public class AdminMatchHistoryController {
                 String json;
                 List<MatchSummary> rows;
                 if ("singleplayer".equals(mode)) {
-                    json = gameService.getSinglePlayerMatchHistory(targetUsername);
+                    json = adminService.getSinglePlayerMatchHistory(targetUsername);
                     Type listType = new TypeToken<List<SPSinglePlayerGameSummaryDTO>>(){}.getType();
                     List<SPSinglePlayerGameSummaryDTO> spSummaries = gson.fromJson(json, listType);
                     if (spSummaries == null) {
@@ -104,7 +104,7 @@ public class AdminMatchHistoryController {
                                      .map(MatchSummary::fromSPSinglePlayerGameSummary)
                                      .collect(Collectors.toList());
                 } else { // multiplayer
-                    json = gameService.getMatchHistory(targetUsername); 
+                    json = adminService.getMatchHistory(targetUsername); 
                     Type listType = new TypeToken<List<MultiplayerGameSummaryDTO>>(){}.getType(); 
                     List<MultiplayerGameSummaryDTO> summaries = gson.fromJson(json, listType);
                     if (summaries == null) {
@@ -148,9 +148,9 @@ public class AdminMatchHistoryController {
                             String mode = "1v1 Matches".equals(selectedType) ? "singleplayer" : "multiplayer";
                             String jsonDetails;
                             if ("singleplayer".equals(mode)) {
-                                jsonDetails = gameService.getSinglePlayerMatchDetails(gameId);
+                                jsonDetails = adminService.getSinglePlayerMatchDetails(gameId);
                             } else {
-                                jsonDetails = gameService.getMatchDetails(gameId);
+                                jsonDetails = adminService.getMatchDetails(gameId);
                             }
                             MatchDetailsDialogController.showDialog(stage, jsonDetails, mode); 
                         });

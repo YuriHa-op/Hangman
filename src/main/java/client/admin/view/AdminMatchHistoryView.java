@@ -1,5 +1,6 @@
 package client.admin.view;
 
+import AdminModule.AdminService;
 import GameModule.GameService;
 import client.admin.controller.AdminMatchHistoryController;
 import javafx.fxml.FXMLLoader;
@@ -14,8 +15,16 @@ public class AdminMatchHistoryView {
     private Stage stage;
     private AdminMatchHistoryController controller;
     private Parent root;
-
+    
+    // Keep this method for backward compatibility with any code still using GameService
     public void showPlayerHistory(GameService gameService, String username, Consumer<String> outputCallback, Stage ownerStage) {
+        if (outputCallback != null) {
+            outputCallback.accept("Warning: Using deprecated GameService for admin match history. Please update to use AdminService.");
+        }
+        // Implementation remains empty - admin features should use AdminService
+    }
+
+    public void showPlayerHistory(AdminService adminService, String username, Consumer<String> outputCallback, Stage ownerStage) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/AdminMatchHistoryView.fxml"));
             root = loader.load();
@@ -27,7 +36,7 @@ public class AdminMatchHistoryView {
             stage.initModality(Modality.WINDOW_MODAL); // Block interaction with owner while this is open
 
             controller.setStage(stage);
-            controller.setGameService(gameService);
+            controller.setAdminService(adminService);
             controller.setTargetUsername(username);
             controller.setOutputCallback(outputCallback);
             controller.loadSelectedHistory();
