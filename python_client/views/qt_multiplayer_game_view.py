@@ -2069,11 +2069,16 @@ class QtMultiplayerGameView(QWidget):
                 pass
             self.round_transition_animation = None
             
+        # Clean up confetti effect more safely
         if hasattr(self, '_confetti_effect') and self._confetti_effect:
             try:
-                self._confetti_effect.stop_animation()
+                # Try stopping without deleting
+                if hasattr(self._confetti_effect, 'timer') and self._confetti_effect.timer:
+                    if hasattr(self._confetti_effect.timer, 'isActive') and self._confetti_effect.timer.isActive():
+                        self._confetti_effect.timer.stop()
             except:
                 pass
+            # Null the reference without calling any methods that might crash
             self._confetti_effect = None
 
         # Reset health bar
@@ -2246,10 +2251,13 @@ class QtMultiplayerGameView(QWidget):
             # Store and cleanup any existing confetti animation 
             if hasattr(self, '_confetti_effect') and self._confetti_effect:
                 try:
-                    self._confetti_effect.stop_animation()
-                    self._confetti_effect = None
-                except:
+                    # Only stop the timer, avoid calling other methods
+                    if hasattr(self._confetti_effect, 'timer') and hasattr(self._confetti_effect.timer, 'isActive'):
+                        if self._confetti_effect.timer.isActive():
+                            self._confetti_effect.timer.stop()
+                except Exception:
                     pass  # Ignore errors if object is already deleted
+                self._confetti_effect = None
             
             # Create confetti effect at the game window level (main_window)
             parent = self.main_window if self.main_window is not None else self

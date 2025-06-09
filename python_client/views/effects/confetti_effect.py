@@ -163,9 +163,19 @@ class ConfettiEffect(QWidget):
     def stop_animation(self):
         """Stop the animation and hide widget"""
         try:
-            self.timer.stop()
-            self.hide()
-            self.deleteLater()
+            if self.timer.isActive():
+                self.timer.stop()
+            
+            # Check if widget is still valid before trying to hide/delete it
+            if not self.isVisible():
+                return
+            
+            try:
+                self.hide()
+                self.deleteLater()
+            except RuntimeError:
+                # Widget already deleted, just ignore
+                pass
         except Exception as e:
             print(f"Error stopping confetti animation: {str(e)}")
             traceback.print_exc()
