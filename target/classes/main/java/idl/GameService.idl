@@ -1,0 +1,82 @@
+module GameModule {
+    exception AlreadyLoggedInException {
+        string message;
+    };
+
+    enum Bool { BOOL_FALSE, BOOL_TRUE };
+
+    typedef sequence<string> StringSeq;
+    //player 1v1
+    struct GameStateDTO {
+        string maskedWord;
+        long incorrectGuesses;
+        long currentRound;
+        long totalRounds;
+        long playerWins;
+        Bool roundOver;
+        Bool gameOver;
+        string sessionResult;
+        long remainingTime;
+        string roundWinner;
+        long finishedTime;
+        string opponentUsername;
+    };
+    
+    //player leaderboard
+    struct LeaderboardEntryDTO {
+        string username;
+        long wins;
+    };
+
+    typedef sequence<LeaderboardEntryDTO> LeaderboardEntrySeq;
+
+    interface GameService {
+        //player login and 1v1 mode
+        Bool login(in string username, in string password)
+                    raises (AlreadyLoggedInException);
+        void logout(in string username);
+        string startGame(in string username);
+        Bool sendGuess(in string username, in char letter);
+        void finishRound(in string username, in long clientRemainingTime, in Bool guessedWord);
+        string viewLeaderboard();
+        string getMaskedWord(in string username);
+
+        //server
+        long getRoundTime();
+        long getWaitingTime();
+        long getRemainingTime(in string username);
+        long getIncorrectGuesses(in string username);
+        void endGameSession(in string username);
+        long getCurrentRound(in string username);
+        long getPlayerWins(in string username);
+        Bool startNewRound(in string username);
+        Bool isRoundOver(in string username);
+        Bool isGameSessionOver(in string username);
+        string getGameSessionResult(in string username);
+        GameStateDTO getGameState(in string username);
+
+        // Explicit cleanup after game session ends
+        void cleanupPlayerSession(in string username);
+
+        // Multiplayer mode
+        string startMultiplayerGame(in string username);
+        string getMultiplayerLobbyState(in string username);
+        Bool sendMultiplayerGuess(in string username, in char letter);
+        Bool startMultiplayerNextRound(in string username);
+
+        // Match history for player
+        string getMatchHistory(in string username);
+        string getMatchDetails(in string gameId);
+        
+        // Single Player Match History
+        string getSinglePlayerMatchHistory(in string username);
+        string getSinglePlayerMatchDetails(in string gameId);
+
+        // Client signals ready after match found dialog for 1v1 and multiplayer
+        void playerReadyForFirstRound(in string username);
+        void leaveMultiplayerGame(in string username);
+        
+        // Leaderboard entries for player view
+        LeaderboardEntrySeq getLeaderboardEntries();
+    };
+};

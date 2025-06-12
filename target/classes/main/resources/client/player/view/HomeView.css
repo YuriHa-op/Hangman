@@ -1,0 +1,53 @@
+@font-face {
+    font-family: 'Minecraftia';
+    src: url("../../../fonts/Minecraftia.ttf") format("truetype");
+}
+
+.title-text {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 28px;
+    -fx-fill: #ffffff;
+    -fx-effect: dropshadow(gaussian, black, 3, 0.7, 0, 0);
+    -fx-translate-y: 5px;
+}
+
+.menu-button {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 16px;
+    -fx-background-color: #727272;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #2b2b2b;
+    -fx-border-width: 3px;
+    -fx-effect: dropshadow(gaussian, black, 5, 0.7, 2, 2);
+    -fx-pref-width: 300px;
+    -fx-pref-height: 60px;
+    -fx-padding: 10px 20px;
+    -fx-cursor: hand;
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+}
+
+.menu-button:hover {
+    -fx-background-color: #8b8b8b;
+}
+
+.menu-button:pressed {
+    -fx-background-color: #5a5a5a;
+    -fx-translate-y: 2px;
+}
+
+.output-area {
+    -fx-font-family: 'Consolas';
+    -fx-font-size: 12px;
+    -fx-background-color: rgba(30, 30, 30, 0.8);
+    -fx-text-fill: #ff00dd;
+    -fx-border-color: black;
+}
+
+.splash-text {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 14px;
+    -fx-fill: #FFFF00;
+    -fx-effect: dropshadow(gaussian, black, 2, 0.5, 0, 0);
+    -fx-rotate: -10;
+}

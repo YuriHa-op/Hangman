@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="client.player.controller.LeaderboardController"
+      spacing="15" alignment="TOP_CENTER"
+      stylesheets="@LeaderboardView.css"
+      style="-fx-background-image: url('/leaderboard.png'); -fx-background-size: cover;"
+      prefWidth="600">
+
+    <padding>
+        <Insets top="30" right="20" bottom="30" left="20"/>
+    </padding>
+
+    <Label text="LEADERBOARD" styleClass="leaderboard-title-main"/>
+
+    <StackPane VBox.vgrow="ALWAYS">
+        <VBox fx:id="leaderboardContentPanel" alignment="TOP_CENTER" spacing="10" >
+            <padding>
+                <Insets top="40" right="20" bottom="20" left="20"/>
+            </padding>
+
+            <!-- Header Row for Username and Wins -->
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="leaderboard-header-row">
+                <padding>
+                    <Insets left="80" right="15"/> <!-- Adjust left padding to align with names, modified right padding -->
+                </padding>
+                <Label text="Username" styleClass="leaderboard-header-label" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <Label text="Wins" styleClass="leaderboard-header-label,wins-header-label" alignment="CENTER_RIGHT" minWidth="-Infinity"/>
+            </HBox>
+
+            <ListView fx:id="leaderboardListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+
+        <Button fx:id="closeButton" onAction="#handleBackToMenu" styleClass="close-button" StackPane.alignment="TOP_RIGHT">
+            <graphic>
+                <!-- Placeholder for an X icon, or use text -->
+                <Text text="X" styleClass="close-button-text"/>
+            </graphic>
+            <StackPane.margin>
+                <Insets top="5" right="5"/>
+            </StackPane.margin>
+        </Button>
+    </StackPane>
+
+</VBox>

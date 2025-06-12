@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<StackPane fx:id="root" style="-fx-background-image: url('blou.png'); -fx-background-size: cover;" stylesheets="@GameView.css" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="client.player.controller.GameViewController">
+    <VBox alignment="CENTER" spacing="15.0">
+        <padding>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+        </padding>
+        <Text fill="RED" styleClass="title-text" text="What's The Word?" />
+        <!-- Hangman Image View -->
+        <ImageView fx:id="hangmanImage" preserveRatio="true" visible="true" fitHeight="180" fitWidth="120" />
+        <Label fx:id="wordDisplay" styleClass="word-display" text="_ _ _ _" />
+        <Label fx:id="timerLabel" styleClass="timer-label" text="30" />
+        <HBox alignment="CENTER" spacing="20">
+            <Label fx:id="roundLabel" styleClass="round-label" text="Round: 0/3" />
+            <Label fx:id="scoreLabel" styleClass="score-label" text="Words Guessed: 0" />
+            <Text fx:id="statusText" styleClass="status-text" text="" />
+        </HBox>
+        <TextArea fx:id="gameOutput"
+                  editable="false"
+                  styleClass="output-area"
+                  wrapText="true"
+                  prefWidth="400"
+                  minWidth="400"
+                  maxWidth="400"
+                  prefHeight="120"
+                  minHeight="120"
+                  maxHeight="120"
+                  VBox.vgrow="NEVER"/>
+        <!-- Screen Keyboard -->
+        <VBox fx:id="keyboardGrid" alignment="CENTER" spacing="5" visible="false" VBox.vgrow="ALWAYS">
+            <padding>
+                <Insets bottom="10" left="10" right="10" top="10" />
+            </padding>
+            <!-- First row -->
+            <HBox alignment="CENTER" spacing="5">
+                <Button fx:id="keyQ" onAction="#handleKeyPress" styleClass="keyboard-key" text="Q" />
+                <Button fx:id="keyW" onAction="#handleKeyPress" styleClass="keyboard-key" text="W" />
+                <Button fx:id="keyE" onAction="#handleKeyPress" styleClass="keyboard-key" text="E" />
+                <Button fx:id="keyR" onAction="#handleKeyPress" styleClass="keyboard-key" text="R" />
+                <Button fx:id="keyT" onAction="#handleKeyPress" styleClass="keyboard-key" text="T" />
+                <Button fx:id="keyY" onAction="#handleKeyPress" styleClass="keyboard-key" text="Y" />
+                <Button fx:id="keyU" onAction="#handleKeyPress" styleClass="keyboard-key" text="U" />
+                <Button fx:id="keyI" onAction="#handleKeyPress" styleClass="keyboard-key" text="I" />
+                <Button fx:id="keyO" onAction="#handleKeyPress" styleClass="keyboard-key" text="O" />
+                <Button fx:id="keyP" onAction="#handleKeyPress" styleClass="keyboard-key" text="P" />
+            </HBox>
+            <!-- Second row -->
+            <HBox alignment="CENTER" spacing="5">
+                <Button fx:id="keyA" onAction="#handleKeyPress" styleClass="keyboard-key" text="A" />
+                <Button fx:id="keyS" onAction="#handleKeyPress" styleClass="keyboard-key" text="S" />
+                <Button fx:id="keyD" onAction="#handleKeyPress" styleClass="keyboard-key" text="D" />
+                <Button fx:id="keyF" onAction="#handleKeyPress" styleClass="keyboard-key" text="F" />
+                <Button fx:id="keyG" onAction="#handleKeyPress" styleClass="keyboard-key" text="G" />
+                <Button fx:id="keyH" onAction="#handleKeyPress" styleClass="keyboard-key" text="H" />
+                <Button fx:id="keyJ" onAction="#handleKeyPress" styleClass="keyboard-key" text="J" />
+                <Button fx:id="keyK" onAction="#handleKeyPress" styleClass="keyboard-key" text="K" />
+                <Button fx:id="keyL" onAction="#handleKeyPress" styleClass="keyboard-key" text="L" />
+            </HBox>
+            <!-- Third row -->
+            <HBox alignment="CENTER" spacing="5">
+                <Button fx:id="keyZ" onAction="#handleKeyPress" styleClass="keyboard-key" text="Z" />
+                <Button fx:id="keyX" onAction="#handleKeyPress" styleClass="keyboard-key" text="X" />
+                <Button fx:id="keyC" onAction="#handleKeyPress" styleClass="keyboard-key" text="C" />
+                <Button fx:id="keyV" onAction="#handleKeyPress" styleClass="keyboard-key" text="V" />
+                <Button fx:id="keyB" onAction="#handleKeyPress" styleClass="keyboard-key" text="B" />
+                <Button fx:id="keyN" onAction="#handleKeyPress" styleClass="keyboard-key" text="N" />
+                <Button fx:id="keyM" onAction="#handleKeyPress" styleClass="keyboard-key" text="M" />
+            </HBox>
+        </VBox>
+        <!--  Back to Menu Button -->
+        <Button fx:id="backButton" onAction="#handleBackToMenu" styleClass="menu-button" text="Back to Menu" />
+    </VBox>
+    <!-- Exit Game Button (top right) -->
+    <AnchorPane pickOnBounds="false" StackPane.alignment="TOP_RIGHT">
+        <ImageView fx:id="exitGameButton"
+                   fitWidth="48" fitHeight="48" pickOnBounds="true" preserveRatio="true"
+                   onMouseClicked="#handleExitGame">
+
+        </ImageView>
+    </AnchorPane>
+</StackPane>

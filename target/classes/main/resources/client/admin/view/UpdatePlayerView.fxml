@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox alignment="CENTER" spacing="15.0" prefWidth="400.0" prefHeight="300.0"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="client.admin.controller.PlayerManagementController"
+      stylesheets="@player-management.css"
+      style="-fx-background-image: url('end.png'); -fx-background-size: cover;">
+
+    <padding>
+        <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+    </padding>
+
+    <Text text="Update Player" styleClass="title-text"/>
+
+    <VBox spacing="10" styleClass="form-box">
+        <!-- First Stage -->
+        <VBox fx:id="firstStage" spacing="10">
+            <Label text="Username:" styleClass="form-label"/>
+            <TextField fx:id="usernameField" styleClass="minecraft-textfield"/>
+
+            <Label text="What to update:" styleClass="form-label"/>
+            <ComboBox fx:id="updateTypeComboBox" styleClass="minecraft-combobox"/>
+
+            <HBox spacing="10" alignment="CENTER">
+                <Button text="Next" onAction="#handleCheckPlayer" styleClass="minecraft-button"/>
+                <Button text="Cancel" onAction="#handleCancel" styleClass="minecraft-button-cancel"/>
+            </HBox>
+        </VBox>
+
+        <!-- Second Stage -->
+        <VBox fx:id="secondStage" spacing="10" visible="false">
+            <Label text="Update Details" styleClass="form-label"/>
+
+            <GridPane hgap="10" vgap="10">
+                <Label text="Username:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                <TextField fx:id="newUsernameField" styleClass="minecraft-textfield" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                <Label text="Password:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                <TextField fx:id="passwordField" styleClass="minecraft-textfield" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                <Label text="Wins:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                <TextField fx:id="winsField" styleClass="minecraft-textfield" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+            </GridPane>
+
+            <HBox spacing="10" alignment="CENTER">
+                <Button text="Update Player" onAction="#handleUpdatePlayer" styleClass="minecraft-button"/>
+                <Button text="Back" onAction="#handleBack" styleClass="minecraft-button-cancel"/>
+            </HBox>
+        </VBox>
+    </VBox>
+</VBox> 

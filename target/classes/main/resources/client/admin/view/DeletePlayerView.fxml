@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Text?>
+
+<VBox alignment="CENTER" spacing="15.0" prefWidth="400.0" prefHeight="300.0"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="client.admin.controller.PlayerManagementController"
+      stylesheets="@player-management.css"
+      style="-fx-background-image: url('end.png'); -fx-background-size: cover;">
+
+    <padding>
+        <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+    </padding>
+
+    <Text text="Delete Player" styleClass="title-text"/>
+
+    <VBox spacing="10" styleClass="form-box">
+        <Label text="Username:" styleClass="form-label"/>
+        <TextField fx:id="usernameField" styleClass="minecraft-textfield"/>
+
+        <HBox spacing="10" alignment="CENTER">
+            <Button text="Delete Player" onAction="#handleDeletePlayer" styleClass="minecraft-button-delete"/>
+            <Button text="Cancel" onAction="#handleCancel" styleClass="minecraft-button-cancel"/>
+        </HBox>
+    </VBox>
+</VBox> 
