@@ -35,7 +35,7 @@ public class AdminView {
             stage.setMinWidth(600);
             stage.setMinHeight(850);
             stage.setWidth(800);
-            stage.setHeight(950);
+            stage.setHeight(900);
         } catch (Exception e) {
             System.err.println("Error loading AdminView: " + e.getMessage());
             e.printStackTrace();

@@ -10,6 +10,7 @@ class WorkerSignals(QObject):
     show_game_over_signal = pyqtSignal(str, str) # result_text, game_status (WIN/LOSE/etc)
     set_status_signal = pyqtSignal(str, str) # message, color
     polling_stopped_signal = pyqtSignal()
+    navigate_to_main_menu_signal = pyqtSignal()
 
 class SinglePlayerGameController(BaseController):
     def __init__(self, model, view):
@@ -24,6 +25,7 @@ class SinglePlayerGameController(BaseController):
         self.signals.show_game_over_signal.connect(self._show_game_over_dialog_from_thread)
         self.signals.set_status_signal.connect(self.view.set_status)
         self.signals.polling_stopped_signal.connect(self._on_polling_stopped)
+        self.signals.navigate_to_main_menu_signal.connect(self._navigate_to_main_menu_from_worker)
 
         # Game state attributes, similar to Tkinter version
         self.dialog_completion_event = None # For synchronizing dialog completion
@@ -44,11 +46,33 @@ class SinglePlayerGameController(BaseController):
         self.start_single_player_1v1_game()
 
     def on_hide(self):
-        super().on_hide()
-        print("[SP1v1Controller] on_hide called.")
-        self.stop_polling_and_cleanup_game()
-        if self.view and hasattr(self.view, 'on_hide_cleanup'):
-            self.view.on_hide_cleanup() # Close any view-specific dialogs
+        """Clean up when view is hidden."""
+        print("[SP1v1Controller] on_hide called, stopping polling.")
+        self.polling_active = False
+        
+        # First ensure all dialogs are closed
+        if self.view:
+            self.view.close_all_dialogs()
+            # Ensure all visual effects are cleaned up
+            self.view.cleanup_all_effects()
+        
+        # Wait for worker thread to complete
+        if hasattr(self, 'dialog_completion_event') and self.dialog_completion_event:
+            # Signal the event to unblock any waiting worker thread
+            self.dialog_completion_event.set()
+            self.dialog_completion_event = None
+        
+        # Final server-side cleanup if needed
+        if not self.game_session_cleaned_up:
+            try:
+                self.model.end_game_session()
+                self.model.cleanup_player_session()
+                self.game_session_cleaned_up = True
+            except Exception as e:
+                print(f"[SP1v1Controller] Error during on_hide cleanup: {e}")
+                
+        # Reset controller state
+        self._reset_controller_game_state()
 
     def stop_polling_and_cleanup_game(self):
         print("[SP1v1Controller] Stopping polling and cleaning up game.")
@@ -273,7 +297,7 @@ class SinglePlayerGameController(BaseController):
                     "incorrect_text": f"Incorrect: {state.incorrectGuesses}/{self.max_incorrect_guesses}", # Assuming DTO has incorrectGuesses
                     "status_text": status_text,
                     "player_wins": state.playerWins,
-                    "opponent_wins": self.opponent_score,
+                    "opponent_wins": state.opponentWins if hasattr(state, 'opponentWins') else self.opponent_score,
                     "total_rounds": self.total_rounds, # Or state.maxRounds if available
                     "current_round_num": state.currentRound,
                     "attempted_letters": self.attempted_letters_current_round.copy(), # Send a copy
@@ -285,6 +309,10 @@ class SinglePlayerGameController(BaseController):
                     "round_result_status": "ONGOING" # Default status
                 }
                 
+                # Update our local opponent score tracking from server state if available
+                if hasattr(state, 'opponentWins'):
+                    self.opponent_score = state.opponentWins
+
                 # Handle Round Over
                 if state.roundOver == GameModule.BOOL_TRUE and state.gameOver == GameModule.BOOL_FALSE:
                     my_username = self.model.get_username()
@@ -322,10 +350,11 @@ class SinglePlayerGameController(BaseController):
                         # Logic to attempt to start a new round
                         if server_current_round > self.current_server_round_processed_for_next_attempt:
                             # This block runs once when a round is officially over.
-                            # Let's update our tracked opponent score here.
-                            my_username = self.model.get_username()
-                            if state.roundWinner and state.roundWinner != "NONE" and state.roundWinner != my_username:
-                                self.opponent_score += 1
+                            # Only update opponent score if server doesn't provide it
+                            if not hasattr(state, 'opponentWins'):
+                                my_username = self.model.get_username()
+                                if state.roundWinner and state.roundWinner != "NONE" and state.roundWinner != my_username:
+                                    self.opponent_score += 1
 
                             if self.polling_active:
                                 try: 
@@ -358,7 +387,19 @@ class SinglePlayerGameController(BaseController):
                                          ("You Lost." if state.sessionResult == "LOSE" else \
                                           (f"Game Over: {state.sessionResult}" if state.sessionResult else "Game Ended"))
                     
+                    # Use a threading event to wait for the dialog to be closed before proceeding.
+                    self.dialog_completion_event = threading.Event()
                     self.signals.show_game_over_signal.emit(dialog_result_text, state.sessionResult)
+                    
+                    # Worker thread waits here until the main thread signals that the dialog's OK button was clicked.
+                    print("[SP1v1Controller] Worker thread waiting for game_over_dialog completion...")
+                    completed_in_time = self.dialog_completion_event.wait(timeout=60.0) # 60s safety timeout
+                    self.dialog_completion_event = None
+                    
+                    if not completed_in_time:
+                        print("[SP1v1Controller] Game over dialog timed out.")
+
+                    # Now that the dialog is closed, perform server cleanup from the worker.
                     if not self.game_session_cleaned_up:
                         try: 
                             self.model.end_game_session()
@@ -366,6 +407,9 @@ class SinglePlayerGameController(BaseController):
                             self.game_session_cleaned_up = True
                         except Exception as e: 
                             print(f"SP1v1 Game Over Cleanup Error: {e}")
+                    
+                    # Finally, signal the main thread to navigate back to the menu.
+                    self.signals.navigate_to_main_menu_signal.emit()
                     break # Exit polling loop
                 
                 if not self.polling_active: break
@@ -421,9 +465,10 @@ class SinglePlayerGameController(BaseController):
 
     def _show_game_over_dialog_from_thread(self, result_text, game_status):
         if self.view:
+            # This callback will now ONLY signal the worker thread, not navigate.
             self.view.show_sp_game_over_dialog(
                 result_text=result_text,
-                on_ok_callback=self.handle_back_to_menu_from_sp_game # Or specific game over logic
+                on_ok_callback=self._signal_dialog_event_from_main_thread
             )
 
     def _determine_round_status_text(self, state: GameModule.GameStateDTO) -> str:
@@ -486,6 +531,16 @@ class SinglePlayerGameController(BaseController):
         else: # Fallback if view somehow became None
             print("[SP1v1Controller] View not available to navigate back to MainMenu.")
             # Potentially access main_window through a different path if needed, or log error.
+
+    def _navigate_to_main_menu_from_worker(self):
+        """This method is called on the main thread via a signal from the worker after game over."""
+        print("[SP1v1Controller] Navigating to Main Menu from worker's signal.")
+        # The worker thread is about to terminate, so we don't need to join it.
+        # We just need to switch the view.
+        self.polling_active = False
+        if self.view:
+            # This implicitly calls on_hide for the view, which does final cleanup.
+            self.view.main_window.show_view("MainMenu")
 
 
 # Need to import CORBA if it's used for exceptions like CORBA.COMM_FAILURE

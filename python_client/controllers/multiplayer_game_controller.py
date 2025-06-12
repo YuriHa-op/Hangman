@@ -24,6 +24,54 @@ class NextRoundWorker(QRunnable):
     def run(self):
         self.model.start_multiplayer_next_round()
 
+class WinProcessingSignals(QObject):
+    """Defines signals for the win processing worker."""
+    finished = pyqtSignal()
+
+class WinProcessingWorker(QRunnable):
+    """Worker to handle server communication after a game win, without freezing the UI."""
+    def __init__(self, controller):
+        super().__init__()
+        self.controller = controller
+        self.signals = WinProcessingSignals()
+
+    def run(self):
+        """Performs the server-side win processing."""
+        try:
+            lobby_state = self.controller.model.get_multiplayer_lobby_state()
+            if lobby_state and "gameState" in lobby_state:
+                game_data = lobby_state["gameState"]
+                game_winner = game_data.get("gameWinner", "")
+                my_username = self.controller.model.get_username()
+                
+                if game_winner == my_username:
+                    print(f"[WinProcessingWorker] Player {my_username} won the game! Ensuring win is processed...")
+                    
+                    try:
+                        win_count_before = self.controller.model.game_service.getPlayerWins(my_username)
+                    except Exception:
+                        win_count_before = -1
+                    
+                    # This is the logic that takes time
+                    self.controller.model.force_win_count_update(my_username)
+                    
+                    # Check win count after processing, with a retry
+                    try:
+                        win_count_after = self.controller.model.game_service.getPlayerWins(my_username)
+                        if win_count_after <= win_count_before:
+                            time.sleep(1.5) # Wait for server to catch up
+                            self.controller.model.force_win_count_update(my_username)
+                    except Exception:
+                        pass # Ignore errors during re-check
+                    
+                    # Final verification for logging
+                    self.controller._verify_win_recorded(my_username)
+        except Exception as e:
+            print(f"[WinProcessingWorker] Error: {e}")
+        finally:
+            # Always emit finished to unblock the UI
+            self.signals.finished.emit()
+
 class MultiplayerGameController(BaseController):
     def __init__(self, model, view):
         super().__init__(model, view)
@@ -54,30 +102,19 @@ class MultiplayerGameController(BaseController):
         self.poll_game_state()
 
     def on_hide(self):
+        """Clean up when view is hidden."""
         self.game_state_timer.stop()
         self.afk_pre_check_timer.stop()
-        
+
         # First close all dialogs to ensure proper clean up of UI elements
         if self.view:
             self.view.close_all_dialogs()
-            
-            # Explicitly clean up animation references
-            if hasattr(self.view, 'round_transition_animation') and self.view.round_transition_animation:
-                try:
-                    self.view.round_transition_animation.hide()
-                    self.view.round_transition_animation.deleteLater()
-                    self.view.round_transition_animation = None
-                except:
-                    pass
-                
-            if hasattr(self.view, '_confetti_effect') and self.view._confetti_effect:
-                try:
-                    self.view._confetti_effect.stop_animation()
-                    self.view._confetti_effect = None
-                except:
-                    pass
-        
-        # Wait for all worker threads to complete before continuing
+            # Ensure all visual effects are cleaned up
+            self.view.cleanup_all_effects()
+
+        # Wait for all worker threads to complete before continuing.
+        # This is crucial to prevent background tasks from accessing
+        # resources that are about to be cleaned up.
         self.thread_pool.waitForDone(-1)
         self.thread_pool.clear()
 
@@ -114,15 +151,23 @@ class MultiplayerGameController(BaseController):
         if game_winner and not self.game_over:
             self.game_over = True
             self.game_state_timer.stop()
-            
+
             my_username = self.model.get_username()
             session_result = "WIN" if game_winner == my_username else "LOSE"
             game_id = self.model.get_mp_game_id()
             if game_id:
                 self.model.set_last_game_id(game_id)
 
-            # Restore the game over dialog before showing results
-            self.view.show_game_over_dialog(session_result, on_ok_callback=self._navigate_to_results)
+            # Show confetti first if player won
+            if session_result == "WIN":
+                # Show confetti effect
+                self.view.show_confetti_effect(duration=3000)
+                
+                # Delay showing the game over dialog to let confetti display
+                QTimer.singleShot(800, lambda: self._show_delayed_game_over_dialog(session_result))
+            else:
+                # For loss, show dialog immediately
+                self._show_delayed_game_over_dialog(session_result)
             return
 
         is_round_in_progress = game_data.get("roundInProgress", True)
@@ -191,15 +236,53 @@ class MultiplayerGameController(BaseController):
         self.view.close_last_chance_dialog()
         self.request_next_round()
 
+    def _show_delayed_game_over_dialog(self, session_result):
+        """Show the game over dialog after any animations have played"""
+        if self.view:
+            self.view.show_game_over_dialog(session_result, on_ok_callback=self._start_win_processing)
+
+    def _start_win_processing(self):
+        """Starts the background worker to process the win without freezing the UI."""
+        worker = WinProcessingWorker(self)
+        worker.signals.finished.connect(self._navigate_to_results)
+        self.thread_pool.start(worker)
+
     def _navigate_to_results(self):
+        """This is called AFTER the worker is done. It handles the final UI changes."""
         # Explicitly close and delete the dialog before hiding the view
         if hasattr(self.view, '_game_over_dialog') and self.view._game_over_dialog:
-            self.view._game_over_dialog.hide()
-            self.view._game_over_dialog.deleteLater()
+            try:
+                # Use accept() to ensure the dialog closes cleanly
+                self.view._game_over_dialog.accept()
+            except RuntimeError: # a C++ object was already deleted
+                pass
             self.view._game_over_dialog = None
+            
         self.on_hide()
-        from PyQt5.QtCore import QTimer
-        QTimer.singleShot(100, lambda: self.view.main_window.show_view("MultiplayerGameResults"))
+        QTimer.singleShot(50, lambda: self.view.main_window.show_view("MultiplayerGameResults"))
+
+    def _verify_win_recorded(self, username):
+        """Verify that the win was recorded by checking leaderboard entries"""
+        try:
+            # First try to get the player's win count directly from the server
+            try:
+                win_count = self.model.game_service.getPlayerWins(username)
+                print(f"[MultiplayerGameController] Direct win count for {username}: {win_count}")
+            except Exception as e:
+                print(f"[MultiplayerGameController] Error getting direct win count: {e}")
+            
+            # Get leaderboard entries to verify win count
+            entries = self.model.get_leaderboard_entries()
+            
+            # Find the player in the leaderboard entries
+            for entry in entries:
+                if entry.username == username:
+                    print(f"[MultiplayerGameController] Verified win count for {username}: {entry.wins}")
+                    return
+                    
+            print(f"[MultiplayerGameController] Warning: Player {username} not found in leaderboard entries")
+        except Exception as e:
+            print(f"[MultiplayerGameController] Error verifying win count: {e}")
 
     def make_guess(self, letter):
         if not self.game_over and not self.is_between_rounds:

@@ -79,8 +79,7 @@ public class AdminLoginView extends Application {
             adminConnection = new AdminConnection(host, port);
             adminConnection.connect();
             
-            // Validate admin credentials (you may need to implement this in AdminService)
-            // Here we assume any login is successful for demonstration purposes
+            // Validate admin credentials ( need to implement this in AdminService)
             
             // Create and use AdminView class
             Stage adminStage = new Stage();

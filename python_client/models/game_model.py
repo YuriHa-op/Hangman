@@ -308,6 +308,7 @@ class GameModel:
         return self.last_game_id
 
     def get_ranked_players_for_game(self, game_id):
+        """Get a list of ranked players for a specific game"""
         details = self.get_match_details(game_id)
         if not details:
             return []
@@ -327,4 +328,46 @@ class GameModel:
         return [
             {"rank": i+1, "name": name, "score": score}
             for i, (name, score) in enumerate(ranked)
-        ] 
+        ]
+            
+    def force_win_count_update(self, username=None):
+        """Force an update of the win count for a player by directly calling the server.
+        If username is None, uses the current logged-in player."""
+        if not username:
+            username = self.username
+            
+        if not username:
+            return False
+            
+        try:
+            # We can't directly update the win count through the GameService interface
+            # Instead, we'll trigger the win processing logic by calling startMultiplayerNextRound
+            # This should cause the server to process any pending wins
+            print(f"[GameModel] Forcing win processing for {username}")
+            
+            # First, check current win count for logging purposes
+            try:
+                current_wins = self.game_service.getPlayerWins(username)
+                print(f"[GameModel] Current win count for {username}: {current_wins}")
+            except Exception as e:
+                print(f"[GameModel] Error getting player wins: {e}")
+            
+            # Call startMultiplayerNextRound to trigger win processing
+            try:
+                result = self.game_service.startMultiplayerNextRound(username)
+                print(f"[GameModel] Start next round result: {result}")
+            except Exception as e:
+                print(f"[GameModel] Error starting next round: {e}")
+            
+            # Check if win count was updated
+            try:
+                new_wins = self.game_service.getPlayerWins(username)
+                print(f"[GameModel] New win count for {username}: {new_wins}")
+                return True
+            except Exception as e:
+                print(f"[GameModel] Error getting updated player wins: {e}")
+                return False
+                
+        except Exception as e:
+            print(f"[GameModel] Error in force_win_count_update: {e}")
+            return False 

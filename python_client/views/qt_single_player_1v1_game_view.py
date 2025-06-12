@@ -68,19 +68,133 @@ class MatchFoundDialog(ThemedDialog):
             if self.countdown_callback:
                 self.countdown_callback()
 
-class GameOverDialog(ThemedDialog):
+class GameOverDialog(QDialog):
     def __init__(self, result_text, on_ok_callback, parent=None):
-        ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_game_over_dialog.ui')
-        super().__init__(ui_path, parent)
-
+        super().__init__(parent)
         self.on_ok_callback = on_ok_callback
-
-        self.result_label = self.findChild(QLabel, 'result_label')
-        self.ok_button = self.findChild(QPushButton, 'ok_button')
+        self.button_clicked = False  # Flag to prevent multiple clicks
         
-        self.result_label.setText(result_text)
-        self.ok_button.clicked.connect(self.accept_and_callback)
-
+        # Set window flags for frameless window with translucent background
+        self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        # Create main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create content frame
+        self.frame = QFrame()
+        frame_layout = QVBoxLayout(self.frame)
+        frame_layout.setContentsMargins(30, 30, 30, 30)
+        frame_layout.setSpacing(20)
+        
+        # Determine if this is a win or loss
+        is_win = "Win" in result_text or "won" in result_text.lower()
+        
+        # Style the frame based on result
+        if is_win:
+            self.frame.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(0, 0, 0, 0.9);
+                    border: 3px solid #FFD700;
+                    border-radius: 15px;
+                }
+            """)
+            title_color = "#FFD700"  # Gold for win
+            button_color = "#D4AF37"
+            button_hover = "#FFD700"
+            title_text = "VICTORY!"
+            message_text = "You've won the duel!"
+        else:
+            self.frame.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(0, 0, 0, 0.9);
+                    border: 3px solid #C0392B;
+                    border-radius: 15px;
+                }
+            """)
+            title_color = "#C0392B"  # Red for loss
+            button_color = "#922B21"
+            button_hover = "#C0392B"
+            title_text = "DEFEAT"
+            message_text = "Better luck next time!"
+        
+        # Create title label
+        self.title_label = QLabel(title_text)
+        self.title_label.setStyleSheet(f"""
+            font-size: 36px;
+            font-weight: bold;
+            font-family: 'JujutsuKaisen', Arial, sans-serif;
+            color: {title_color};
+            text-align: center;
+        """)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        
+        # Create result label
+        self.result_label = QLabel(result_text)
+        self.result_label.setStyleSheet("""
+            font-size: 18px;
+            color: white;
+            text-align: center;
+        """)
+        self.result_label.setAlignment(Qt.AlignCenter)
+        
+        # Create message label
+        self.message_label = QLabel(message_text)
+        self.message_label.setStyleSheet("""
+            font-size: 16px;
+            color: #CCCCCC;
+            text-align: center;
+        """)
+        self.message_label.setAlignment(Qt.AlignCenter)
+        
+        # Create button
+        self.ok_button = QPushButton("Continue")
+        self.ok_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {button_color};
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-size: 16px;
+                font-weight: bold;
+                min-height: 40px;
+            }}
+            QPushButton:hover {{
+                background-color: {button_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {button_color};
+            }}
+            QPushButton:disabled {{
+                background-color: #555555;
+            }}
+        """)
+        self.ok_button.setCursor(Qt.PointingHandCursor)
+        self.ok_button.clicked.connect(self.accept_safely)
+        
+        # Add widgets to layout
+        frame_layout.addWidget(self.title_label)
+        frame_layout.addWidget(self.result_label)
+        frame_layout.addWidget(self.message_label)
+        frame_layout.addStretch()
+        frame_layout.addWidget(self.ok_button)
+        
+        # Add frame to main layout
+        main_layout.addWidget(self.frame)
+        
+        # Set size
+        self.setMinimumWidth(400)
+        self.setMinimumHeight(300)
+        
+        # For dragging
+        self.old_pos = None
+        
+        # Center on parent
+        if parent:
+            self.move(parent.rect().center() - self.rect().center())
+            
         # Add animation for game over dialog
         self.setWindowOpacity(0)
         self.fade_in = QPropertyAnimation(self, b"windowOpacity")
@@ -89,8 +203,27 @@ class GameOverDialog(ThemedDialog):
         self.fade_in.setEndValue(1.0)
         self.fade_in.setEasingCurve(QEasingCurve.OutCubic)
         self.fade_in.start()
+        
+        # Add bounce animation for title
+        self.title_animation = QPropertyAnimation(self.title_label, b"pos")
+        self.title_animation.setDuration(1000)
+        pos = self.title_label.pos()
+        self.title_animation.setKeyValueAt(0.0, QPoint(pos.x(), pos.y() - 20))
+        self.title_animation.setKeyValueAt(0.5, QPoint(pos.x(), pos.y() + 10))
+        self.title_animation.setKeyValueAt(0.7, QPoint(pos.x(), pos.y() - 5))
+        self.title_animation.setKeyValueAt(1.0, QPoint(pos.x(), pos.y()))
+        self.title_animation.setEasingCurve(QEasingCurve.OutBounce)
+        QTimer.singleShot(100, self.title_animation.start)
 
-    def accept_and_callback(self):
+    def accept_safely(self):
+        """Handle accepting the dialog safely with animation"""
+        if self.button_clicked:
+            return
+            
+        self.button_clicked = True
+        self.ok_button.setEnabled(False)
+        self.ok_button.setText("Please wait...")
+        
         self.fade_out = QPropertyAnimation(self, b"windowOpacity")
         self.fade_out.setDuration(500)
         self.fade_out.setStartValue(1.0)
@@ -100,9 +233,77 @@ class GameOverDialog(ThemedDialog):
         self.fade_out.start()
     
     def _handle_fade_out_complete(self):
+        # Clean up animations to prevent memory leaks
+        if hasattr(self, 'fade_in') and self.fade_in:
+            self.fade_in.stop()
+        if hasattr(self, 'fade_out') and self.fade_out:
+            self.fade_out.stop()
+        if hasattr(self, 'title_animation') and self.title_animation:
+            self.title_animation.stop()
+            
+        # Accept the dialog (close it)
         self.accept()
+        
+        # Call the callback only after closing
         if self.on_ok_callback:
-            self.on_ok_callback()
+            try:
+                # The view's hideEvent/on_hide_cleanup is the correct place for cleanup logic
+                self.on_ok_callback()
+            except Exception as e:
+                print(f"Error in game over dialog callback: {e}")
+                import traceback
+                traceback.print_exc()
+
+    def closeEvent(self, event):
+        """Clean up resources when dialog is closed"""
+        self.cleanup_resources()
+        super().closeEvent(event)
+        
+    def cleanup_resources(self):
+        """Clean up all animations and resources"""
+        try:
+            # Stop animations to prevent memory leaks
+            if hasattr(self, 'fade_in') and self.fade_in:
+                self.fade_in.stop()
+                self.fade_in = None
+                
+            if hasattr(self, 'fade_out') and self.fade_out:
+                self.fade_out.stop()
+                self.fade_out = None
+                
+            if hasattr(self, 'title_animation') and self.title_animation:
+                self.title_animation.stop()
+                self.title_animation = None
+                
+            # Clear callback reference to prevent circular references
+            self.on_ok_callback = None
+        except Exception as e:
+            print(f"Error cleaning up dialog resources: {e}")
+    
+    def reject(self):
+        """Override reject to ensure cleanup"""
+        self.cleanup_resources()
+        super().reject()
+
+    def mousePressEvent(self, event):
+        """Enable dragging the dialog"""
+        if event.button() == Qt.LeftButton:
+            self.old_pos = event.globalPos()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        """Move the dialog when dragged"""
+        if self.old_pos:
+            delta = event.globalPos() - self.old_pos
+            self.move(self.pos() + delta)
+            self.old_pos = event.globalPos()
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        """Stop dragging when mouse is released"""
+        if event.button() == Qt.LeftButton:
+            self.old_pos = None
+            event.accept()
 
 class OverlayWidget(QWidget):
     def __init__(self, parent=None):
@@ -187,6 +388,9 @@ class QtSinglePlayer1v1GameView(QWidget):
         self._last_round_confetti = -1  # Track the last round we displayed confetti for
         self._last_player_score = 0  # Track the player's score to detect increases
         self._previous_round_number = -1  # Track the previous round number for transitions
+        
+        # Clean up any existing visual effects before initializing
+        self.cleanup_all_effects()
         
         # --- Paths & UI Load ---
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -495,20 +699,125 @@ class QtSinglePlayer1v1GameView(QWidget):
             painter.drawPixmap(self.rect(), self._background_pixmap)
         super().paintEvent(event)
 
+    def cleanup_all_effects(self):
+        """Clean up all visual effects that may be lingering.
+        This is a more robust cleanup that actively looks for effect widgets."""
+        try:
+            parent = self.main_window if self.main_window is not None else self
+            if not parent:
+                return
+
+            # --- Robustly clean up ConfettiEffect instances ---
+            try:
+                from .effects.confetti_effect import ConfettiEffect
+                ConfettiEffect.cleanup_all_instances()
+                # Fallback manual cleanup
+                for confetti_widget in parent.findChildren(ConfettiEffect):
+                    if confetti_widget:
+                        confetti_widget.stop_animation()
+            except Exception as e:
+                print(f"Error during robust cleanup of confetti effects: {e}")
+
+            # --- Robustly clean up RoundTransitionEffect instances ---
+            try:
+                from .effects.round_transition_effect import RoundTransitionEffect
+                RoundTransitionEffect.cleanup_all_instances()
+                # Fallback manual cleanup
+                for transition_widget in parent.findChildren(RoundTransitionEffect):
+                    if transition_widget:
+                        transition_widget.cleanup()
+            except Exception as e:
+                print(f"Error during robust cleanup of round transition effects: {e}")
+        except Exception as e:
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error in robust cleanup_all_effects: {e}")
+
     def show_confetti_effect(self, duration=2000):
         """Show confetti explosion effect on win"""
         try:
+            # First clean up any existing effects using the main window
+            if self.main_window and hasattr(self.main_window, 'cleanup_all_visual_effects'):
+                self.main_window.cleanup_all_visual_effects()
+            else:
+                # Fall back to local cleanup
+                self.cleanup_all_effects()
+            
             # Create confetti effect at the game window level (main_window)
             parent = self.main_window if self.main_window is not None else self
             
-            # Create and start the confetti animation
-            confetti = ConfettiEffect(parent)
-            confetti.resize(parent.size())
-            confetti.start_animation(duration)
+            if parent and not parent.isHidden():  # Check if parent is valid and visible
+                # Create and start the confetti animation using the shared class
+                from .effects.confetti_effect import ConfettiEffect
+                confetti = ConfettiEffect(parent)
+                confetti.resize(parent.size())
+                confetti.start_animation(duration)
+                
+                # Set a timer to ensure cleanup even if the animation doesn't clean itself up
+                QTimer.singleShot(duration + 500, lambda: self._ensure_confetti_cleanup())
         except Exception as e:
-            print(f"Error showing confetti effect: {str(e)}")
-            traceback.print_exc()
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error showing confetti effect: {str(e)}")
+                
+    def _ensure_confetti_cleanup(self):
+        """Ensure confetti is cleaned up after animation"""
+        try:
+            # Use the class-level cleanup method
+            from .effects.confetti_effect import ConfettiEffect
+            ConfettiEffect.cleanup_all_instances()
+        except Exception as e:
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error during confetti cleanup: {str(e)}")
+
+    def animate_round_transition(self):
+        """Show a round transition animation between rounds"""
+        try:
+            # First clean up any existing effects using the main window
+            if self.main_window and hasattr(self.main_window, 'cleanup_all_visual_effects'):
+                self.main_window.cleanup_all_visual_effects()
+            else:
+                # Fall back to local cleanup
+                self.cleanup_all_effects()
             
+            # Create and start the round transition animation
+            parent = self.main_window if self.main_window is not None else self
+            
+            if parent and not parent.isHidden():  # Check if parent is valid and visible
+                from .effects.round_transition_effect import RoundTransitionEffect
+                transition_effect = RoundTransitionEffect(parent, text="Next Round")
+                transition_effect.resize(parent.size())
+                transition_effect.start_animation(duration=1000)
+        except Exception as e:
+            print(f"Error showing round transition: {str(e)}")
+
+    def hideEvent(self, event):
+        """Clean up when view is hidden"""
+        self.cleanup_all_effects()
+        self.on_hide_cleanup()
+        super().hideEvent(event)
+        
+    def showEvent(self, event):
+        """Clean up when view is shown"""
+        self.cleanup_all_effects()
+        super().showEvent(event)
+
+    def on_hide_cleanup(self):
+        self._close_dialogs()
+        # Clean up all visual effects
+        self.cleanup_all_effects()
+        
+        if hasattr(self, 'player_pulse_group') and self.player_pulse_group and self.player_pulse_group.state() == QPropertyAnimation.Running:
+            self.player_pulse_group.stop()
+            self.player_shadow_effect.setColor(QColor(255, 0, 0, 0))
+        if hasattr(self, 'opponent_pulse_group') and self.opponent_pulse_group and self.opponent_pulse_group.state() == QPropertyAnimation.Running:
+            self.opponent_pulse_group.stop()
+            self.opponent_shadow_effect.setColor(QColor(255, 0, 0, 0))
+        self.update_keyboard(set(), "", disable_all=False, is_new_round=True) # Reset keyboard
+        self.set_status("Waiting to start...", color="white")
+        self.keyboard_reset_needed = True  # Reset flag
+        self._last_round_confetti = -1  # Reset confetti tracking
+        self._last_player_score = 0  # Reset score tracking
+        self._previous_round_number = -1  # Reset round number tracking
+
     def update_display(self, masked_word, timer_text, incorrect_text, status_text, player_wins, opponent_wins, total_rounds, current_round_num, attempted_letters, current_word_upper, round_over, game_over, timer_color="white", is_new_round=False, round_result_status="ONGOING"):
         # Check for round transitions - animate when the round number increases
         if current_round_num > self._previous_round_number and self._previous_round_number > 0:
@@ -712,43 +1021,91 @@ class QtSinglePlayer1v1GameView(QWidget):
         self.overlay.hide()
 
     def show_sp_game_over_dialog(self, result_text, on_ok_callback):
+        """Show single player game over dialog with improved cleanup"""
         self._close_dialogs()
+        
+        # Clean up any existing effects first
+        self.cleanup_all_effects()
+        
+        # Show confetti for victory
+        if "Win" in result_text or "won" in result_text.lower():
+            self.show_confetti_effect(duration=3000)  # Longer duration for victory
+            
+            # Short delay before showing dialog to let confetti display first
+            QTimer.singleShot(800, lambda: self._show_game_over_dialog_after_effects(result_text, on_ok_callback))
+        else:
+            # Show dialog immediately for loss
+            self._show_game_over_dialog_after_effects(result_text, on_ok_callback)
+    
+    def _show_game_over_dialog_after_effects(self, result_text, on_ok_callback):
+        """Show game over dialog after effects have started"""
+        # Create the overlay
         self.overlay.resize(self.size())
         self.overlay.show()
         self.overlay.raise_()
+        
+        # Create the dialog with main_window as parent for better positioning
         self.game_over_dialog = GameOverDialog(result_text, on_ok_callback, self.main_window)
+        
+        # Center on screen rather than on parent widget
+        try:
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geometry = screen.geometry()
+                x = (screen_geometry.width() - self.game_over_dialog.width()) // 2
+                y = (screen_geometry.height() - self.game_over_dialog.height()) // 2
+                self.game_over_dialog.move(x, y)
+            else:
+                # Fallback to center on main window
+                self.game_over_dialog.move(self.main_window.rect().center() - self.game_over_dialog.rect().center())
+        except:
+            # Final fallback
+            if self.main_window:
+                self.game_over_dialog.move(self.main_window.rect().center() - self.game_over_dialog.rect().center())
+        
+        # Ensure dialog is on top
+        self.game_over_dialog.raise_()
+        self.game_over_dialog.activateWindow()
+        
+        # Show the dialog
         self.game_over_dialog.exec_()
+        
+        # Hide overlay after dialog is closed
         self.overlay.hide()
+        
+        # Clear the dialog reference
+        self.game_over_dialog = None
 
     def _close_dialogs(self):
+        """Safely close all dialogs and clean up references"""
+        # Close match found dialog
         if self.match_found_dialog and self.match_found_dialog.isVisible():
-            self.match_found_dialog.accept()
-        if self.game_over_dialog and self.game_over_dialog.isVisible():
-            self.game_over_dialog.accept()
+            try:
+                self.match_found_dialog.accept()
+            except:
+                pass
         self.match_found_dialog = None
+        
+        # Close game over dialog
+        if self.game_over_dialog and self.game_over_dialog.isVisible():
+            try:
+                # Stop any animations first
+                if hasattr(self.game_over_dialog, 'fade_in') and self.game_over_dialog.fade_in:
+                    self.game_over_dialog.fade_in.stop()
+                if hasattr(self.game_over_dialog, 'fade_out') and self.game_over_dialog.fade_out:
+                    self.game_over_dialog.fade_out.stop()
+                if hasattr(self.game_over_dialog, 'title_animation') and self.game_over_dialog.title_animation:
+                    self.game_over_dialog.title_animation.stop()
+                    
+                self.game_over_dialog.accept()
+            except:
+                pass
         self.game_over_dialog = None
+        
+        # Hide overlay
         if hasattr(self, 'overlay') and self.overlay:
             self.overlay.hide()
-
-    def on_hide_cleanup(self):
+            
+    def close_all_dialogs(self):
+        """Public method to close all dialogs, used by controller"""
         self._close_dialogs()
-        if hasattr(self, 'player_pulse_group') and self.player_pulse_group and self.player_pulse_group.state() == QPropertyAnimation.Running:
-            self.player_pulse_group.stop()
-            self.player_shadow_effect.setColor(QColor(255, 0, 0, 0))
-        if hasattr(self, 'opponent_pulse_group') and self.opponent_pulse_group and self.opponent_pulse_group.state() == QPropertyAnimation.Running:
-            self.opponent_pulse_group.stop()
-            self.opponent_shadow_effect.setColor(QColor(255, 0, 0, 0))
-        self.update_keyboard(set(), "", disable_all=False, is_new_round=True) # Reset keyboard
-        self.set_status("Waiting to start...", color="white")
-        self.keyboard_reset_needed = True  # Reset flag
-        self._last_round_confetti = -1  # Reset confetti tracking
-        self._last_player_score = 0  # Reset score tracking
-        self._previous_round_number = -1  # Reset round number tracking
-
-    def animate_round_transition(self):
-        """Show a round transition animation between rounds"""
-        # Create and start the round transition animation
-        parent = self.main_window if self.main_window is not None else self
-        transition_effect = RoundTransitionEffect(parent, text="Next Round")
-        transition_effect.resize(parent.size())
-        transition_effect.start_animation(duration=1000)

@@ -46,19 +46,59 @@ def load_stylesheet(app, style_name):
 class MainWindow(QMainWindow):
     def __init__(self, model):
         super().__init__()
+        
         self.model = model
-        self.setWindowTitle("Hangman Game - PyQt Edition")
-        # self.setGeometry(100, 100, 800, 600) # Removed to allow LoginView to set fixed size
-
-        self.stacked_widget = QStackedWidget()
-        self.setCentralWidget(self.stacked_widget)
-
         self.views = {}
         self.controllers = {}
         self.current_view_name = None
-
+        self.username = None # Will be set after login
+        
+        # Get absolute path to this script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        
+        # Set window properties
+        self.setWindowTitle("Hangman Game")
+        self.resize(900, 600)
+        self.setMinimumSize(900, 600)
+        
+        # Initialize stacked widget to hold all views
+        self.stacked_widget = QStackedWidget(self)
+        self.setCentralWidget(self.stacked_widget)
+        
+        # Clean up any lingering visual effects from previous runs
+        self._setup_cleanup_method()
+        self.cleanup_visual_effects()
+        
         self._create_views_and_controllers()
+        
+        # Show login view by default
         self.show_view("Login")
+
+    def _setup_cleanup_method(self):
+        """Setup the cleanup method first so it can be called during init"""
+        # This is a minimal version that will be replaced by the full version
+        # once the whole class is initialized
+        def minimal_cleanup():
+            try:
+                effects_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'views', 'effects')
+                for effect_file in ['confetti_effect.py', 'round_transition_effect.py']:
+                    try:
+                        effect_path = os.path.join(effects_dir, effect_file)
+                        if os.path.exists(effect_path):
+                            import importlib.util
+                            spec = importlib.util.spec_from_file_location(effect_file[:-3], effect_path)
+                            effect_module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(effect_module)
+                            for name in dir(effect_module):
+                                if 'Effect' in name and hasattr(getattr(effect_module, name), 'cleanup_all_instances'):
+                                    getattr(effect_module, name).cleanup_all_instances()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+                
+        # Assign the minimal cleanup to the instance
+        self.cleanup_visual_effects = minimal_cleanup
 
     def _create_views_and_controllers(self):
         # Login View
@@ -144,8 +184,41 @@ class MainWindow(QMainWindow):
         else:
             self.setStyleSheet("") # Clear background
 
+    def cleanup_visual_effects(self):
+        """Clean up any lingering visual effects in a centralized way"""
+        try:
+            # Get direct access to the effect modules using absolute paths
+            effects_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'views', 'effects')
+            
+            # Dynamic import of the confetti effect
+            confetti_path = os.path.join(effects_dir, 'confetti_effect.py')
+            if os.path.exists(confetti_path):
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("confetti_effect", confetti_path)
+                confetti_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(confetti_module)
+                if hasattr(confetti_module, 'ConfettiEffect') and hasattr(confetti_module.ConfettiEffect, 'cleanup_all_instances'):
+                    confetti_module.ConfettiEffect.cleanup_all_instances()
+                    
+            # Dynamic import of the round transition effect
+            transition_path = os.path.join(effects_dir, 'round_transition_effect.py')
+            if os.path.exists(transition_path):
+                spec = importlib.util.spec_from_file_location("round_transition_effect", transition_path)
+                transition_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(transition_module)
+                if hasattr(transition_module, 'RoundTransitionEffect') and hasattr(transition_module.RoundTransitionEffect, 'cleanup_all_instances'):
+                    transition_module.RoundTransitionEffect.cleanup_all_instances()
+                    
+        except Exception as e:
+            print(f"Warning: could not clean up visual effects: {e}")
+            import traceback
+            traceback.print_exc()
+
     def show_view(self, view_name):
         if view_name in self.views:
+            # Clean up any lingering visual effects before switching views
+            self.cleanup_visual_effects()
+            
             if self.current_view_name and self.current_view_name in self.controllers and hasattr(self.controllers[self.current_view_name], 'on_hide'):
                 self.controllers[self.current_view_name].on_hide()
             
@@ -213,6 +286,29 @@ class MainWindow(QMainWindow):
 
     def cleanup_on_exit(self):
         print("Application is about to quit. Performing cleanup...")
+        # Clean up visual effects
+        self.cleanup_visual_effects()
+        
+        # Clean up dialogs - use reflection to find and clean up all active dialogs
+        try:
+            # Force cleanup any dialogs in both single and multiplayer views
+            for view_name in ["SinglePlayer1v1Game", "MultiplayerGame"]:
+                if view_name in self.views:
+                    view = self.views[view_name]
+                    # Look for dialog objects and close them
+                    for attr_name in dir(view):
+                        if "dialog" in attr_name.lower() and not attr_name.startswith("__"):
+                            try:
+                                dialog = getattr(view, attr_name)
+                                if dialog and hasattr(dialog, "accept"):
+                                    print(f"Closing dialog {attr_name} in {view_name}")
+                                    dialog.accept()  # Close any lingering dialogs
+                                    setattr(view, attr_name, None)  # Clear the reference
+                            except:
+                                pass
+        except Exception as e:
+            print(f"Warning: Error cleaning up dialogs: {e}")
+        
         # Ensure any game in progress is cleaned up
         current_game_view_name = "SinglePlayer1v1Game" # Updated name
         if self.current_view_name == current_game_view_name and current_game_view_name in self.controllers:
@@ -227,9 +323,11 @@ class MainWindow(QMainWindow):
         print("Cleanup complete.")
 
     def closeEvent(self, event):
+        # Clean up visual effects first
+        self.cleanup_visual_effects()
+        # Then do regular cleanup
         self.cleanup_on_exit()
         super().closeEvent(event)
-
 
     def create_login_controller(self, view):
         # This was in QtLoginView, assuming it might call controller_factory.create_login_controller()

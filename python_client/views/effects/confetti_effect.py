@@ -8,17 +8,36 @@ import traceback
 class ConfettiEffect(QWidget):
     """Creates a confetti explosion effect for celebrating wins"""
     
+    # Class-level variable to track created instances (to prevent multiple instances)
+    _active_instances = []
+    
+    @classmethod
+    def cleanup_all_instances(cls):
+        """Static method to clean up all active instances"""
+        for instance in cls._active_instances[:]:  # Use a copy of the list to avoid modification during iteration
+            try:
+                if instance is not None:
+                    instance.stop_animation()
+            except Exception:
+                pass
+        cls._active_instances.clear()
+    
     def __init__(self, parent=None):
+        # Clean up any existing instances first
+        ConfettiEffect.cleanup_all_instances()
+        
         super().__init__(parent)
         self.particles = []
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_particles)
+        self.timer = None  # Initialize timer to None to prevent access issues later
         self.setFixedSize(parent.size() if parent else QSize(800, 600))
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.hide()
         # Used for shimmer effect
         self.animation_counter = 0
+        
+        # Register this instance
+        ConfettiEffect._active_instances.append(self)
         
     def start_animation(self, duration=2000):
         """Start the confetti animation"""
@@ -99,14 +118,116 @@ class ConfettiEffect(QWidget):
                 self.particles.append(boom_particle)
             
             self.show()
-            self.timer.start(16)  # ~60 FPS
+            self.timer = QTimer(self)
+            self.timer.timeout.connect(self.update_particles)
+            self.timer.start(16)  # ~60 FPS (particle update)
             
-            # Stop after the duration
-            QTimer.singleShot(duration, self.stop_animation)
+            # Instead of using the static QTimer.singleShot (which keeps a reference to
+            # the bound method even if this widget gets deleted), create an *instance*
+            # single-shot timer that is a child of this widget. When the widget is
+            # cleaned up this timer will be deleted automatically, preventing the
+            # "wrapped C/C++ object has been deleted" crashes that were still observed
+            # after switching between the 1-v-1 and multiplayer game modes.
+
+            self._duration_timer = QTimer(self)
+            self._duration_timer.setSingleShot(True)
+            self._duration_timer.timeout.connect(self.safe_stop_animation)
+            self._duration_timer.start(duration)
         except Exception as e:
             print(f"Error in confetti animation start: {str(e)}")
             traceback.print_exc()
+            self.safe_stop_animation()
+    
+    def safe_stop_animation(self):
+        """Safer way to stop animation, called from singleShot timer"""
+        try:
             self.stop_animation()
+        except Exception:
+            pass
+            
+    def stop_animation(self):
+        """Stop the animation and safely clean up"""
+        try:
+            # If the underlying C++ object has already been destroyed (for example
+            # because `deleteLater()` was processed earlier), any further Qt calls
+            # on this wrapper would crash the interpreter.  Detect that situation
+            # and simply return.
+            try:
+                import sip
+                if sip.isdeleted(self):
+                    return
+            except ImportError:
+                # `sip` not available – continue with best-effort cleanup.
+                pass
+            
+            # Stop and delete the duration timer first (if it exists) to make sure no
+            # callbacks will fire after this widget has been destroyed.
+            if hasattr(self, '_duration_timer') and self._duration_timer:
+                try:
+                    if self._duration_timer.isActive():
+                        self._duration_timer.stop()
+                    self._duration_timer.timeout.disconnect()
+                except Exception:
+                    pass
+                self._duration_timer = None
+            
+            # Store reference to particle update timer locally and clear instance reference
+            local_timer = None
+            if hasattr(self, 'timer') and self.timer:
+                local_timer = self.timer
+                self.timer = None  # Clear reference immediately
+                
+            # Stop the timer using the local reference
+            if local_timer is not None:
+                try:
+                    if local_timer.isActive():
+                        local_timer.stop()
+                    
+                    # Disconnect any signals before deletion
+                    try:
+                        local_timer.timeout.disconnect()
+                    except:
+                        # Already disconnected or connection doesn't exist
+                        pass
+                except RuntimeError:
+                    # Timer already deleted, nothing to do
+                    pass
+            
+            # Clear particles to prevent additional painting operations
+            if hasattr(self, 'particles'):
+                self.particles = []
+            
+            # Check if widget is still valid before trying to hide/delete it
+            try:
+                if self.isVisible():
+                    self.hide()
+                
+                # Remove from active instances list
+                if self in ConfettiEffect._active_instances:
+                    ConfettiEffect._active_instances.remove(self)
+
+                # Explicitly un-parent the widget before deletion
+                self.setParent(None)
+                
+                # Queue for deletion but don't reference self anymore
+                self.deleteLater()
+            except RuntimeError:
+                # Widget already deleted, nothing to do
+                pass
+        except Exception as e:
+            # Only print non-"wrapped C/C++ object" errors to reduce log noise
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error stopping confetti animation: {str(e)}")
+                traceback.print_exc()
+    
+    def __del__(self):
+        """Destructor to ensure cleanup"""
+        try:
+            # Remove from active instances if still there
+            if self in ConfettiEffect._active_instances:
+                ConfettiEffect._active_instances.remove(self)
+        except Exception:
+            pass
     
     def update_particles(self):
         """Update particle positions and properties"""
@@ -159,51 +280,6 @@ class ConfettiEffect(QWidget):
             print(f"Error in confetti animation update: {str(e)}")
             traceback.print_exc()
             self.stop_animation()
-    
-    def stop_animation(self):
-        """Stop the animation and safely clean up"""
-        try:
-            # Store reference to timer locally and clear instance reference
-            local_timer = None
-            if hasattr(self, 'timer'):
-                local_timer = self.timer
-                self.timer = None  # Clear reference immediately
-            
-            # Stop the timer using the local reference
-            if local_timer is not None:
-                try:
-                    if local_timer.isActive():
-                        local_timer.stop()
-                    
-                    # Disconnect any signals before deletion
-                    try:
-                        local_timer.timeout.disconnect()
-                    except:
-                        # Already disconnected or connection doesn't exist
-                        pass
-                except RuntimeError:
-                    # Timer already deleted, nothing to do
-                    pass
-            
-            # Clear particles to prevent additional painting operations
-            if hasattr(self, 'particles'):
-                self.particles = []
-            
-            # Check if widget is still valid before trying to hide/delete it
-            try:
-                if self.isVisible():
-                    self.hide()
-                
-                # Queue for deletion but don't reference self anymore
-                self.deleteLater()
-            except RuntimeError:
-                # Widget already deleted, nothing to do
-                pass
-        except Exception as e:
-            # Only print non-"wrapped C/C++ object" errors to reduce log noise
-            if "wrapped C/C++ object" not in str(e):
-                print(f"Error stopping confetti animation: {str(e)}")
-                traceback.print_exc()
     
     def paintEvent(self, event):
         """Draw all the confetti particles"""

@@ -178,15 +178,30 @@ class AfkDialog(QDialog):
         # For dragging the window
         self.old_pos = None
         
-        # Center the dialog on the screen
+        # Center the dialog on the screen for maximum visibility
         self.center_on_screen()
     
     def center_on_screen(self):
         """Center the dialog on the screen for maximum visibility"""
-        screen_geometry = QApplication.desktop().screenGeometry()
-        x = (screen_geometry.width() - self.width()) // 2
-        y = (screen_geometry.height() - self.height()) // 2
-        self.move(x, y)
+        try:
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geometry = screen.geometry()
+                x = (screen_geometry.width() - self.width()) // 2
+                y = (screen_geometry.height() - self.height()) // 2
+                self.move(x, y)
+            else:
+                # Fallback for systems without a primary screen
+                screen_geometry = QApplication.desktop().screenGeometry()
+                x = (screen_geometry.width() - self.width()) // 2
+                y = (screen_geometry.height() - self.height()) // 2
+                self.move(x, y)
+        except AttributeError:
+            # Fallback for older Qt versions
+            screen_geometry = QApplication.desktop().screenGeometry()
+            x = (screen_geometry.width() - self.width()) // 2
+            y = (screen_geometry.height() - self.height()) // 2
+            self.move(x, y)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -433,6 +448,8 @@ class GameCleanedUpDialog(QDialog):
 class GameOverDialog(QDialog):
     """Enhanced game over dialog with animations and visual effects"""
     
+    ok_clicked = pyqtSignal()
+    
     def __init__(self, result_text, parent=None, word=None):
         super().__init__(parent)
         self.result = result_text
@@ -442,7 +459,8 @@ class GameOverDialog(QDialog):
         
         # Animation storage to prevent garbage collection
         self.animations = []
-        self.fade_animations = []
+        self.label_visibility_timers = []
+        self.button_clicked = False  # Flag to prevent multiple clicks
         
         # Set up main layout
         main_layout = QVBoxLayout(self)
@@ -469,7 +487,56 @@ class GameOverDialog(QDialog):
             
             # Start animations when shown
             QTimer.singleShot(100, self.start_win_animations)
-    
+
+    def accept_safely(self):
+        """Safely accept the dialog, preventing multiple clicks"""
+        if not self.button_clicked:
+            self.button_clicked = True
+            
+            # Disable the button immediately to prevent additional clicks
+            if hasattr(self, 'ok_button'):
+                self.ok_button.setEnabled(False)
+                self.ok_button.setText("Please wait...")
+            
+            # Clean up before accepting
+            self.cleanup_resources()
+            
+            # Signal and accept
+            self.ok_clicked.emit()
+            self.accept()
+            
+    def cleanup_resources(self):
+        """Clean up all animations and timers before closing"""
+        try:
+            # Stop confetti timer if active
+            if hasattr(self, 'confetti_timer') and self.confetti_timer and self.confetti_timer.isActive():
+                self.confetti_timer.stop()
+                try:
+                    self.confetti_timer.timeout.disconnect()
+                except:
+                    pass
+                    
+            # Stop all animations
+            for anim in self.animations:
+                if anim.state() == QPropertyAnimation.Running:
+                    anim.stop()
+            
+            # Stop any pending label visibility timers
+            for timer in self.label_visibility_timers:
+                timer.stop()
+            self.label_visibility_timers = []
+                    
+            # Clear all particle data
+            if hasattr(self, 'confetti_particles'):
+                self.confetti_particles = []
+        except Exception as e:
+            print(f"Error cleaning up dialog resources: {e}")
+            
+    def reject(self):
+        """Override reject to ensure cleanup"""
+        self.cleanup_resources()
+        super().reject()
+
     def setup_win_dialog(self):
         """Set up the victory dialog with gold border and animations"""
         layout = QVBoxLayout(self.frame)
@@ -529,8 +596,12 @@ class GameOverDialog(QDialog):
             QPushButton:pressed {
                 background-color: #458945;
             }
+            QPushButton:disabled {
+                background-color: #777777;
+            }
         """)
-        self.ok_button.clicked.connect(self.accept)
+        # Connect to safer accept method
+        self.ok_button.clicked.connect(self.accept_safely)
         
         # Add widgets to layout
         layout.addWidget(self.victory_label)
@@ -609,8 +680,12 @@ class GameOverDialog(QDialog):
             QPushButton:pressed {
                 background-color: #884444;
             }
+            QPushButton:disabled {
+                background-color: #777777;
+            }
         """)
-        self.ok_button.clicked.connect(self.accept)
+        # Connect to safer accept method
+        self.ok_button.clicked.connect(self.accept_safely)
         
         # Add widgets to layout
         layout.addWidget(self.title_label)
@@ -662,9 +737,18 @@ class GameOverDialog(QDialog):
             self.word_label.setVisible(False)
             self.message_label.setVisible(False)
             
-            # Show text with a delay instead
-            QTimer.singleShot(600, lambda: self.word_label.setVisible(True))
-            QTimer.singleShot(900, lambda: self.message_label.setVisible(True))
+            # Show text with a delay instead, using timers we can clean up
+            timer1 = QTimer(self)
+            timer1.setSingleShot(True)
+            timer1.timeout.connect(lambda: self.word_label.setVisible(True))
+            timer1.start(600)
+            self.label_visibility_timers.append(timer1)
+
+            timer2 = QTimer(self)
+            timer2.setSingleShot(True)
+            timer2.timeout.connect(lambda: self.message_label.setVisible(True))
+            timer2.start(900)
+            self.label_visibility_timers.append(timer2)
             
         except Exception as e:
             print(f"Animation error: {e}")
@@ -711,14 +795,7 @@ class GameOverDialog(QDialog):
     
     def closeEvent(self, event):
         """Clean up resources when dialog is closed"""
-        if hasattr(self, 'confetti_timer') and self.confetti_timer.isActive():
-            self.confetti_timer.stop()
-            
-        # Stop all animations
-        for anim in self.animations:
-            if anim.state() == QPropertyAnimation.Running:
-                anim.stop()
-        
+        self.cleanup_resources()
         super().closeEvent(event)
     
     def paintEvent(self, event):
@@ -746,8 +823,9 @@ class GameOverDialog(QDialog):
                     painter.drawRect(-half_size, -half_size, size, third_size)
                     
                     painter.restore()
-        except Exception:
-            # Silently handle errors without printing debug messages
+        except Exception as e:
+            # Print errors to help debug painting issues
+            print(f"Error during GameOverDialog paint event: {e}")
             pass
 
 class InfoDialog(QDialog):
@@ -1324,6 +1402,31 @@ class PlayerStatusWidget(QFrame):
             self.glow_effect.setOpacity(1.0)  # Reset opacity
             self.apply_stylesheets()  # Reset to normal style
 
+    # ------------------------------------------------------------------
+    # Cleanup helpers
+    # ------------------------------------------------------------------
+
+    def stop_animations(self):
+        """Stop any running animations/effects to avoid crashes after the
+        underlying C++ object is deleted."""
+        try:
+            if hasattr(self, 'glow_animation') and self.glow_animation:
+                self.glow_animation.stop()
+            if hasattr(self, 'glow_effect') and self.glow_effect:
+                # Reset opacity to avoid painting on a deleted effect
+                self.glow_effect.setOpacity(0.0)
+        except Exception:
+            pass
+
+    def cleanup(self):
+        """Public method called before the widget is deleted."""
+        self.stop_animations()
+
+    def closeEvent(self, event):
+        # When the widget closes (e.g., via deleteLater), stop animations.
+        self.stop_animations()
+        super().closeEvent(event)
+
 class VirtualKeyboard(QWidget):
     letterClicked = pyqtSignal(str)
 
@@ -1513,15 +1616,18 @@ class QtMultiplayerGameView(QWidget):
         self.round_transition_animation = None  # Animation for round transitions
         self._confetti_effect = None  # Track confetti animation
 
+        # Clean up any existing visual effects that might be leftover from other views
+        self.cleanup_all_effects()
+
         ui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui', 'qt_multiplayer_game_view.ui')
         uic.loadUi(ui_path, self)
         
         self.setAttribute(Qt.WA_TranslucentBackground) # Make this widget's background transparent
 
-        # Set the window size to 900x950
-        self.setMinimumSize(900, 950)
+        # Set the window size to 950x950
+        self.setMinimumSize(950, 950)
         if self.main_window:
-            self.main_window.resize(900, 950)
+            self.main_window.resize(950, 950)
             
         # Adjust main layout to give more space for panels
         main_layout = self.findChild(QHBoxLayout, 'main_layout')
@@ -1713,7 +1819,7 @@ class QtMultiplayerGameView(QWidget):
     def setup_leave_button_icon(self):
         # Go up one level from 'views' to the 'python_client' directory, then into 'assets'
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        icon_path = os.path.join(base_path, 'assets', 'leave.png')
+        icon_path = os.path.join(base_path, 'views/assets', 'leave.png')
         if os.path.exists(icon_path):
             self.leave_button.setIcon(QIcon(icon_path))
             # Text is already set to empty in the .ui file, but we can ensure it here.
@@ -1925,10 +2031,34 @@ class QtMultiplayerGameView(QWidget):
         # Check for game winner first - this affects round transition behavior
         game_winner = game_data.get("gameWinner", "")
         
-        # Only do round transition animation if there's no game winner
-        # and the round has actually changed
-        if not game_winner and self.previous_round is not None and current_round != self.previous_round:
-            self.animate_round_transition()
+        # FIXED ROUND TRANSITION LOGIC:
+        # 1. Don't show transition animation when the view first loads (previous_round is None)
+        # 2. Only show transition for actual round changes (not round 0 to 1)
+        # 3. Don't show transition if there's a game winner
+        # 4. Make sure previous_round is properly initialized
+        
+        # Initialize previous_round if it's None
+        if self.previous_round is None:
+            self.previous_round = current_round
+        # Only animate if there's a legitimate round change and no game winner
+        elif not game_winner and current_round > self.previous_round and self.previous_round > 0:
+            try:
+                # Make sure we clean up any existing effects first through the main window
+                if self.main_window and hasattr(self.main_window, 'cleanup_all_visual_effects'):
+                    self.main_window.cleanup_all_visual_effects()
+                else:
+                    # Fall back to local cleanup
+                    self.cleanup_all_effects()
+                    
+                # Create the transition with proper parent and error handling
+                if self.main_window and not self.main_window.isHidden():
+                    from .effects.round_transition_effect import RoundTransitionEffect
+                    transition_effect = RoundTransitionEffect(self.main_window, text="Next Round")
+                    transition_effect.resize(self.main_window.size())
+                    transition_effect.start_animation(duration=1000)
+            except Exception as e:
+                print(f"Failed to show round transition: {str(e)}")
+                # Don't store reference if creation failed
             
         # Update previous round after animation check
         self.previous_round = current_round
@@ -1968,6 +2098,10 @@ class QtMultiplayerGameView(QWidget):
             self.status_label.setText(f"Game Over! Winner is {game_winner}!")
             # Show confetti if current player won the game
             if game_winner == current_player_username and hasattr(self, '_last_game_winner') and self._last_game_winner != game_winner:
+                # Use main window's centralized cleanup first
+                if self.main_window and hasattr(self.main_window, 'cleanup_all_visual_effects'):
+                    self.main_window.cleanup_all_visual_effects()
+                    
                 self.show_confetti_effect(duration=3000)  # Longer confetti for game win
                 
         # Check for round winner
@@ -1980,6 +2114,10 @@ class QtMultiplayerGameView(QWidget):
                 # Keep track of the last round winner we showed confetti for
                 last_round_confetti = getattr(self, '_last_round_confetti', -1)
                 if last_round_confetti != current_round:
+                    # Use main window's centralized cleanup first
+                    if self.main_window and hasattr(self.main_window, 'cleanup_all_visual_effects'):
+                        self.main_window.cleanup_all_visual_effects()
+                        
                     self.show_confetti_effect(duration=2000)  # Shorter confetti for round win
                     self._last_round_confetti = current_round
         else:
@@ -2050,6 +2188,9 @@ class QtMultiplayerGameView(QWidget):
         return result
 
     def reset_view(self):
+        # Clean up all visual effects first
+        self.cleanup_all_effects()
+        
         # Reset labels to initial state
         self.status_label.setText("Connecting to game...")
         self.timer_label.setText("Time: -")
@@ -2064,37 +2205,6 @@ class QtMultiplayerGameView(QWidget):
 
         # Reset previous round tracking
         self.previous_round = None
-        
-        # Clean up animations properly
-        if hasattr(self, 'round_transition_animation') and self.round_transition_animation:
-            try:
-                if hasattr(self.round_transition_animation, 'timer') and self.round_transition_animation.timer:
-                    if self.round_transition_animation.timer.isActive():
-                        self.round_transition_animation.timer.stop()
-                self.round_transition_animation.hide()
-                self.round_transition_animation.deleteLater()
-            except Exception:
-                pass  # Ignore errors if object is already deleted
-            self.round_transition_animation = None
-            
-        # Clean up confetti effect more safely
-        if hasattr(self, '_confetti_effect') and self._confetti_effect:
-            try:
-                # Try stopping the timer first
-                if hasattr(self._confetti_effect, 'timer') and self._confetti_effect.timer:
-                    if hasattr(self._confetti_effect.timer, 'isActive') and self._confetti_effect.timer.isActive():
-                        self._confetti_effect.timer.stop()
-                        
-                # Prevent any further painting
-                if hasattr(self._confetti_effect, 'particles'):
-                    self._confetti_effect.particles = []
-                    
-                # Hide and queue for deletion
-                self._confetti_effect.hide()
-                self._confetti_effect.deleteLater()
-            except Exception:
-                pass  # Ignore errors if object is already deleted
-            self._confetti_effect = None
 
         # Reset health bar
         if hasattr(self, 'health_bar'):
@@ -2146,8 +2256,10 @@ class QtMultiplayerGameView(QWidget):
         self.close_last_chance_dialog()
         self.close_game_cleaned_up_dialog()
         if self._game_over_dialog:
-            self._game_over_dialog.accept()
-            self._game_over_dialog = None
+            try:
+                self._game_over_dialog.accept()
+            finally:
+                self._game_over_dialog = None
 
     def show_afk_dialog(self):
         if self.afk_dialog and self.afk_dialog.isVisible():
@@ -2198,57 +2310,54 @@ class QtMultiplayerGameView(QWidget):
 
     def show_game_over_dialog(self, message, on_ok_callback):
         """Show game over dialog with proper cleanup handling"""
+        # First clean up any existing effects
+        self.cleanup_all_effects()
+        
         # Close any existing game over dialog first
         if self._game_over_dialog:
             try:
+                # For MultiplayerGameOverDialog, no cleanup_resources method needed
+                if hasattr(self._game_over_dialog, 'ok_clicked'):
+                    self._game_over_dialog.ok_clicked.disconnect()  # Disconnect any signals
                 self._game_over_dialog.accept()
             except:
                 pass
             self._game_over_dialog = None
             
-        if self._game_over_dialog is None:
-            # Use main_window as parent to avoid parent deletion issues
-            parent = self.main_window if self.main_window is not None else self
+        # Use main_window as parent to avoid parent deletion issues
+        parent = self.main_window if self.main_window is not None else self
             
-            # Get the word if we have it
-            word = None
-            if self.controller and self.controller.model:
-                game_state = self.controller.model.game_state
-                if game_state and 'gameState' in game_state:
-                    # Try to get the player's word
-                    if self.controller.model.username:
-                        all_current_words = game_state['gameState'].get('allCurrentWords', {})
-                        word = all_current_words.get(self.controller.model.username, "")
+        # Create the new, dedicated multiplayer game over dialog
+        self._game_over_dialog = MultiplayerGameOverDialog(message, parent)
+        
+        # Connect the callback directly - no need for the complex safe_callback
+        self._game_over_dialog.ok_clicked.connect(on_ok_callback)
+        
+        # Center on the screen using a more reliable method
+        try:
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_geometry = screen.geometry()
+                x = (screen_geometry.width() - self._game_over_dialog.width()) // 2
+                y = (screen_geometry.height() - self._game_over_dialog.height()) // 2
+                self._game_over_dialog.move(x, y)
+            else: # Fallback
+                self._game_over_dialog.move(parent.rect().center() - self._game_over_dialog.rect().center())
+        except: # Fallback for older versions or no screen
+            self._game_over_dialog.move(parent.rect().center() - self._game_over_dialog.rect().center())
+
+        # Disconnect old dialog reference when this one is done
+        def clear_dialog_reference():
+            self._game_over_dialog = None
             
-            # Create enhanced game over dialog
-            self._game_over_dialog = GameOverDialog(message, parent, word)
-            
-            # Connect callbacks with exception handling
-            def safe_callback():
-                try:
-                    on_ok_callback()
-                except Exception as e:
-                    print(f"Error in game over callback: {e}")
-                    
-            def safe_clear_dialog(result):
-                try:
-                    self._game_over_dialog = None
-                except:
-                    pass
-                    
-            self._game_over_dialog.finished.connect(lambda _: safe_callback())
-            self._game_over_dialog.finished.connect(safe_clear_dialog)
-            
-            # Center it on the screen
-            screen_geometry = QApplication.desktop().screenGeometry()
-            x = (screen_geometry.width() - self._game_over_dialog.width()) // 2
-            y = (screen_geometry.height() - self._game_over_dialog.height()) // 2
-            self._game_over_dialog.move(x, y)
-            
-            self._game_over_dialog.show()
+        self._game_over_dialog.finished.connect(clear_dialog_reference)
+        
+        # Show the dialog
+        self._game_over_dialog.show()
 
     def display_game_event(self, event_message):
         # Use main_window as parent so notification appears on top of the whole view
+        if not self.main_window: return
         notification = NotificationWidget(self.main_window, event_message)
         notification.show_notification() 
 
@@ -2274,96 +2383,293 @@ class QtMultiplayerGameView(QWidget):
             if game_data.get("gameWinner"):
                 # Skip the round transition animation for the final round
                 return
-            
-        # Clean up any previous animation that might still be active
-        if hasattr(self, 'round_transition_animation') and self.round_transition_animation:
-            try:
-                # Store the reference locally and clear the instance variable
-                transition = self.round_transition_animation
-                self.round_transition_animation = None
-                
-                # Now clean up using the local reference
-                if hasattr(transition, 'cleanup'):
-                    transition.cleanup()
-                else:
-                    # Fallback if cleanup method doesn't exist
-                    try:
-                        if hasattr(transition, 'timer') and transition.timer:
-                            if transition.timer.isActive():
-                                transition.timer.stop()
-                        transition.hide()
-                        transition.deleteLater()
-                    except RuntimeError:
-                        # Object already deleted, ignore
-                        pass
-            except Exception:
-                pass  # Ignore errors if object is already deleted
-            
-        # Create and start the round transition animation
+        
         try:
+            # First clean up any existing effects through the main window
+            if self.main_window and hasattr(self.main_window, 'cleanup_all_visual_effects'):
+                self.main_window.cleanup_all_visual_effects()
+            else:
+                # Fall back to local cleanup
+                self.cleanup_all_effects()
+                
+            # Create and start the round transition animation using main_window as parent
             parent = self.main_window if self.main_window is not None else self
-            transition_effect = RoundTransitionEffect(parent, text="Next Round")
-            transition_effect.resize(parent.size())
-            transition_effect.start_animation(duration=1000)
             
-            # Store reference to prevent garbage collection
-            self.round_transition_animation = transition_effect
+            if parent and not parent.isHidden():  # Check if parent is valid and visible
+                from .effects.round_transition_effect import RoundTransitionEffect
+                transition_effect = RoundTransitionEffect(parent, text="Next Round")
+                transition_effect.resize(parent.size())
+                transition_effect.start_animation(duration=1000)
         except Exception as e:
-            # Only show non-"wrapped C/C++ object" errors to reduce log noise
-            if "wrapped C/C++ object" not in str(e):
-                print(f"Error creating round transition: {e}")
-            # Don't store reference if creation failed
+            print(f"Failed to show round transition: {str(e)}")
+            # We won't store the reference anymore since the effect handles its own lifecycle
             self.round_transition_animation = None
 
     def show_confetti_effect(self, duration=3000):
         """Show confetti explosion effect on win"""
         try:
-            # Store and cleanup any existing confetti animation 
-            if hasattr(self, '_confetti_effect') and self._confetti_effect:
-                # Store local reference and clear instance variable
-                confetti = self._confetti_effect
-                self._confetti_effect = None
+            # First clean up any existing effects through the main window
+            if self.main_window and hasattr(self.main_window, 'cleanup_all_visual_effects'):
+                self.main_window.cleanup_all_visual_effects()
+            else:
+                # Fall back to local cleanup
+                self.cleanup_all_effects()
                 
-                try:
-                    # Only try to stop the timer, avoid calling other methods
-                    if hasattr(confetti, 'timer') and hasattr(confetti.timer, 'isActive'):
-                        if confetti.timer.isActive():
-                            confetti.timer.stop()
-                        
-                    # Try harder cleanup if possible
-                    if hasattr(confetti, 'stop_animation'):
-                        try:
-                            confetti.stop_animation()
-                        except RuntimeError:
-                            # Object already deleted, ignore
-                            pass
-                except Exception:
-                    pass  # Ignore errors if object is already deleted
-            
             # Create confetti effect at the game window level (main_window)
             parent = self.main_window if self.main_window is not None else self
             
-            # Create and start the confetti animation using the shared class
-            confetti = ConfettiEffect(parent)
-            confetti.resize(parent.size())
-            confetti.start_animation(duration)
-            
-            # Store reference to current animation
-            self._confetti_effect = confetti
+            if parent and not parent.isHidden():  # Check if parent is valid and visible
+                # Create and start the confetti animation using the shared class
+                from .effects.confetti_effect import ConfettiEffect
+                confetti = ConfettiEffect(parent)
+                confetti.resize(parent.size())
+                confetti.start_animation(duration)
+                
+                # Set a timer to ensure cleanup even if the animation doesn't clean itself up
+                QTimer.singleShot(duration + 500, lambda: self._ensure_confetti_cleanup())
         except Exception as e:
             # Only show non-"wrapped C/C++ object" errors
             if "wrapped C/C++ object" not in str(e):
                 print(f"Error showing confetti effect: {str(e)}")
-                traceback.print_exc()
+            
+    def _ensure_confetti_cleanup(self):
+        """Ensure confetti is cleaned up after animation"""
+        try:
+            # Use the class-level cleanup method
+            from .effects.confetti_effect import ConfettiEffect
+            ConfettiEffect.cleanup_all_instances()
+        except Exception as e:
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error during confetti cleanup: {str(e)}")
+
+    def cleanup_all_effects(self):
+        """Clean up all visual effects that may be lingering from other views.
+        This is a more robust cleanup that actively looks for effect widgets."""
+        try:
+            parent = self.main_window if self.main_window is not None else self
+            if not parent:
+                return
+
+            # --- Robustly clean up ConfettiEffect instances ---
+            try:
+                from .effects.confetti_effect import ConfettiEffect
+                # Use the class-level cleanup first, as it's the designed way
+                ConfettiEffect.cleanup_all_instances()
+                
+                # As a fallback, manually find and destroy any lingering instances
+                for confetti_widget in parent.findChildren(ConfettiEffect):
+                    if confetti_widget:
+                        confetti_widget.stop_animation()
+            except Exception as e:
+                print(f"Error during robust cleanup of confetti effects: {e}")
+
+            # --- Robustly clean up RoundTransitionEffect instances ---
+            try:
+                from .effects.round_transition_effect import RoundTransitionEffect
+                # Use the class-level cleanup first
+                RoundTransitionEffect.cleanup_all_instances()
+
+                # Fallback manual cleanup
+                for transition_widget in parent.findChildren(RoundTransitionEffect):
+                    if transition_widget:
+                        transition_widget.cleanup()
+            except Exception as e:
+                print(f"Error during robust cleanup of round transition effects: {e}")
+
+            # --- Clean up local references ---
+            self.round_transition_animation = None
+            self._confetti_effect = None
+        except Exception as e:
+            # Catch errors if main_window or other objects are already deleted
+            if "wrapped C/C++ object" not in str(e):
+                print(f"Error in robust cleanup_all_effects: {e}")
 
     def hideEvent(self, event):
         """Ensure proper cleanup when the view is hidden"""
-        # Stop animations and timers before hiding
+        # First clean up all effects
+        self.cleanup_all_effects()
+        # Then clean up the view itself
         self.reset_view()
         super().hideEvent(event)
         
     def closeEvent(self, event):
         """Ensure proper cleanup when the view is closed"""
-        # Stop animations and timers before closing
+        # First clean up all effects
+        self.cleanup_all_effects()
+        # Then clean up the view itself
         self.reset_view()
         super().closeEvent(event)
+
+    def showEvent(self, event):
+        """Handle actions when view is shown"""
+        super().showEvent(event)
+        # Clean up any existing visual effects when view is shown
+        self.cleanup_all_effects()
+        # Reset tracking variables
+        self.previous_round = None
+        self._last_round_confetti = -1
+        self._last_game_winner = None
+
+class MultiplayerGameOverDialog(QDialog):
+    """A simple, dedicated game over dialog for multiplayer mode only."""
+    
+    ok_clicked = pyqtSignal()
+    
+    def __init__(self, result_text, parent=None):
+        super().__init__(parent)
+        self.result = result_text
+        self.loading_timer = QTimer(self)
+        self.loading_dots = 0
+        
+        # Use frameless window with translucent background
+        self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        # Create layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create content frame
+        self.frame = QFrame()
+        frame_layout = QVBoxLayout(self.frame)
+        frame_layout.setContentsMargins(30, 30, 30, 30)
+        frame_layout.setSpacing(15) # Reduced spacing
+        
+        # Style the frame based on result
+        if result_text == "WIN":
+            self.frame.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(0, 0, 0, 0.85);
+                    border: 2px solid #2ecc71;
+                    border-radius: 15px;
+                }
+            """)
+            title_color = "#2ecc71"  # Green for win
+            button_color = "#27ae60"
+            button_hover = "#2ecc71"
+        else:
+            self.frame.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(0, 0, 0, 0.85);
+                    border: 2px solid #e74c3c;
+                    border-radius: 15px;
+                }
+            """)
+            title_color = "#e74c3c"  # Red for loss
+            button_color = "#c0392b"
+            button_hover = "#e74c3c"
+        
+        # Create labels
+        self.title_label = QLabel("VICTORY!" if result_text == "WIN" else "DEFEAT")
+        self.title_label.setStyleSheet(f"""
+            font-size: 36px;
+            font-weight: bold;
+            color: {title_color};
+        """)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        
+        self.message_label = QLabel("Congratulations!" if result_text == "WIN" else "Better luck next time!")
+        self.message_label.setStyleSheet("""
+            font-size: 18px;
+            color: white;
+        """)
+        self.message_label.setAlignment(Qt.AlignCenter)
+
+        # Create loading label (initially hidden)
+        self.loading_label = QLabel("Processing result...")
+        self.loading_label.setStyleSheet("font-size: 14px; color: #bdc3c7;")
+        self.loading_label.setAlignment(Qt.AlignCenter)
+        self.loading_label.hide()
+        
+        # Create button
+        self.ok_button = QPushButton("Continue to Results")
+        self.ok_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {button_color};
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-size: 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {button_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {button_color};
+            }}
+            QPushButton:disabled {{
+                background-color: #7f8c8d;
+            }}
+        """)
+        self.ok_button.setCursor(Qt.PointingHandCursor)
+        self.ok_button.clicked.connect(self.accept_dialog)
+        
+        # Add widgets to layout
+        frame_layout.addWidget(self.title_label)
+        frame_layout.addWidget(self.message_label)
+        frame_layout.addStretch()
+        frame_layout.addWidget(self.loading_label)
+        frame_layout.addWidget(self.ok_button)
+        
+        # Add frame to main layout
+        main_layout.addWidget(self.frame)
+        
+        # Set size
+        self.setMinimumWidth(400)
+        self.setMinimumHeight(280) # Increased height for loading label
+        
+        # For dragging
+        self.old_pos = None
+        
+        # Center on parent
+        if parent:
+            self.move(parent.rect().center() - self.rect().center())
+
+    def _update_loading_text(self):
+        """Cycle through dots for a simple animation"""
+        self.loading_dots = (self.loading_dots + 1) % 4
+        dots = "." * self.loading_dots
+        self.loading_label.setText(f"Processing result{dots}")
+            
+    def accept_dialog(self):
+        """Handle dialog acceptance with button disable to prevent double-clicks"""
+        # Disable button and show loading animation
+        self.ok_button.setEnabled(False)
+        self.ok_button.hide()
+        self.loading_label.show()
+
+        # Start the timer for the loading dots animation
+        self.loading_timer.timeout.connect(self._update_loading_text)
+        self.loading_timer.start(500) # Update every 500ms
+        
+        # Emit the signal so the controller can start processing
+        self.ok_clicked.emit()
+        
+        # Do NOT call self.accept() here. The controller will close the view.
+
+    def closeEvent(self, event):
+        """Ensure timer is stopped when dialog is closed"""
+        self.loading_timer.stop()
+        super().closeEvent(event)
+        
+    def mousePressEvent(self, event):
+        """Enable dragging the dialog"""
+        if event.button() == Qt.LeftButton:
+            self.old_pos = event.globalPos()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        """Move the dialog when dragged"""
+        if self.old_pos:
+            delta = event.globalPos() - self.old_pos
+            self.move(self.pos() + delta)
+            self.old_pos = event.globalPos()
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        """Stop dragging when mouse is released"""
+        if event.button() == Qt.LeftButton:
+            self.old_pos = None
+            event.accept()
