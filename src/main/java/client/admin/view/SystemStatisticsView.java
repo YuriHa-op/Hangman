@@ -39,7 +39,7 @@ public class SystemStatisticsView {
             scene.getStylesheets().add(getClass().getResource("/client/admin/view/SystemStatisticsView.css").toExternalForm());
             stage.setScene(scene);
             stage.setWidth(800);
-            stage.setHeight(600);
+            stage.setHeight(900);
         } catch (IOException e) {
             System.err.println("Error loading SystemStatisticsView: " + e.getMessage());
             e.printStackTrace();

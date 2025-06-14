@@ -49,4 +49,13 @@ public class LoginModel {
             throw e;
         }
     }
+
+    public Bool createPlayer(String username, String password) {
+        try {
+            return gameService.createPlayer(username, password);
+        } catch (Exception e) {
+            System.err.println("Error during player creation: " + e.getMessage());
+            throw e;
+        }
+    }
 }

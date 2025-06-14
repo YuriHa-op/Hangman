@@ -77,13 +77,28 @@ public class PlayerManager {
     }
 
     public Bool createPlayer(String username, String password) {
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "INSERT INTO players (username, password) VALUES (?, ?)")) {
-            ps.setString(1, username);
-            ps.setString(2, password);
-            ps.executeUpdate();
-            return Bool.BOOL_TRUE;
+        try (Connection conn = getConnection()) {
+            // First, check if the username already exists
+            try (PreparedStatement checkPs = conn.prepareStatement(
+                    "SELECT username FROM players WHERE TRIM(LOWER(username)) = ?")) {
+                checkPs.setString(1, username.trim().toLowerCase());
+                ResultSet rs = checkPs.executeQuery();
+                if (rs.next()) {
+                    // Username already exists
+                    System.out.println("Username already exists: " + username);
+                    return Bool.BOOL_FALSE;
+                }
+            }
+            
+            // Username doesn't exist, create the new player
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO players (username, password) VALUES (?, ?)")) {
+                ps.setString(1, username);
+                ps.setString(2, password);
+                ps.executeUpdate();
+                System.out.println("New account created: " + username);
+                return Bool.BOOL_TRUE;
+            }
         } catch (SQLException e) {
             System.err.println("Database error creating player: " + e.getMessage());
             return Bool.BOOL_FALSE;

@@ -17,10 +17,11 @@
     -fx-text-fill: white;
     -fx-font-family: "Minecraftia"; /* Custom Minecraft-like font */
     -fx-font-size: 18px;
-    -fx-padding: 10px 20px;
-    -fx-border-radius: 5px;
-    -fx-background-radius: 5px;
+    -fx-padding: 8px 16px;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
     -fx-border-color: #2A4D1A; /* Adding a border to enhance button visibility */
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 5, 0.0, 0, 2);
 }
 
 /* Minecraft-style text field */
@@ -30,9 +31,11 @@
     -fx-font-family: "Minecraftia"; /* Custom Minecraft-like font */
     -fx-font-size: 16px;
     -fx-padding: 8px;
-    -fx-border-radius: 5px;
-    -fx-background-radius: 5px;
-    -fx-border-color: #4C7F3C; /* Darker border for text fields */
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-border-color: #444444;
+    -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.7), 2, 0.0, 0, 1);
+    -fx-pref-width: 300px; /* Fixed width for input fields */
 }
 
 /* Labels styled with a simple font */
@@ -40,35 +43,64 @@
     -fx-text-fill: white;
     -fx-font-family: "Minecraftia"; /* Custom Minecraft-like font */
     -fx-font-size: 16px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 1, 0.0, 0, 1);
 }
 
 /* Status text (success/error) */
 .status-text {
     -fx-font-family: "Minecraftia";
     -fx-font-size: 14px;
-    -fx-text-fill: red; /* You might want to change this based on status (success or error) */
+    -fx-fill: #FFFF55; /* Yellow text for better visibility */
 }
 
 /* Hover effect on the button */
 .button:hover {
     -fx-background-color: #4B7938; /* Lighter green for hover effect */
-    -fx-border-color: #2A4D1A; /* Ensuring the button's border is consistent with hover */
+    -fx-border-color: #2A4D1A;
+    -fx-cursor: hand;
+}
+
+/* Pressed effect on button */
+.button:pressed {
+    -fx-background-color: #2A4D1A; /* Darker when pressed */
+    -fx-translate-y: 1px; /* Small movement to indicate press */
 }
 
 /* Focused text field */
 .text-field:focused, .password-field:focused {
-    -fx-border-color: #4C7F3C; /* Highlighting focused text fields with a bright green */
+    -fx-border-color: #8BC34A; /* Highlighting focused text fields */
     -fx-background-color: #656565; /* Slightly darker background on focus */
 }
 
 /* Disabled button style */
 .button:disabled {
-    -fx-background-color: #7C9C6B; /* Disabled button with a muddy green color */
-    -fx-text-fill: #B4C2A6; /* Lighter text for disabled button */
+    -fx-background-color: #5A7A43; /* Disabled button with a muddy green color */
+    -fx-text-fill: #94A684; /* Lighter text for disabled button */
 }
 
 /* Disabled text field style */
 .text-field:disabled, .password-field:disabled {
-    -fx-background-color: #8FBC8F; /* Light grayish green for disabled text fields */
-    -fx-text-fill: #B4C2A6; /* Lighter text for disabled fields */
+    -fx-background-color: #444444; /* Darker gray for disabled text fields */
+    -fx-text-fill: #AAAAAA; /* Lighter text for disabled fields */
+}
+
+/* Hyperlink styling for sign up link */
+.hyperlink {
+    -fx-text-fill: #FFFF55; /* Yellow-ish color */
+    -fx-font-family: "Minecraftia";
+    -fx-font-size: 14px;
+    -fx-border-color: transparent; /* Remove the default underline */
+    -fx-padding: 0;
+}
+
+.hyperlink:hover {
+    -fx-text-fill: #FFFFFF; /* White on hover */
+    -fx-underline: true; /* Add underline on hover */
+}
+
+/* HBox containing the DON'T HAVE AN ACCOUNT text */
+HBox {
+    -fx-alignment: center;
+    -fx-spacing: 5;
+    -fx-padding: 5 0 0 0;
 }

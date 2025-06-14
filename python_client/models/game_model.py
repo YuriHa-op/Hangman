@@ -59,11 +59,11 @@ class GameModel:
 
     def create_player(self, username, password):
         try:
-            result = self.game_service.createPlayer(username, password) # createPlayer returns Bool
-            return result == GameModule.BOOL_TRUE # Compare with GameModule.BOOL_TRUE
+            result = self.game_service.createPlayer(username, password) # Ensure this matches the IDL method name
+            return result == GameModule.BOOL_TRUE
         except CORBA.SystemException as e:
             print(f"CORBA SystemException during create_player: {e}")
-            return False #
+            return False
 
     def logout(self):
         if self.username:

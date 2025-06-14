@@ -35,6 +35,7 @@ module GameModule {
         Bool login(in string username, in string password)
                     raises (AlreadyLoggedInException);
         void logout(in string username);
+        Bool createPlayer(in string username, in string password);
         string startGame(in string username);
         Bool sendGuess(in string username, in char letter);
         void finishRound(in string username, in long clientRemainingTime, in Bool guessedWord);

@@ -218,6 +218,11 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
+    public Bool createPlayer(String username, String password) {
+        return playerManager.createPlayer(username, password);
+    }
+
+    @Override
     public Bool sendGuess(String username, char letter) {
         return gameManager.sendGuess(username, letter);
     }

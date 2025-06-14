@@ -10,6 +10,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
@@ -20,6 +21,7 @@ public class LoginViewController {
     @FXML private Button loginButton;
     @FXML private Text statusText;
     @FXML private Button retryButton;
+    @FXML private Hyperlink signUpLink;
 
     private LoginModel model;
     private GameService gameService;
@@ -30,6 +32,19 @@ public class LoginViewController {
         // Initial setup when FXML is loaded
         statusText.setText("Please enter your credentials");
         statusText.setFill(Color.BLACK);
+        
+        // Set character limits: 10 for username and 15 for password
+        usernameField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue.length() > 10) {
+                usernameField.setText(oldValue);
+            }
+        });
+        
+        passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue.length() > 15) {
+                passwordField.setText(oldValue);
+            }
+        });
     }
 
     public void setModel(LoginModel model) {
@@ -78,6 +93,41 @@ public class LoginViewController {
         } catch (Exception ex) {
             ex.printStackTrace();
             setStatus("Cannot connect to server. Please check your connection.", true);
+        }
+    }
+
+    @FXML
+    protected void handleSignUpAction(ActionEvent event) {
+        String username = usernameField.getText();
+        String password = passwordField.getText();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            setStatus("Username and password cannot be empty", true);
+            return;
+        }
+        
+        // Check username and password length constraints
+        if (username.length() > 10) {
+            setStatus("Username must be at most 10 characters", true);
+            return;
+        }
+        
+        if (password.length() > 15) {
+            setStatus("Password must be at most 15 characters", true);
+            return;
+        }
+
+        try {
+            GameModule.Bool success = gameService.createPlayer(username, password);
+            if (success == GameModule.Bool.BOOL_TRUE) {
+                setStatus("Account created successfully! You can now login.", false);
+            } else {
+                setStatus("Username already exists. Please choose another.", true);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            setStatus("Cannot connect to server. Please check your connection.", true);
+            retryButton.setVisible(true);
         }
     }
 

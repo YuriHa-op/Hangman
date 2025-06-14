@@ -54,6 +54,10 @@ class QtLoginView(QWidget):
         self.create_account_button = self.findChild(QPushButton, 'create_account_button')
         self.logo_label = self.findChild(QLabel, 'logo_label')
 
+        # Set character limits
+        self.username_input.setMaxLength(10)
+        self.password_input.setMaxLength(15)
+
         # Load logo image
         if self.logo_label and os.path.exists(logo_path):
             self._logo_pixmap = QPixmap(logo_path)

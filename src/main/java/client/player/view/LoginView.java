@@ -36,7 +36,7 @@ public class LoginView {
 
             // Set the stage size before showing it
             stage.setWidth(450);
-            stage.setHeight(450);
+            stage.setHeight(550);
 
         } catch (IOException e) {
             System.err.println("Error loading FXML: " + e.getMessage());

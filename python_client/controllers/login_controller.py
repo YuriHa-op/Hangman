@@ -25,16 +25,23 @@ class LoginController(BaseController):
 
     def create_account(self, username, password):
         try:
-            if self.model.create_player(username, password):
-                # self.view.show_success("Account created successfully! You can now log in.")
+            # Validate input lengths
+            if len(username) > 10:
+                self.view.show_creation_error("Username must be at most 10 characters.")
+                return
+                
+            if len(password) > 15:
+                self.view.show_creation_error("Password must be at most 15 characters.")
+                return
+                
+            result = self.model.create_player(username, password)
+            if result:
                 self.view.show_creation_success()
             else:
-                # self.view.show_error("Account creation failed. Username might already exist.")
-                self.view.show_creation_error("Account creation failed. Username might already exist.")
-        except Exception as e: # Catching a broader exception for now
-            # print(f"An unexpected error occurred during account creation: {e}") # For debugging
-            # self.view.show_error("An unexpected error occurred during account creation.")
-            self.view.show_creation_error(f"An unexpected error occurred: {e}")
+                self.view.show_creation_error("Username already exists. Please choose another username.")
+        except Exception as e:
+            print(f"An unexpected error occurred during account creation: {e}")
+            self.view.show_creation_error(f"Server connection error. Please try again later.")
 
     def switch_to_create_account(self):
         # This was specific to Tkinter structure, may not be needed or handled differently in PyQt

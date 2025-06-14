@@ -9,7 +9,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
-public class AdminLoginView extends Application {
+public class AdminLoginView {
     private TextField hostField;
     private TextField portField;
     private TextField usernameField;
@@ -19,7 +19,7 @@ public class AdminLoginView extends Application {
     private AdminConnection adminConnection;
     private AdminView adminView;
 
-    @Override
+
     public void start(Stage primaryStage) throws Exception {
         // Setup UI components
         VBox root = new VBox(10);
@@ -113,7 +113,7 @@ public class AdminLoginView extends Application {
         }
     }
     
-    @Override
+
     public void stop() {
         if (adminConnection != null) {
             adminConnection.disconnect();
@@ -122,8 +122,4 @@ public class AdminLoginView extends Application {
             adminView.close();
         }
     }
-    
-    public static void main(String[] args) {
-        launch(args);
     }
-} 
