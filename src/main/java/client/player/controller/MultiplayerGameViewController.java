@@ -353,8 +353,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                                                     () -> { // onLastChanceClicked for the NEW dialog
                                                         System.out.println("Last Chance Dialog: Button clicked. Attempting to start next round.");
                                                         model.startNextRound();
-                                                        // Cooldown is already started when original AFK timed out, 
-                                                        // or we can start another one if desired, but let's stick to one for now.
+                                                        // Cooldown is already started when original AFK timed out,
                                                         // If model.startNextRound() fails and leads to another stall, the cycle will repeat.
                                                     }
                                                 );
@@ -412,7 +411,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
     private void handleWaitingState(LobbyState state) {
         // This method might be redundant now or need adjustment,
-        // as we don't explicitly call showWaitingUI() anymore in startNewGame.
+        // it don't explicitly call showWaitingUI() anymore in startNewGame.
         // The game should transition from HomeView's queue directly to a STARTED state.
         if (!gameStarted) {
             int playerCount = state.getPlayers().size();
@@ -515,18 +514,12 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
             // Win streak glow
             int winStreak = state.getPlayerWinStreak(player);
-            // --- DEBUGGING: Print win streak for player ---
-            // System.out.println("MultiplayerGameViewController: Player: " + player + ", Win Streak: " + winStreak);
-            // --- END DEBUGGING ---
+
             if (winStreak >= 2) {
-                // --- DEBUGGING: Log animation attempt ---
-                // System.out.println("MultiplayerGameViewController: Attempting to ANIMATE for player: " + player + " with streak: " + winStreak);
-                // --- END DEBUGGING ---
+
                 animateFieryGlow(label, player);
             } else {
-                // --- DEBUGGING: Log animation stop attempt ---
-                // System.out.println("MultiplayerGameViewController: Attempting to STOP animation for player: " + player + " with streak: " + winStreak);
-                // --- END DEBUGGING ---
+
                 stopFieryGlowAnimation(player); // Stop animation if streak is lost/not active
                 if(label.getEffect() != null) label.setEffect(null); // Ensure effect is cleared if animation was stopped externally
             }
@@ -646,13 +639,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         activeAnimations.clear(); 
     }
 
-    public void onReturned() {
-        // This method is called when the view becomes active again.
-        // We should re-fetch the latest state to update the UI correctly.
-        if (model != null) {
-            model.updateLobbyState(); // This will trigger onLobbyUpdate where UI is handled
-        }
-    }
 
     private void resetForNewRound(LobbyState state) {
         // Round transition explosion animation (like 1v1)
@@ -802,10 +788,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                     // It retains .correct/.incorrect if handleKeyPress set it.
                 }
             } else {
-                // Fallback: Either spectating self (which is treated as normal play) or unexpected state.
-                // If it's the current player's POV (isCurrentPlayerPov is true, but isSpectatorModeActive might be false or true if povPlayer == username)
-                // and server hasn't processed, local styles from handleKeyPress persist.
-                // If truly unexpected, disable button as a safe default.
+
                  if (!isCurrentPlayerPov) btn.setDisable(true);
             }
         });

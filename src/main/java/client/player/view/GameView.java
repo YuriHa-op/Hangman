@@ -47,6 +47,10 @@ public class GameView {
                 controller.startNewGame();
             }
 
+            // Set back button visibility based on game state
+            boolean isWaitingForMatch = maskedWord == null || maskedWord.equals("WAITING_FOR_MATCH");
+            controller.setBackButtonVisible(isWaitingForMatch);
+
             // Make window draggable
             final double[] xOffset = {0};
             final double[] yOffset = {0};

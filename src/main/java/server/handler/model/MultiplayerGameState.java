@@ -6,7 +6,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class MultiplayerGameState {
+public class
+MultiplayerGameState {
     private final String lobbyId;
     private final List<String> players;
     private final Set<String> allPlayersEver;

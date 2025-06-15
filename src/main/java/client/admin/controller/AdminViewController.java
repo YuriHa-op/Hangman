@@ -248,27 +248,6 @@ private void initializeViews() {
     }
 
     @FXML
-    public void handleViewMatchHistory() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/client/admin/view/AdminMatchHistoryView.fxml"));
-            Parent root = loader.load();
-            AdminMatchHistoryController controller = loader.getController();
-            controller.setAdminService(adminService);
-            controller.setOutputCallback(this::appendToOutput);
-            
-            Stage stage = new Stage();
-            stage.setScene(new Scene(root));
-            stage.setTitle("Match History");
-            stage.setWidth(900);
-            stage.setHeight(700);
-            stage.show();
-        } catch (Exception e) {
-            showErrorDialog("Error", "Failed to show match history: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    @FXML
     public void handleLogout() {
         if (onLogout != null) {
             // Ensure connection is closed

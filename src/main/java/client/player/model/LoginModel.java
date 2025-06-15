@@ -9,16 +9,8 @@ import org.omg.CORBA.ORB;
 public class LoginModel {
     private GameService gameService;
 
-    public LoginModel() {
-        this("localhost", "900");
-    }
-
-    public LoginModel(String host, String port) {
+    public LoginModel(ORB orb) {
         try {
-            // Define proper initialization parameters
-            String[] args = {"-ORBInitialHost", host, "-ORBInitialPort", port};
-            ORB orb = ORB.init(args, null);
-
             // Get the naming context - use the correct helper class
             org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
             org.omg.CosNaming.NamingContextExt ncRef = org.omg.CosNaming.NamingContextExtHelper.narrow(objRef);

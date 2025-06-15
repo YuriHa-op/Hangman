@@ -318,9 +318,6 @@ public class GameManager {
         }
         // As a safeguard, one might also check the opponent; however, if the map is updated for both players
         // when a winner is first determined, checking one player (e.g., the one triggering this call) is sufficient.
-        // if (lastRoundWinner.containsKey(opponent) && lastRoundWinner.get(opponent).containsKey(round)) {
-        //     return;
-        // }
 
         // Proceed with determining the winner logic as it hasn't been done yet for this round.
         boolean playerGuessed = roundGuessedWord.getOrDefault(username, Collections.emptyMap()).getOrDefault(round, false);
@@ -659,38 +656,6 @@ public class GameManager {
                 }
             }
         }
-
-        /*
-        // --- NEW: Auto-advance through all missed rounds for both players ---
-        List<String> bothPlayers = new ArrayList<>();
-        bothPlayers.add(username);
-        if (opponentNameForLog != null && !opponentNameForLog.equals(username)) {
-            bothPlayers.add(opponentNameForLog);
-        }
-        for (String player : bothPlayers) {
-            while (true) {
-                int currentRound = playerRounds.getOrDefault(player, 0);
-                boolean finished = roundFinished.getOrDefault(player, Collections.emptyMap()).getOrDefault(currentRound, false);
-                if (!finished) break;
-                // Calculate when this round started
-                long roundStart = roundStartTime.getOrDefault(player, 0L);
-                int roundTime = playerManager.getRoundTime();
-                long now = System.currentTimeMillis();
-                if (now - roundStart < roundTime * 1000L) break; // Not enough time for next round
-                // If game is not over, start next round and immediately finish for timeout
-                if (!isGameSessionOver(player)) {
-                    boolean started = startNewRound(player);
-                    if (started) {
-                        finishRound(player, 0, Bool.BOOL_FALSE);
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-        }
-        */
 
         String maskedWord = getMaskedWord(username);
         dto.maskedWord = (maskedWord != null) ? maskedWord : "";

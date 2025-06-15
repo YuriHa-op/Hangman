@@ -31,7 +31,6 @@ public class WordManagementController {
     @FXML private TextField updatedWordField;
     @FXML private Button addButton;
     @FXML private Button updateButton;
-    @FXML private Button deleteButton;
     @FXML private TextField searchField;
     @FXML private Label statusLabel;
     @FXML private TabPane tabPane;
@@ -148,30 +147,6 @@ public class WordManagementController {
             }
         } catch (Exception e) {
             showError("Error updating word: " + e.getMessage());
-        }
-    }
-
-    @FXML
-    private void handleDeleteWord() {
-        Word selectedWord = wordsTable.getSelectionModel().getSelectedItem();
-        if (selectedWord == null) {
-            showError("Select a word to delete");
-            return;
-        }
-
-        try {
-            Bool result = model.deleteWord(selectedWord.getWord());
-            if (result == Bool.BOOL_TRUE) {
-                loadWords();
-                showStatus("Word '" + selectedWord.getWord() + "' deleted successfully");
-                if (outputCallback != null) {
-                    outputCallback.accept("Word deleted: " + selectedWord.getWord());
-                }
-            } else {
-                showError("Failed to delete word");
-            }
-        } catch (Exception e) {
-            showError("Error deleting word: " + e.getMessage());
         }
     }
 

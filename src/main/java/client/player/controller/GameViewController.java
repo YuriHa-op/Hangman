@@ -166,11 +166,6 @@ public class GameViewController implements GameModel.MatchListener {
         }
     }
 
-    private void animateCorrectGuess() {
-        wordDisplay.setText(model.getGameState().maskedWord);
-        GameViewHelper.animateWordDisplay(wordDisplay);
-    }
-
     public void startNewGame() {
         if (gameStatePoller != null) gameStatePoller.stop();
         gameOverDialogShown = false;
@@ -362,22 +357,6 @@ public class GameViewController implements GameModel.MatchListener {
         }
     }
 
-    private String getOpponentUsername() {
-        try {
-            if (gameService != null && username != null) {
-                GameStateDTO state = model.getGameState();
-                if (state.roundWinner != null && !state.roundWinner.isEmpty() && !state.roundWinner.equals(username)) {
-                    return state.roundWinner;
-                }
-                if (LOSE.equals(state.sessionResult) && state.roundWinner != null) {
-                    return state.roundWinner;
-                }
-            }
-        } catch (Exception e) {
-            // Fallback
-        }
-        return "Opponent";
-    }
 
     private void resetKeyboard() {
         keyboardHelper.resetKeyboard();
@@ -482,6 +461,12 @@ public class GameViewController implements GameModel.MatchListener {
         }
     }
 
+    public void setBackButtonVisible(boolean visible) {
+        if (backButton != null) {
+            backButton.setVisible(visible);
+        }
+    }
+
     public void setUsername(String username) {
         this.username = username;
     }
@@ -501,6 +486,11 @@ public class GameViewController implements GameModel.MatchListener {
             this.lastDisplayedMaskedWord = WAITING_FOR_MATCH;
             this.lastDisplayedIncorrectGuesses = 0;
             return;
+        }
+
+        // Hide back button when game is in progress
+        if (backButton != null) {
+            backButton.setVisible(false);
         }
 
         // Word display and animation update
@@ -606,6 +596,10 @@ public class GameViewController implements GameModel.MatchListener {
         keyboardGrid.setVisible(false);
         timerLabel.setText(""); // Clear timer label during waiting
         stopTimerIfRunning();
+        // Show back button when waiting for match
+        if (backButton != null) {
+            backButton.setVisible(true);
+        }
         // Set timeLabel for waiting time explicitly
         if (timeLabel != null && model != null && model.getGameService() != null) {
             try {
@@ -614,12 +608,6 @@ public class GameViewController implements GameModel.MatchListener {
                 timeLabel.setText("Waiting..."); // Fallback
             }
         }
-    }
-
-    private boolean shouldHandleTimeUp(GameStateDTO state) {
-        return state.remainingTime <= 0 && !timeUpHandled &&
-               state.roundOver == GameModule.Bool.BOOL_FALSE &&
-               state.gameOver == GameModule.Bool.BOOL_FALSE;
     }
 
     private boolean shouldShowGameOverDialog(GameStateDTO state) {

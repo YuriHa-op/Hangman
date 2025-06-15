@@ -55,7 +55,7 @@ public class MultiplayerGameManager {
                 startLobbyIfReady(lobbyId);
             } catch (Throwable t) {
                 logMessage("ERROR in scheduled startLobbyIfReady for lobby " + lobbyId + ": " + t.getMessage());
-                // Consider further error handling, e.g., cleaning up the lobby
+                // Consider further error handling.
             }
         }, queueTimeSeconds, TimeUnit.SECONDS);
         return newLobby;
@@ -217,7 +217,7 @@ public class MultiplayerGameManager {
         logMessage("Match result saved for game ID: " + result.gameId);
     }
 
-    // Add a simple logging method to help track processing
+    // logging method to help track processing
     private void logMessage(String message) {
         System.out.println("[MultiplayerGameManager] " + message);
     }
@@ -333,6 +333,4 @@ public class MultiplayerGameManager {
             cleanupGame(lobby.getLobbyId());
         }
     }
-
-    // Additional methods for game state, guesses, win condition, etc. will be added as needed.
 } 

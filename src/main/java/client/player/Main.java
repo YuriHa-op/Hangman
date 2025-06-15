@@ -4,6 +4,7 @@ import client.player.model.LoginModel;
 import client.player.view.LoginView;
 import javafx.application.Application;
 import javafx.stage.Stage;
+import org.omg.CORBA.ORB;
 
 public class Main extends Application {
     private LoginView loginView;
@@ -12,7 +13,6 @@ public class Main extends Application {
  @Override
  public void start(Stage primaryStage) {
      // Default CORBA params
-
      String host = "localhost";
      String port = "900";
 
@@ -28,19 +28,28 @@ public class Main extends Application {
          }
      }
 
-     // Create model and view
-     loginModel = new LoginModel(host, port);
-     loginView = new LoginView();
-     loginView.start(primaryStage);
-     loginView.setModel(loginModel);
+     try {
+         // Initialize the ORB here
+         String[] orbArgs = {"-ORBInitialHost", host, "-ORBInitialPort", port};
+         ORB orb = ORB.init(orbArgs, null);
+         
+         // Create model and view with initialized ORB
+         loginModel = new LoginModel(orb);
+         loginView = new LoginView();
+         loginView.start(primaryStage);
+         loginView.setModel(loginModel);
 
-     loginView.setShowLoginViewAgain(() -> {
-         javafx.application.Platform.runLater(() -> {
-             loginView.getStage().show();
+         loginView.setShowLoginViewAgain(() -> {
+             javafx.application.Platform.runLater(() -> {
+                 loginView.getStage().show();
+             });
          });
-     });
 
-     loginView.setVisible(true);
+         loginView.setVisible(true);
+     } catch (Exception e) {
+         System.err.println("Error initializing ORB: " + e.getMessage());
+         e.printStackTrace();
+     }
  }
 
     public static void main(String[] args) {
