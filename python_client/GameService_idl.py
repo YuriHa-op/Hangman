@@ -23,21 +23,6 @@ _0_GameModule = omniORB.openModule("GameModule", r"GameService.idl")
 _0_GameModule__POA = omniORB.openModule("GameModule__POA", r"GameService.idl")
 
 
-# exception AlreadyLoggedInException
-_0_GameModule.AlreadyLoggedInException = omniORB.newEmptyClass()
-class AlreadyLoggedInException (CORBA.UserException):
-    _NP_RepositoryId = "IDL:GameModule/AlreadyLoggedInException:1.0"
-
-    def __init__(self, message):
-        CORBA.UserException.__init__(self, message)
-        self.message = message
-
-_0_GameModule.AlreadyLoggedInException = AlreadyLoggedInException
-_0_GameModule._d_AlreadyLoggedInException  = (omniORB.tcInternal.tv_except, AlreadyLoggedInException, AlreadyLoggedInException._NP_RepositoryId, "AlreadyLoggedInException", "message", (omniORB.tcInternal.tv_string,0))
-_0_GameModule._tc_AlreadyLoggedInException = omniORB.tcInternal.createTypeCode(_0_GameModule._d_AlreadyLoggedInException)
-omniORB.registerType(AlreadyLoggedInException._NP_RepositoryId, _0_GameModule._d_AlreadyLoggedInException, _0_GameModule._tc_AlreadyLoggedInException)
-del AlreadyLoggedInException
-
 # enum Bool
 _0_GameModule.BOOL_FALSE = omniORB.EnumItem("BOOL_FALSE", 0)
 _0_GameModule.BOOL_TRUE = omniORB.EnumItem("BOOL_TRUE", 1)
@@ -58,6 +43,21 @@ _0_GameModule._ad_StringSeq = (omniORB.tcInternal.tv_alias, StringSeq._NP_Reposi
 _0_GameModule._tc_StringSeq = omniORB.tcInternal.createTypeCode(_0_GameModule._ad_StringSeq)
 omniORB.registerType(StringSeq._NP_RepositoryId, _0_GameModule._ad_StringSeq, _0_GameModule._tc_StringSeq)
 del StringSeq
+
+# struct LoginResponse
+_0_GameModule.LoginResponse = omniORB.newEmptyClass()
+class LoginResponse (omniORB.StructBase):
+    _NP_RepositoryId = "IDL:GameModule/LoginResponse:1.0"
+
+    def __init__(self, success, sessionId):
+        self.success = success
+        self.sessionId = sessionId
+
+_0_GameModule.LoginResponse = LoginResponse
+_0_GameModule._d_LoginResponse  = (omniORB.tcInternal.tv_struct, LoginResponse, LoginResponse._NP_RepositoryId, "LoginResponse", "success", omniORB.typeMapping["IDL:GameModule/Bool:1.0"], "sessionId", (omniORB.tcInternal.tv_string,0))
+_0_GameModule._tc_LoginResponse = omniORB.tcInternal.createTypeCode(_0_GameModule._d_LoginResponse)
+omniORB.registerType(LoginResponse._NP_RepositoryId, _0_GameModule._d_LoginResponse, _0_GameModule._tc_LoginResponse)
+del LoginResponse
 
 # struct GameStateDTO
 _0_GameModule.GameStateDTO = omniORB.newEmptyClass()
@@ -129,9 +129,6 @@ _0_GameModule._tc_GameService = omniORB.tcInternal.createTypeCode(_0_GameModule.
 omniORB.registerType(GameService._NP_RepositoryId, _0_GameModule._d_GameService, _0_GameModule._tc_GameService)
 
 # GameService operations and attributes
-GameService._d_login = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), {_0_GameModule.AlreadyLoggedInException._NP_RepositoryId: _0_GameModule._d_AlreadyLoggedInException})
-GameService._d_logout = (((omniORB.tcInternal.tv_string,0), ), (), None)
-GameService._d_createPlayer = (((omniORB.tcInternal.tv_string,0), (omniORB.tcInternal.tv_string,0)), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
 GameService._d_startGame = (((omniORB.tcInternal.tv_string,0), ), ((omniORB.tcInternal.tv_string,0), ), None)
 GameService._d_sendGuess = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_char), (omniORB.typeMapping["IDL:GameModule/Bool:1.0"], ), None)
 GameService._d_finishRound = (((omniORB.tcInternal.tv_string,0), omniORB.tcInternal.tv_long, omniORB.typeMapping["IDL:GameModule/Bool:1.0"]), (), None)
@@ -168,15 +165,6 @@ class _objref_GameService (CORBA.Object):
 
     def __init__(self, obj):
         CORBA.Object.__init__(self, obj)
-
-    def login(self, *args):
-        return self._obj.invoke("login", _0_GameModule.GameService._d_login, args)
-
-    def logout(self, *args):
-        return self._obj.invoke("logout", _0_GameModule.GameService._d_logout, args)
-
-    def createPlayer(self, *args):
-        return self._obj.invoke("createPlayer", _0_GameModule.GameService._d_createPlayer, args)
 
     def startGame(self, *args):
         return self._obj.invoke("startGame", _0_GameModule.GameService._d_startGame, args)
@@ -275,7 +263,7 @@ class GameService (PortableServer.Servant):
     _NP_RepositoryId = _0_GameModule.GameService._NP_RepositoryId
 
 
-    _omni_op_d = {"login": _0_GameModule.GameService._d_login, "logout": _0_GameModule.GameService._d_logout, "createPlayer": _0_GameModule.GameService._d_createPlayer, "startGame": _0_GameModule.GameService._d_startGame, "sendGuess": _0_GameModule.GameService._d_sendGuess, "finishRound": _0_GameModule.GameService._d_finishRound, "viewLeaderboard": _0_GameModule.GameService._d_viewLeaderboard, "getMaskedWord": _0_GameModule.GameService._d_getMaskedWord, "getRoundTime": _0_GameModule.GameService._d_getRoundTime, "getWaitingTime": _0_GameModule.GameService._d_getWaitingTime, "getRemainingTime": _0_GameModule.GameService._d_getRemainingTime, "getIncorrectGuesses": _0_GameModule.GameService._d_getIncorrectGuesses, "endGameSession": _0_GameModule.GameService._d_endGameSession, "getCurrentRound": _0_GameModule.GameService._d_getCurrentRound, "getPlayerWins": _0_GameModule.GameService._d_getPlayerWins, "startNewRound": _0_GameModule.GameService._d_startNewRound, "isRoundOver": _0_GameModule.GameService._d_isRoundOver, "isGameSessionOver": _0_GameModule.GameService._d_isGameSessionOver, "getGameSessionResult": _0_GameModule.GameService._d_getGameSessionResult, "getGameState": _0_GameModule.GameService._d_getGameState, "cleanupPlayerSession": _0_GameModule.GameService._d_cleanupPlayerSession, "startMultiplayerGame": _0_GameModule.GameService._d_startMultiplayerGame, "getMultiplayerLobbyState": _0_GameModule.GameService._d_getMultiplayerLobbyState, "sendMultiplayerGuess": _0_GameModule.GameService._d_sendMultiplayerGuess, "startMultiplayerNextRound": _0_GameModule.GameService._d_startMultiplayerNextRound, "getMatchHistory": _0_GameModule.GameService._d_getMatchHistory, "getMatchDetails": _0_GameModule.GameService._d_getMatchDetails, "getSinglePlayerMatchHistory": _0_GameModule.GameService._d_getSinglePlayerMatchHistory, "getSinglePlayerMatchDetails": _0_GameModule.GameService._d_getSinglePlayerMatchDetails, "playerReadyForFirstRound": _0_GameModule.GameService._d_playerReadyForFirstRound, "leaveMultiplayerGame": _0_GameModule.GameService._d_leaveMultiplayerGame, "getLeaderboardEntries": _0_GameModule.GameService._d_getLeaderboardEntries}
+    _omni_op_d = {"startGame": _0_GameModule.GameService._d_startGame, "sendGuess": _0_GameModule.GameService._d_sendGuess, "finishRound": _0_GameModule.GameService._d_finishRound, "viewLeaderboard": _0_GameModule.GameService._d_viewLeaderboard, "getMaskedWord": _0_GameModule.GameService._d_getMaskedWord, "getRoundTime": _0_GameModule.GameService._d_getRoundTime, "getWaitingTime": _0_GameModule.GameService._d_getWaitingTime, "getRemainingTime": _0_GameModule.GameService._d_getRemainingTime, "getIncorrectGuesses": _0_GameModule.GameService._d_getIncorrectGuesses, "endGameSession": _0_GameModule.GameService._d_endGameSession, "getCurrentRound": _0_GameModule.GameService._d_getCurrentRound, "getPlayerWins": _0_GameModule.GameService._d_getPlayerWins, "startNewRound": _0_GameModule.GameService._d_startNewRound, "isRoundOver": _0_GameModule.GameService._d_isRoundOver, "isGameSessionOver": _0_GameModule.GameService._d_isGameSessionOver, "getGameSessionResult": _0_GameModule.GameService._d_getGameSessionResult, "getGameState": _0_GameModule.GameService._d_getGameState, "cleanupPlayerSession": _0_GameModule.GameService._d_cleanupPlayerSession, "startMultiplayerGame": _0_GameModule.GameService._d_startMultiplayerGame, "getMultiplayerLobbyState": _0_GameModule.GameService._d_getMultiplayerLobbyState, "sendMultiplayerGuess": _0_GameModule.GameService._d_sendMultiplayerGuess, "startMultiplayerNextRound": _0_GameModule.GameService._d_startMultiplayerNextRound, "getMatchHistory": _0_GameModule.GameService._d_getMatchHistory, "getMatchDetails": _0_GameModule.GameService._d_getMatchDetails, "getSinglePlayerMatchHistory": _0_GameModule.GameService._d_getSinglePlayerMatchHistory, "getSinglePlayerMatchDetails": _0_GameModule.GameService._d_getSinglePlayerMatchDetails, "playerReadyForFirstRound": _0_GameModule.GameService._d_playerReadyForFirstRound, "leaveMultiplayerGame": _0_GameModule.GameService._d_leaveMultiplayerGame, "getLeaderboardEntries": _0_GameModule.GameService._d_getLeaderboardEntries}
 
 GameService._omni_skeleton = GameService
 _0_GameModule__POA.GameService = GameService

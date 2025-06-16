@@ -1,13 +1,6 @@
 /* Multiplayer Game View Styling */
 
 /* Main game view styling */
-#MultiplayerGameView {
-    background-image: url("../assets/img.png");
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-}
-
 #left_panel, #right_panel {
     background-color: rgba(0, 0, 0, 0.3);
     border-radius: 15px;

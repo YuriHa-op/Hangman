@@ -26,6 +26,7 @@ public class MultiplayerGameManager {
     private final Map<String, ScheduledFuture<?>> roundTimers = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> stallCheckTimers = new ConcurrentHashMap<>();
     private static final int STALL_CHECK_TIMEOUT_SECONDS = 30;
+    private final Map<String, ScheduledFuture<?>> lobbyStartTimers = new ConcurrentHashMap<>();
 
     public MultiplayerGameManager(WordManager wordManager, PlayerManager playerManager, int minPlayers, int maxPlayers, int queueTimeSeconds) {
         this.wordManager = wordManager;
@@ -37,31 +38,48 @@ public class MultiplayerGameManager {
 
     public synchronized MultiplayerLobby joinOrCreateLobby(String username) {
         // Try to find an open lobby
-        for (MultiplayerLobby lobby : activeLobbies.values()) {
-            if (!lobby.isStarted() && !lobby.isFull()) {
-                if (lobby.addPlayer(username)) {
-                    return lobby;
-                }
-            }
-        }
+        MultiplayerLobby lobby = activeLobbies.values().stream()
+            .filter(l -> !l.isStarted() && !l.isFull())
+            .findFirst()
+            .orElse(null);
+    
         // No open lobby, create a new one
-        String lobbyId = UUID.randomUUID().toString();
-        MultiplayerLobby newLobby = new MultiplayerLobby(lobbyId, minPlayers, maxPlayers);
-        newLobby.addPlayer(username);
-        activeLobbies.put(lobbyId, newLobby);
-        // Schedule lobby start after queue time
-        scheduler.schedule(() -> {
-            try {
-                startLobbyIfReady(lobbyId);
-            } catch (Throwable t) {
-                logMessage("ERROR in scheduled startLobbyIfReady for lobby " + lobbyId + ": " + t.getMessage());
-                // Consider further error handling.
+        if (lobby == null) {
+            String lobbyId = UUID.randomUUID().toString();
+            lobby = new MultiplayerLobby(lobbyId, minPlayers, maxPlayers);
+            activeLobbies.put(lobbyId, lobby);
+            
+            // Schedule lobby start after queue time, this now acts as a timeout
+            ScheduledFuture<?> future = scheduler.schedule(() -> {
+                try {
+                    startLobbyIfReady(lobbyId);
+                } catch (Throwable t) {
+                    logMessage("ERROR in scheduled startLobbyIfReady for lobby " + lobbyId + ": " + t.getMessage());
+                }
+            }, queueTimeSeconds, TimeUnit.SECONDS);
+            lobbyStartTimers.put(lobbyId, future);
+        }
+    
+        // Add the player to the selected or new lobby
+        if (lobby.addPlayer(username)) {
+            // If the lobby is now ready with enough players, start it immediately
+            if (lobby.isReady()) {
+                startLobbyIfReady(lobby.getLobbyId());
             }
-        }, queueTimeSeconds, TimeUnit.SECONDS);
-        return newLobby;
+            return lobby;
+        }
+    
+        // This case should ideally not be reached if lobby logic is sound
+        return null;
     }
 
     private void startLobbyIfReady(String lobbyId) {
+        // Since we're attempting to start, cancel the timeout timer
+        ScheduledFuture<?> future = lobbyStartTimers.remove(lobbyId);
+        if (future != null) {
+            future.cancel(false);
+        }
+
         MultiplayerLobby lobby = activeLobbies.get(lobbyId);
         if (lobby == null || lobby.isStarted()) return;
         
@@ -74,20 +92,15 @@ public class MultiplayerGameManager {
                 wordManager,
                 playerManager.getRoundTime()
             );
-            // Record all current players as having joined (redundant with constructor, but safe)
+            // Record all current players as having joined
             for (String player : lobby.getPlayers()) {
                 gameState.recordPlayerJoined(player);
             }
             activeGames.put(lobbyId, gameState);
-            // DO NOT start the round yet; wait for all players to signal ready
-            // gameState.startNewRound();
-            // scheduleRoundTimer(lobbyId);
+            // Game starts, but first round waits for players to signal readiness
         } else {
-            // Not enough players, notify and remove lobby
-            for (String player : lobby.getPlayers()) {
-                // State will be handled by client polling
-                removePlayerFromLobby(player);
-            }
+            // Not enough players when timeout hit, so destroy the lobby
+            logMessage("Lobby " + lobbyId + " timed out without enough players. Removing.");
             activeLobbies.remove(lobbyId);
         }
     }

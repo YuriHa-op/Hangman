@@ -45,9 +45,9 @@ class QtMultiplayerGameView(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground) # Make this widget's background transparent
 
         # Set the window size to 950x950
-        self.setMinimumSize(950, 950)
+        self.setMinimumSize(900, 950)
         if self.main_window:
-            self.main_window.resize(950, 950)
+            self.main_window.resize(900, 950)
             
         # more space for panels
         main_layout = self.findChild(QHBoxLayout, 'main_layout')

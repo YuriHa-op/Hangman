@@ -82,10 +82,6 @@ public class LoginServiceImpl extends LoginServicePOA {
     @Override
     public Bool createPlayer(String username, String password) {
         // Since createPlayer is not in LoginManager, we can call it from a new PlayerManager instance
-        // or move the createPlayer logic to LoginManager as well.
-        // For now, let's assume it should be part of the overall "login" concern.
-        // A better refactoring might be to have a UserManager that both Login and Player managers use.
-        // To keep this simple, let's create a temporary PlayerManager.
         return new server.handler.core.PlayerManager().createPlayer(username, password);
     }
 

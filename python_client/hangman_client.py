@@ -5,7 +5,7 @@ import traceback
 import json
 from omniORB import CORBA
 import GameModule
-import GameModule__POA
+import LoginModule  # Import the new LoginModule
 import CosNaming
 import tkinter as tk
 from tkinter import messagebox
@@ -32,7 +32,7 @@ def show_no_match_popup():
     root.destroy()
 
 
-def get_game_service():
+def get_services():
     # Initialize the ORB
     orb = CORBA.ORB_init([
         '-ORBInitRef', f'NameService=corbaloc:iiop:{ORB_HOST}:{ORB_PORT}/NameService'
@@ -46,21 +46,49 @@ def get_game_service():
         sys.exit(1)
 
     # Resolve the GameService object
-    name = [CosNaming.NameComponent('GameService', '')]
+    game_service = None
+    login_service = None
+
     try:
-        obj_ref = naming_context.resolve(name)
-        game_service = obj_ref._narrow(GameModule.GameService)
+        game_name = [CosNaming.NameComponent('GameService', '')]
+        game_obj_ref = naming_context.resolve(game_name)
+        game_service = game_obj_ref._narrow(GameModule.GameService)
         if game_service is None:
             print('GameService reference is not valid')
             sys.exit(1)
-        return game_service
     except Exception as e:
         print('Could not resolve GameService:', e)
         sys.exit(1)
 
+    # Resolve the LoginService object
+    try:
+        login_name = [CosNaming.NameComponent('LoginService', '')]
+        login_obj_ref = naming_context.resolve(login_name)
+        login_service = login_obj_ref._narrow(LoginModule.LoginService)
+        if login_service is None:
+            print('LoginService reference is not valid')
+            sys.exit(1)
+    except Exception as e:
+        print('Could not resolve LoginService:', e)
+        sys.exit(1)
+        
+    return login_service, game_service
 
-def main_menu(game_service, username):
+
+def main_menu(login_service, game_service, username, session_id):
     while True:
+        try:
+            if not login_service.validateSession(username, session_id):
+                print("\n\n[SESSION INVALIDATED] Your session has been terminated by another login.")
+                print("Returning to login screen...")
+                time.sleep(2)
+                return
+        except Exception as e:
+            print(f"\n\n[ERROR] Connection to server lost: {e}")
+            print("Returning to login screen...")
+            time.sleep(2)
+            return
+            
         print(f"\nWelcome, {username}!")
         print("1. Start Single Player Game")
         print("2. Start Multiplayer Game")
@@ -69,21 +97,24 @@ def main_menu(game_service, username):
         print("5. Logout")
         choice = input("Select an option: ").strip()
         if choice == '1':
-            start_game(game_service, username)
+            start_game(login_service, game_service, username, session_id)
         elif choice == '2':
-            start_multiplayer_game(game_service, username)
+            start_multiplayer_game(login_service, game_service, username, session_id)
         elif choice == '3':
             print(game_service.viewLeaderboard())
         elif choice == '4':
             view_match_history(game_service, username)
         elif choice == '5':
-            game_service.logout(username)
-            print("Logged out.")
-            break
+            try:
+                login_service.logout(username)
+                print("Logged out.")
+            except Exception as e:
+                print(f"Error during logout: {e}")
+            return
         else:
             print("Invalid choice.")
 
-def start_multiplayer_game(game_service, username):
+def start_multiplayer_game(login_service, game_service, username, session_id):
     print("\nStarting multiplayer game...")
     try:
         # Join or create a lobby
@@ -104,6 +135,18 @@ def start_multiplayer_game(game_service, username):
         game_started = False
         
         while time.time() - start_time < waiting_time:
+            try:
+                if not login_service.validateSession(username, session_id):
+                    print("\n\n[SESSION INVALIDATED] Your session has been terminated by another login.")
+                    print("Returning to main menu...")
+                    time.sleep(2)
+                    return
+            except Exception:
+                print("\n\n[ERROR] Connection to server lost.")
+                print("Returning to main menu...")
+                time.sleep(2)
+                return
+
             lobby_state_json = game_service.getMultiplayerLobbyState(username)
             lobby_state = json.loads(lobby_state_json)
             
@@ -134,7 +177,7 @@ def start_multiplayer_game(game_service, username):
                 return
         
         # Game has started, play multiplayer game
-        play_multiplayer_game(game_service, username)
+        play_multiplayer_game(login_service, game_service, username, session_id)
         
     except Exception as e:
         print(f"Error in multiplayer game: {e}")
@@ -146,11 +189,23 @@ def start_multiplayer_game(game_service, username):
         except:
             pass
 
-def play_multiplayer_game(game_service, username):
+def play_multiplayer_game(login_service, game_service, username, session_id):
     print("\nMultiplayer game started!")
     
     try:
         while True:
+            try:
+                if not login_service.validateSession(username, session_id):
+                    print("\n\n[SESSION INVALIDATED] Your session has been terminated by another login.")
+                    print("Returning to main menu...")
+                    time.sleep(2)
+                    return
+            except Exception:
+                print("\n\n[ERROR] Connection to server lost.")
+                print("Returning to main menu...")
+                time.sleep(2)
+                return
+
             # Get current game state
             lobby_state_json = game_service.getMultiplayerLobbyState(username)
             lobby_state = json.loads(lobby_state_json)
@@ -367,7 +422,7 @@ def view_match_details(game_service, game_id, is_multiplayer=True):
     except Exception as e:
         print(f"Error retrieving match details: {e}")
 
-def start_game(game_service, username):
+def start_game(login_service, game_service, username, session_id):
     print("\nRequesting a match...")
     masked_word = game_service.startGame(username)
     debug_print(f"Initial masked_word: {masked_word}")
@@ -426,16 +481,19 @@ def start_game(game_service, username):
         print(" " * 30, end='\r')  # Clear the line
         
         print("Game started! Let's play Hangman.")
-        play_game_session(game_service, username)
+        play_game_session(login_service, game_service, username, session_id)
     else:
         debug_print(f"Invalid masked word received: {masked_word}")
         print("Error starting game. Please try again.")
         game_service.endGameSession(username)
 
-def play_game_session(game_service, username):
+def play_game_session(login_service, game_service, username, session_id):
     # Main game session loop (best of 3)
     while True:
-        round_result = play_round(game_service, username)
+        round_result = play_round(login_service, game_service, username, session_id)
+        if round_result == "SESSION_INVALID":
+            return
+
         # After each round, show round winner and session result
         state = game_service.getGameState(username)
         debug_print(f"After round - state: roundWinner={state.roundWinner}, sessionResult={state.sessionResult}")
@@ -469,9 +527,21 @@ def play_game_session(game_service, username):
             
     print("Returning to main menu.")
 
-def play_round(game_service, username):
+def play_round(login_service, game_service, username, session_id):
     # Play a single round
     while True:
+        try:
+            if not login_service.validateSession(username, session_id):
+                print("\n\n[SESSION INVALIDATED] Your session has been terminated by another login.")
+                print("Returning to main menu...")
+                time.sleep(2)
+                return "SESSION_INVALID"
+        except Exception:
+            print("\n\n[ERROR] Connection to server lost.")
+            print("Returning to main menu...")
+            time.sleep(2)
+            return "SESSION_INVALID"
+
         state = game_service.getGameState(username)
         masked_word = state.maskedWord
         incorrect = state.incorrectGuesses
@@ -529,7 +599,7 @@ def play_round(game_service, username):
             print("\nRound over! Too many incorrect guesses.")
             return
 
-def login_or_create(game_service):
+def login_or_create(login_service):
     while True:
         print("\n1. Login\n2. Create Account\n3. Exit")
         choice = input("Select an option: ").strip()
@@ -537,13 +607,28 @@ def login_or_create(game_service):
             username = input("Username: ").strip()
             password = input("Password: ").strip()
             try:
-                if game_service.login(username, password):
+                # Use the new session-based login
+                response = login_service.loginWithSession(username, password)
+                if response.success:
                     print("Login successful!")
-                    return username
+                    return username, response.sessionId
                 else:
                     print("Login failed. Check your credentials.")
-            except GameModule.AlreadyLoggedInException as e:
-                print("Error:", e.message)
+            except LoginModule.AlreadyLoggedInException as e:
+                print(f"Error: {e.message}")
+                force_logout = input("This account is already logged in. Force logout? (y/n): ").strip().lower()
+                if force_logout == 'y':
+                    try:
+                        # The server logic for loginWithSession should handle forcing the login
+                        response = login_service.loginWithSession(username, password)
+                        if response.success:
+                            print("Forced login successful!")
+                            return username, response.sessionId
+                        else:
+                            print("Force login failed.")
+                    except Exception as force_e:
+                        print(f"An error occurred during force login: {force_e}")
+
         elif choice == '2':
             while True:
                 username = input("Choose a username: ").strip()
@@ -557,7 +642,7 @@ def login_or_create(game_service):
                     continue
                 
                 # Try to create the account
-                if game_service.createPlayer(username, password):
+                if login_service.createPlayer(username, password):
                     print("Account created! You can now log in.")
                     break
                 else:
@@ -566,16 +651,21 @@ def login_or_create(game_service):
                     if retry != 'y':
                         break
         elif choice == '3':
-            sys.exit(0)
+            return None, None
         else:
             print("Invalid choice.")
 
 def main():
     print("Python CORBA Hangman Client")
     try:
-        game_service = get_game_service()
-        username = login_or_create(game_service)
-        main_menu(game_service, username)
+        login_service, game_service = get_services()
+        while True:
+            username, session_id = login_or_create(login_service)
+            if username and session_id:
+                main_menu(login_service, game_service, username, session_id)
+            else:
+                print("Exiting client.")
+                break
     except Exception as e:
         print("An error occurred:")
         traceback.print_exc()

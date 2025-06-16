@@ -428,25 +428,23 @@ public class HomeViewController {
         queuePoller.play();
 
         // Cancel button logic
-        queueStatusPane.getCancelButton().setOnAction(e -> cancelQueue());
+        queueStatusPane.getCancelButton().setOnAction(e -> cancelQueue(true));
     }
 
-    private void cancelQueue() {
+    private void cancelQueue(boolean notifyServer) {
         isQueueing = false;
         if (queuePoller != null) queuePoller.stop();
         queueStatusContainer.getChildren().clear();
         setMenuButtonsDisabled(false);
-        
-        // Notify server that player is leaving the lobby
-        if (multiplayerModel != null && username != null) {
+
+        if (notifyServer && multiplayerModel != null && username != null) {
             try {
                 multiplayerModel.getGameService().cleanupPlayerSession(username);
             } catch (Exception ex) {
                 System.err.println("Error trying to leave lobby: " + ex.getMessage());
-                // Optionally show an error to the user, e.g., using an Alert
             }
         }
-        multiplayerModel = null; // Release model
+        multiplayerModel = null;
     }
 
     private void setMenuButtonsDisabled(boolean disabled) {
@@ -489,7 +487,7 @@ public class HomeViewController {
                     matchFoundDialogShown = true; // Prevent repeated dialogs
                     if (queuePoller != null) queuePoller.stop();
                     showNoMatchFoundDialog();
-                    cancelQueue(); // Clean up queue state
+                    cancelQueue(false); // Clean up queue state
                 }
             }
             // If lobby is gone or NOMATCH, and we haven't already handled it
@@ -497,7 +495,7 @@ public class HomeViewController {
                  matchFoundDialogShown = true; // Prevent repeated dialogs
                  if (queuePoller != null) queuePoller.stop();
                  showNoMatchFoundDialog();
-                 cancelQueue(); // Clean up queue state
+                 cancelQueue(false); // Clean up queue state
             }
         });
     }
@@ -558,7 +556,7 @@ public class HomeViewController {
             } else {
                 dialog.close();
                 startMultiplayerGameWindow();
-                cancelQueue(); // Clean up HomeView queue UI elements
+                cancelQueue(false); // Only clean UI; keep lobby intact for active game
             }
         }));
         countdownTimeline.setCycleCount(5);
@@ -623,7 +621,7 @@ public class HomeViewController {
     @FXML
     private void handleLogout() {
         if (isQueueing) {
-            cancelQueue(); // Ensure queue is cancelled if logging out while queueing
+            cancelQueue(true); // Ensure queue is cancelled if logging out while queueing
         }
         logout();
     }

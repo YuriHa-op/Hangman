@@ -250,32 +250,49 @@ class MainWindow(QMainWindow):
         # Show the new view
         self.stacked_widget.setCurrentWidget(new_view)
         
+        # Set background for specific views
+        background_views = ["MultiplayerGame", "MultiplayerQueue"]
+        if view_name in background_views:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+            image_path = os.path.join(base_path, 'views', 'assets', 'img.png')
+            self.set_window_background(image_path)
+        else:
+            self.set_window_background() # Clear background
+
         # Handle window size based on view
         try:
-            # Preserve the window size for non-login views
-            if view_name != "Login":
-                # Remember the current size for non-login views
-                if hasattr(self, '_last_window_size') and self._last_window_size:
-                    # Restore the last window size
-                    self.resize(self._last_window_size)
-                    # Allow resizing
-                    self.setMinimumSize(0, 0)
-                    self.setMaximumSize(16777215, 16777215)
-                else:
-                    # Set a default size if no previous size
-                    self.resize(800, 600)
-            else:
-                # For login view, store current size if not login
-                if old_view_name and old_view_name != "Login":
+            fixed_size_views = {
+                "Login": QSize(450, 550),
+                "SinglePlayer1v1Game": QSize(900, 950),
+                "MultiplayerGame": QSize(900, 950),
+                "Leaderboard": QSize(900, 950),
+                "MatchHistory": QSize(900, 950),
+            }
+
+            if view_name in fixed_size_views:
+                # Store current size if we are moving from a resizable view
+                if old_view_name and old_view_name not in fixed_size_views:
                     self._last_window_size = self.size()
+
+                size = fixed_size_views[view_name]
+                if view_name == "Login":
+                    login_size = new_view.sizeHint()
+                    if login_size.isValid():
+                        size = login_size
+                self.setFixedSize(size)
+            else:
+                # Resizable view
+                if old_view_name and old_view_name in fixed_size_views:
+                    # Restore previous size if we came from a fixed size view
+                    if hasattr(self, '_last_window_size') and self._last_window_size:
+                        self.resize(self._last_window_size)
+                    else:
+                        self.resize(900, 600) # Default resizable size
                 
-                # Set fixed size for login view
-                login_size = new_view.sizeHint()
-                if login_size.isValid():
-                    self.setFixedSize(login_size)
-                else:
-                    # Fallback size for login
-                    self.setFixedSize(450, 550)
+                # Make sure window is resizable
+                self.setMinimumSize(900, 600)
+                self.setMaximumSize(16777215, 16777215)
+
         except Exception as e:
             print(f"Error handling window size: {e}")
             import traceback

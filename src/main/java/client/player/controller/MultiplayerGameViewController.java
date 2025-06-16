@@ -133,6 +133,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         // model.startGame(); // DO NOT start game again, HomeViewController already did.
         // Game is already started by HomeViewController, just start polling.
         // Instead of starting polling immediately, show match found dialog, then signal ready, then start polling
+        model.playerReadyForFirstRound();
         showMatchFoundDialogAndSignalReady();
     }
 
@@ -142,7 +143,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         // For now, simulate with Platform.runLater (replace with actual dialog logic)
         javafx.application.Platform.runLater(() -> {
             // TODO: Replace with actual dialog and animation logic, then call this after they finish
-            model.playerReadyForFirstRound();
             if (lobbyPoller != null) {
                 lobbyPoller.play();
             }
