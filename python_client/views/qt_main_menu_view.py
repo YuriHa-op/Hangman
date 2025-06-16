@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QPushButton, QLabel, QVBoxLayout, QGraphicsView, QGraphicsScene, QGridLayout
+from PyQt5.QtWidgets import QWidget, QPushButton, QLabel, QVBoxLayout, QGraphicsView, QGraphicsScene, QGridLayout, QDialog
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPixmap, QFontDatabase, QPainter, QTransform, QIcon
 from PyQt5 import uic
@@ -123,5 +123,43 @@ class QtMainMenuView(QWidget):
         super().paintEvent(event)
 
     def set_welcome_message(self, username):
-        # Placeholder for future use, e.g., a QLabel to display "Welcome, [username]!"
-        pass 
+        # Set welcome message in the UI
+        if hasattr(self, 'welcome_label'):
+            self.welcome_label.setText(f"Welcome, {username}!")
+        
+    def show_session_invalidated_dialog(self, reason=""):
+        """Show a dialog when session is invalidated by another login"""
+        print("Showing session invalidated dialog in MainMenu view")
+        try:
+            # Force the application to process events before showing the dialog
+            from PyQt5.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+            # Import needed classes
+            from .qt_login_view import SessionInvalidatedDialog
+            from PyQt5.QtWidgets import QDialog
+            from PyQt5.QtCore import Qt
+            
+            # Create and show the dialog
+            dialog = SessionInvalidatedDialog(self, reason)
+            
+            # Make sure the dialog is shown on top
+            dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
+            dialog.setWindowModality(Qt.ApplicationModal)
+            
+            print("Session invalidated dialog created in MainMenu view, about to show")
+            
+            # Show the dialog and wait for it to close
+            result = dialog.exec_()
+            
+            print("Session invalidated dialog closed with result:", result)
+            
+            # Force the application to process events again
+            QApplication.processEvents()
+            
+            return result == QDialog.Accepted
+        except Exception as e:
+            print(f"Error showing session invalidated dialog: {e}")
+            import traceback
+            traceback.print_exc()
+            return False 

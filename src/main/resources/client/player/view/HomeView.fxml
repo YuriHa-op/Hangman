@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.geometry.Pos?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
@@ -22,6 +23,7 @@
             <StackPane fx:id="queueStatusContainer" />
             <Text text="WHAT'S THE WORD?" styleClass="title-text"/>
             <Text fx:id="splashText" text="9491-Team02_FinProject" styleClass="splash-text"/>
+            <Label fx:id="welcomeLabel" text="Welcome, Player!" styleClass="welcome-text"/>
             <padding>
                 <Insets top="10"/>
             </padding>

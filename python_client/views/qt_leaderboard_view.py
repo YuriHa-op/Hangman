@@ -26,7 +26,6 @@ class QtLeaderboardView(QWidget):
         if font_id != -1:
             font_families = QFontDatabase.applicationFontFamilies(font_id)
             if font_families:
-                # This is for debugging, to confirm the font family name
                 print(f"Successfully loaded font: '{font_families[0]}'")
         else:
             print("Error: Could not load font from path.")

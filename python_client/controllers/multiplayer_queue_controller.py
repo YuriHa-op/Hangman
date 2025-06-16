@@ -68,5 +68,4 @@ class MultiplayerQueueController(BaseController):
         # NOTE: Server side doesn't have a clean "leave lobby" method.
         # The player will remain in the lobby until it starts or times out.
         # If they rejoin, the server should correctly place them back.
-        # A better implementation would have an explicit leaveLobby call.
         self.view.main_window.show_view("MainMenu") 

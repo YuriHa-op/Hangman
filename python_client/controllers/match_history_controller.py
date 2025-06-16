@@ -1,5 +1,5 @@
 from .base_controller import BaseController
-# from ..views.match_history_view import MatchHistoryView # Old Tkinter import
+
 
 class MatchHistoryController(BaseController):
     def __init__(self, model, view):
@@ -81,5 +81,5 @@ class MatchHistoryController(BaseController):
             history_view.show_details_popup(details_json)
         except Exception as e:
             print(f"Error loading {mode} match details for game_id {game_id}: {e}")
-            # Optionally show error in view or popup
+            # show error in view or popup
             history_view.show_details_popup('{ "error": "Could not load details." }') 

@@ -11,6 +11,14 @@
     -fx-translate-y: 5px;
 }
 
+.welcome-text {
+    -fx-font-family: 'Minecraftia';
+    -fx-font-size: 16px;
+    -fx-text-fill: #55FF55;
+    -fx-effect: dropshadow(gaussian, black, 2, 0.5, 0, 0);
+    -fx-padding: 5px 0;
+}
+
 .menu-button {
     -fx-font-family: 'Minecraftia';
     -fx-font-size: 16px;

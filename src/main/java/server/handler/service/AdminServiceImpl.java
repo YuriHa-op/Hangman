@@ -13,7 +13,7 @@ import server.handler.core.PlayerManager;
 import server.handler.core.WordManager;
 
 public class AdminServiceImpl extends AdminServicePOA {
-    private final WordManager wordManager;
+   private final WordManager wordManager;
     private final PlayerManager playerManager;
     private Consumer<String> logCallback;
     private final MatchResultDAO matchResultDAO;
@@ -26,7 +26,7 @@ public class AdminServiceImpl extends AdminServicePOA {
         this.playerManager = new PlayerManager();
         this.matchResultDAO = new MatchResultDAO(
             "jdbc:mysql://localhost:3306/game",
-            "root",
+           "root",
             ""
         );
         this.singlePlayerMatchResultDAO = new SinglePlayerMatchResultDAO(
@@ -52,7 +52,7 @@ public class AdminServiceImpl extends AdminServicePOA {
      * Sets the paused state of this service.
      * When paused, the service will reject new admin operations
      * but maintain existing ones.
-     * 
+     *
      * @param paused true to pause, false to resume
      */
     public void setPaused(boolean paused) {
@@ -64,7 +64,7 @@ public class AdminServiceImpl extends AdminServicePOA {
 
     /**
      * Checks if the service is currently paused.
-     * 
+     *
      * @return true if paused, false otherwise
      */
     public boolean isPaused() {
@@ -74,31 +74,31 @@ public class AdminServiceImpl extends AdminServicePOA {
     // Player Management Methods
     @Override
     public Bool createPlayer(String username, String password) {
-        return playerManager.createPlayer(username, password) == GameModule.Bool.BOOL_TRUE ? 
+        return playerManager.createPlayer(username, password) == LoginModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
     public Bool deletePlayer(String username) {
-        return playerManager.deletePlayer(username) == GameModule.Bool.BOOL_TRUE ? 
+        return playerManager.deletePlayer(username) == LoginModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
     public Bool updatePlayerPassword(String username, String newPassword) {
-        return playerManager.updatePlayerPassword(username, newPassword) == GameModule.Bool.BOOL_TRUE ? 
+        return playerManager.updatePlayerPassword(username, newPassword) == LoginModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
     public Bool updatePlayerUsername(String username, String newUsername) {
-        return playerManager.updatePlayerUsername(username, newUsername) == GameModule.Bool.BOOL_TRUE ? 
+        return playerManager.updatePlayerUsername(username, newUsername) == LoginModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
     public Bool updatePlayerWins(String username, int wins) {
-        return playerManager.updatePlayerWins(username, wins) == GameModule.Bool.BOOL_TRUE ? 
+        return playerManager.updatePlayerWins(username, wins) == LoginModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
@@ -110,26 +110,26 @@ public class AdminServiceImpl extends AdminServicePOA {
     // System Settings
     @Override
     public Bool updateSettings(int waitingTime, int roundTime) {
-        return playerManager.updateSettings(waitingTime, roundTime) == GameModule.Bool.BOOL_TRUE ? 
+        return playerManager.updateSettings(waitingTime, roundTime) == LoginModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     // Word Management Methods
     @Override
     public Bool addWord(String word) {
-        return wordManager.addWord(word) == GameModule.Bool.BOOL_TRUE ? 
+        return wordManager.addWord(word) == GameModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
     public Bool updateWord(String oldWord, String newWord) {
-        return wordManager.updateWord(oldWord, newWord) == GameModule.Bool.BOOL_TRUE ? 
+        return wordManager.updateWord(oldWord, newWord) == GameModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
     @Override
     public Bool deleteWord(String word) {
-        return wordManager.deleteWord(word) == GameModule.Bool.BOOL_TRUE ? 
+        return wordManager.deleteWord(word) == GameModule.Bool.BOOL_TRUE ?
                 Bool.BOOL_TRUE : Bool.BOOL_FALSE;
     }
 
@@ -191,4 +191,4 @@ public class AdminServiceImpl extends AdminServicePOA {
         server.dto.SPSinglePlayerGameDetailsDTO details = singlePlayerMatchResultDAO.getGameDetails(gameId);
         return gson.toJson(details);
     }
-} 
+}

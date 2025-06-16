@@ -36,8 +36,8 @@ class SinglePlayerGameController(BaseController):
         self.attempted_letters_current_round = set()
         self.current_actual_word_revealed = "" # Store the actual word when server reveals it
         self.full_round_time = 30 # Default, should be fetched (e.g., from GameStateDTO.roundTime if available or fixed config)
-        self.total_rounds = 3 # Assuming a best of 3, from Tkinter version's "Score: X/3"
-        self.max_incorrect_guesses = 5 # As per Tkinter view
+        self.total_rounds = 3
+        self.max_incorrect_guesses = 5
         self.opponent_score = 0
 
     def on_show(self):
@@ -184,7 +184,7 @@ class SinglePlayerGameController(BaseController):
             # The dialog is shown in the main thread via the signal.
             # The dialog's callback (_signal_dialog_event_from_main_thread) will set this event.
             print("[SP1v1Controller] Worker thread waiting for match_found_dialog completion...")
-            dialog_completed_in_time = self.dialog_completion_event.wait(timeout=10.0) # e.g., 10s timeout
+            dialog_completed_in_time = self.dialog_completion_event.wait(timeout=10.0)
             current_event = self.dialog_completion_event # Store before clearing
             self.dialog_completion_event = None # Clear the event for next use
 
@@ -512,8 +512,6 @@ class SinglePlayerGameController(BaseController):
             self.view.feedback_guess(letter_guessed.upper(), is_correct)
             
             # Optionally, trigger a faster poll or wait for the natural poll cycle
-            # For quicker feedback beyond button color, could fetch state again here, but might be complex.
-            # Polling loop will refresh word, score, etc.
 
         except Exception as e:
             print(f"[SP1v1Controller] Error sending guess '{letter_lower}': {e}")

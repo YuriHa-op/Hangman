@@ -1,5 +1,4 @@
 from .base_controller import BaseController
-# from ..views.leaderboard_view import LeaderboardView # Old Tkinter import
 
 class LeaderboardController(BaseController):
     def __init__(self, model, view):
@@ -13,7 +12,7 @@ class LeaderboardController(BaseController):
 
     def load_leaderboard_data(self):
         try:
-            # Assuming get_leaderboard_entries returns a list of objects 
+            # get_leaderboard_entries returns a list of objects
             # with 'username' and 'wins' attributes, as per GameModel.
             entries = self.model.get_leaderboard_entries()
             if entries is not None:
@@ -25,5 +24,3 @@ class LeaderboardController(BaseController):
             self.view.show_error(f"Error: {e}")
 
     # go_back_to_main_menu() is inherited from BaseController
-    # def go_back_to_main_menu(self):
-    #     self.view.main_window.show_view("MainMenu") 

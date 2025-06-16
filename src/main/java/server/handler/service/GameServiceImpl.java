@@ -32,7 +32,7 @@ public class GameServiceImpl extends GameServicePOA {
     private final SinglePlayerMatchResultDAO singlePlayerMatchResultDAO;
     private final Gson gson = new Gson();
     private boolean isPaused = false;
-
+    
     // Track previous counts to avoid redundant logging
     private int previousSinglePlayerCount = 0;
     private int previousMultiPlayerCount = 0;
@@ -208,21 +208,6 @@ public class GameServiceImpl extends GameServicePOA {
     }
 
     @Override
-    public Bool login(String username, String password) throws GameModule.AlreadyLoggedInException {
-        return playerManager.login(username, password);
-    }
-
-    @Override
-    public void logout(String username) {
-        playerManager.logout(username);
-    }
-
-    @Override
-    public Bool createPlayer(String username, String password) {
-        return playerManager.createPlayer(username, password);
-    }
-
-    @Override
     public Bool sendGuess(String username, char letter) {
         return gameManager.sendGuess(username, letter);
     }
@@ -342,7 +327,24 @@ public class GameServiceImpl extends GameServicePOA {
 
     @Override
     public void cleanupPlayerSession(String username) {
+        // Clean up any active games for this player
+        try {
+            if (multiplayerGameManager.isPlayerInMultiplayer(username)) {
+                multiplayerGameManager.leaveMultiplayerGame(username);
+                if (logCallback != null) {
+                    logCallback.accept("Cleaned up multiplayer game session for " + username);
+                }
+            }
+            
         gameManager.cleanupPlayerSession(username);
+            if (logCallback != null) {
+                logCallback.accept("Cleaned up single player session for " + username);
+            }
+        } catch (Exception e) {
+            if (logCallback != null) {
+                logCallback.accept("Error during cleanup for " + username + ": " + e.getMessage());
+            }
+        }
     }
 
     public void initMultiplayerManager(int queueTimeSeconds) {

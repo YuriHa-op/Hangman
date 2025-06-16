@@ -49,15 +49,15 @@ class QtMultiplayerGameView(QWidget):
         if self.main_window:
             self.main_window.resize(950, 950)
             
-        # Adjust main layout to give more space for panels
+        # more space for panels
         main_layout = self.findChild(QHBoxLayout, 'main_layout')
         if main_layout:
             main_layout.setContentsMargins(10, 10, 10, 10)
             main_layout.setSpacing(15)  # Spacing between left and right panel
             
-            # Make the left panel take more space than the right panel
-            main_layout.setStretch(0, 7)  # Left panel gets 70% of space
-            main_layout.setStretch(1, 3)  # Right panel gets 30% of space
+            #  more space than the right panel
+            main_layout.setStretch(0, 7)
+            main_layout.setStretch(1, 3)
 
         # Load QSS file
         self.load_style_sheet()
@@ -214,7 +214,7 @@ class QtMultiplayerGameView(QWidget):
         icon_path = os.path.join(base_path, 'views/assets', 'leave.png')
         if os.path.exists(icon_path):
             self.leave_button.setIcon(QIcon(icon_path))
-            # Text is already set to empty in the .ui file, but we can ensure it here.
+            # Text is already set to empty in the .ui file, ensure it here.
             self.leave_button.setText("")
             self.leave_button.setToolTip("Leave Game")
         else:
@@ -228,7 +228,7 @@ class QtMultiplayerGameView(QWidget):
     def make_guess(self, guess):
         if self.controller:
             self.controller.make_guess(guess)
-            # No need for additional visual feedback here as the keyboard handles it
+            # No need for additional visual feedback  the keyboard handles it
             letter_upper = guess.upper()
             self.virtual_keyboard.set_button_pending(letter_upper)
 
@@ -422,12 +422,7 @@ class QtMultiplayerGameView(QWidget):
         
         # Check for game winner first - this affects round transition behavior
         game_winner = game_data.get("gameWinner", "")
-        
-        # FIXED ROUND TRANSITION LOGIC:
-        # 1. Don't show transition animation when the view first loads (previous_round is None)
-        # 2. Only show transition for actual round changes (not round 0 to 1)
-        # 3. Don't show transition if there's a game winner
-        # 4. Make sure previous_round is properly initialized
+
         
         # Initialize previous_round if it's None
         if self.previous_round is None:

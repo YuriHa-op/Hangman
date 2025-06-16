@@ -1,0 +1,30 @@
+module LoginModule {
+    exception AlreadyLoggedInException {
+        string message;
+    };
+
+    enum Bool { BOOL_FALSE, BOOL_TRUE };
+
+    struct LoginResponse {
+        Bool success;
+        string sessionId;
+    };
+
+    interface LoginService {
+        LoginResponse loginWithSession(in string username, in string password)
+            raises (AlreadyLoggedInException);
+            
+        Bool login(in string username, in string password)
+            raises (AlreadyLoggedInException);
+
+        void logout(in string username);
+
+        Bool createPlayer(in string username, in string password);
+
+        Bool validateSession(in string username, in string sessionId);
+        
+        Bool checkSessionValid(in string username);
+
+        Bool keepAlive(in string username, in string sessionId);
+    };
+}; 

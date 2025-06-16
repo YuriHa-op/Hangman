@@ -21,8 +21,12 @@ import server.handler.service.GameServiceImpl;
 import server.handler.service.AdminServiceImpl;
 import server.handler.core.WordManager;
 import server.handler.core.PlayerManager;
+import server.handler.core.LoginManager;
 import server.handler.data.MatchResultDAO;
 import server.handler.data.SinglePlayerMatchResultDAO;
+import LoginModule.LoginService;
+import LoginModule.LoginServiceHelper;
+import server.handler.service.LoginServiceImpl;
 
 import java.io.IOException;
 
@@ -31,6 +35,7 @@ public class ServerMain extends Application {
     private POA rootPOA;
     private GameServiceImpl gameService;
     private AdminServiceImpl adminService;
+    private LoginServiceImpl loginService;
     private ServerMainController controller;
     private Thread orbThread;
     private boolean isPaused = false;
@@ -43,6 +48,7 @@ public class ServerMain extends Application {
     // Shared resources
     private WordManager wordManager;
     private PlayerManager playerManager;
+    private LoginManager loginManager;
     private MatchResultDAO matchResultDAO;
     private SinglePlayerMatchResultDAO singlePlayerMatchResultDAO;
 
@@ -182,6 +188,9 @@ public class ServerMain extends Application {
             
             controller.logInfo("Initializing player manager...");
             playerManager = new PlayerManager();
+
+            controller.logInfo("Initializing login manager...");
+            loginManager = new LoginManager();
             
             controller.logInfo("Connecting to database at " + DB_URL);
             matchResultDAO = new MatchResultDAO(DB_URL, DB_USER, DB_PASSWORD);
@@ -213,6 +222,10 @@ public class ServerMain extends Application {
                 singlePlayerMatchResultDAO
             );
             adminService.setLogCallback(controller::logInfo);
+
+            controller.logInfo("Initializing login service...");
+            loginService = new LoginServiceImpl(loginManager);
+            loginService.setLogCallback(controller::logInfo);
             
             controller.logSuccess("Services initialized successfully");
         } catch (Exception e) {
@@ -242,6 +255,14 @@ public class ServerMain extends Application {
             String adminName = "AdminService";
             NameComponent[] adminPath = ncRef.to_name(adminName);
             ncRef.rebind(adminPath, adminHref);
+
+            // Register LoginService
+            controller.logInfo("Registering LoginService...");
+            org.omg.CORBA.Object loginRef = rootPOA.servant_to_reference(loginService);
+            LoginService loginHref = LoginServiceHelper.narrow(loginRef);
+            String loginName = "LoginService";
+            NameComponent[] loginPath = ncRef.to_name(loginName);
+            ncRef.rebind(loginPath, loginHref);
             
             controller.logSuccess("All services registered successfully");
         } catch (org.omg.CORBA.ORBPackage.InvalidName e) {
@@ -269,32 +290,26 @@ public class ServerMain extends Application {
     }
 
     public void stopServer() {
-        try {
-            controller.logInfo("Shutting down server...");
-            
-            // Reset game and player stats before stopping
-            if (gameService != null) {
-                gameService.resetAllGames();
-            }
-            
-            if (playerManager != null) {
-                playerManager.logoutAllPlayers();
-            }
-            
-            if (orb != null) {
-                orb.shutdown(false); // false means don't wait
-                
-                // Wait for the ORB thread to terminate
-                if (orbThread != null && orbThread.isAlive()) {
-                    orbThread.interrupt();
-                    orbThread.join(3000); // Wait up to 3 seconds
+        if (orb != null) {
+            try {
+                // Log out all players before shutting down
+                if (loginManager != null) {
+                    loginManager.logoutAllPlayers();
+                    controller.logInfo("All players logged out successfully");
                 }
+                
+                // Shutdown the ORB
+                orb.shutdown(true);
+                
+                // Wait for the thread to complete
+                if (orbThread != null) {
+                    orbThread.join();
+                }
+                
+                controller.logSuccess("Server stopped successfully");
+            } catch (Exception e) {
+                controller.logError("Error stopping server: " + e.getMessage());
             }
-            controller.logSuccess("Server stopped successfully");
-        } catch (Exception e) {
-            controller.logError("Error stopping server: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Failed to stop server", e);
         }
     }
 
@@ -318,19 +333,27 @@ public class ServerMain extends Application {
         }
         
         if (orb != null) {
+            // First, log out all players gracefully
             try {
-                if (gameService != null) {
-                    gameService.resetAllGames();
+                if (loginManager != null) {
+                    loginManager.logoutAllPlayers();
+                    controller.logInfo("All players have been logged out.");
                 }
-                
-                if (playerManager != null) {
-                    playerManager.logoutAllPlayers();
-                }
-                
-                orb.shutdown(true);
-                System.out.println("Server shut down successfully");
             } catch (Exception e) {
-                System.err.println("Error shutting down server: " + e.getMessage());
+                controller.logError("Error during player logout: " + e.getMessage());
+            }
+
+            // Then, shut down the ORB
+            orb.shutdown(true);
+            controller.logInfo("ORB has been shut down.");
+            
+            // Wait for the ORB thread to finish
+            if (orbThread != null) {
+                try {
+                    orbThread.join();
+                } catch (InterruptedException e) {
+                    controller.logError("Interrupted while waiting for ORB thread to finish: " + e.getMessage());
+                }
             }
         }
     }

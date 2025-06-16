@@ -185,10 +185,10 @@ class MultiplayerGameController(BaseController):
 
             # If the round is over with no winner, check if ANYONE finished.
             # If the finish_times map is empty, it means no one successfully
-            # completed the word or exhausted their guesses before a potential
+
             # global timeout. This is the definition of a stall.
             if not finish_times:
-                # Stall condition / AFK check
+                # AFK check
                 conditions_for_afk = (
                     not self.afk_pre_check_timer.isActive() and
                     not self.view.is_afk_dialog_showing()

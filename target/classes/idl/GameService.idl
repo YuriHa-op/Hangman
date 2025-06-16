@@ -1,11 +1,14 @@
 module GameModule {
-    exception AlreadyLoggedInException {
-        string message;
-    };
-
     enum Bool { BOOL_FALSE, BOOL_TRUE };
 
     typedef sequence<string> StringSeq;
+    
+    // Session management response
+    struct LoginResponse {
+        Bool success;
+        string sessionId; // Added to support session tracking
+    };
+    
     //player 1v1
     struct GameStateDTO {
         string maskedWord;
@@ -32,10 +35,6 @@ module GameModule {
 
     interface GameService {
         //player login and 1v1 mode
-        Bool login(in string username, in string password)
-                    raises (AlreadyLoggedInException);
-        void logout(in string username);
-        Bool createPlayer(in string username, in string password);
         string startGame(in string username);
         Bool sendGuess(in string username, in char letter);
         void finishRound(in string username, in long clientRemainingTime, in Bool guessedWord);

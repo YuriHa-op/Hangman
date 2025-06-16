@@ -51,7 +51,7 @@ class ConfettiEffect(QWidget):
             center_x = self.width() / 2
             center_y = self.height() * 0.4  # Position at 40% from top instead of 50%
             
-            # Create particles - increased count from 150 to 300
+
             for _ in range(300):  # More confetti!
                 # Randomize initial position slightly for more natural explosion
                 start_x = center_x + random.uniform(-20, 20)
@@ -125,9 +125,7 @@ class ConfettiEffect(QWidget):
             # Instead of using the static QTimer.singleShot (which keeps a reference to
             # the bound method even if this widget gets deleted), create an *instance*
             # single-shot timer that is a child of this widget. When the widget is
-            # cleaned up this timer will be deleted automatically, preventing the
-            # "wrapped C/C++ object has been deleted" crashes that were still observed
-            # after switching between the 1-v-1 and multiplayer game modes.
+            # cleaned up this timer will be deleted automatically,
 
             self._duration_timer = QTimer(self)
             self._duration_timer.setSingleShot(True)

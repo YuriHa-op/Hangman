@@ -2,12 +2,21 @@ package client.player.model;
 
 import GameModule.GameService;
 import GameModule.GameServiceHelper;
-import GameModule.Bool;
-import GameModule.AlreadyLoggedInException;
+import LoginModule.Bool;
+import LoginModule.LoginResponse;
+import LoginModule.AlreadyLoggedInException;
+import LoginModule.LoginService;
+import LoginModule.LoginServiceHelper;
 import org.omg.CORBA.ORB;
 
 public class LoginModel {
     private GameService gameService;
+    private LoginService loginService;
+    private String sessionId;  // Store the session ID for the logged-in user
+    private String loggedInUser;  // Store the currently logged-in username
+    
+    // Singleton instance
+    private static LoginModel instance;
 
     public LoginModel(ORB orb) {
         try {
@@ -16,35 +25,88 @@ public class LoginModel {
             org.omg.CosNaming.NamingContextExt ncRef = org.omg.CosNaming.NamingContextExtHelper.narrow(objRef);
 
             // Resolve the game service
-            org.omg.CosNaming.NameComponent path[] = ncRef.to_name("GameService");
-            org.omg.CORBA.Object obj = ncRef.resolve(path);
-
-            gameService = GameServiceHelper.narrow(obj);
+            org.omg.CosNaming.NameComponent gamePath[] = ncRef.to_name("GameService");
+            org.omg.CORBA.Object gameObj = ncRef.resolve(gamePath);
+            gameService = GameServiceHelper.narrow(gameObj);
             System.out.println("Successfully connected to GameService");
+
+            // Resolve the login service
+            org.omg.CosNaming.NameComponent loginPath[] = ncRef.to_name("LoginService");
+            org.omg.CORBA.Object loginObj = ncRef.resolve(loginPath);
+            loginService = LoginServiceHelper.narrow(loginObj);
+            System.out.println("Successfully connected to LoginService");
+            
+            // Store the singleton instance
+            instance = this;
         } catch (Exception e) {
             System.err.println("Error connecting to the server: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
+    // Get the singleton instance
+    public static LoginModel getInstance() {
+        return instance;
+    }
+
     public GameService getGameService() {
         return gameService;
     }
 
-    public Bool login(String username, String password) throws GameModule.AlreadyLoggedInException {
+    public LoginService getLoginService() {
+        return loginService;
+    }
+    
+    public String getSessionId() {
+        return sessionId;
+    }
+    
+    public String getLoggedInUser() {
+        return loggedInUser;
+    }
+
+    public Bool login(String username, String password) throws AlreadyLoggedInException {
         try {
-            return gameService.login(username, password);
-        } catch (GameModule.AlreadyLoggedInException e) {
+            // Try to use the new loginWithSession method if available
+            try {
+                LoginResponse response = loginService.loginWithSession(username, password);
+                if (response.success == Bool.BOOL_TRUE) {
+                    this.loggedInUser = username;
+                    this.sessionId = response.sessionId;
+                }
+                return response.success;
+            } catch (org.omg.CORBA.BAD_OPERATION e) {
+                // If the method doesn't exist, fall back to the old method
+                System.out.println("Server doesn't support session-based login, using regular login");
+                Bool result = loginService.login(username, password);
+                if (result == Bool.BOOL_TRUE) {
+                    this.loggedInUser = username;
+                }
+                return result;
+            }
+        } catch (AlreadyLoggedInException e) {
             throw e;
         } catch (Exception e) {
             System.err.println("Error during login: " + e.getMessage());
             throw e;
         }
     }
+    
+    public void logout() {
+        if (loggedInUser != null) {
+            try {
+                loginService.logout(loggedInUser);
+                this.loggedInUser = null;
+                this.sessionId = null;
+            } catch (Exception e) {
+                System.err.println("Error during logout: " + e.getMessage());
+            }
+        }
+    }
 
     public Bool createPlayer(String username, String password) {
         try {
-            return gameService.createPlayer(username, password);
+            return loginService.createPlayer(username, password);
         } catch (Exception e) {
             System.err.println("Error during player creation: " + e.getMessage());
             throw e;

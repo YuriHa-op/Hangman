@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget, QMessageBox
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, pyqtSlot, QTimer
 import sys
 import os
 from models.game_model import GameModel
@@ -215,74 +215,226 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
 
     def show_view(self, view_name):
-        if view_name in self.views:
-            # Clean up any lingering visual effects before switching views
-            self.cleanup_visual_effects()
+        """Show the specified view and handle view transitions"""
+        if view_name not in self.views:
+            print(f"View '{view_name}' not found")
+            return
             
-            if self.current_view_name and self.current_view_name in self.controllers and hasattr(self.controllers[self.current_view_name], 'on_hide'):
-                self.controllers[self.current_view_name].on_hide()
-            
-            # Unset fixed size from previous view (e.g., Login) to allow resizing
-            self.setMinimumSize(0, 0)
-            self.setMaximumSize(16777215, 16777215)
-            
-            # Set background for multiplayer game view
-            if view_name == "MultiplayerGame":
-                base_path = os.path.dirname(os.path.abspath(__file__))
-                image_path = os.path.join(base_path, 'assets', 'img.png')
-                self.set_window_background(image_path)
-            else:
-                self.set_window_background(None) # Remove for other views
-
-            current_widget = self.views[view_name]
-            self.stacked_widget.setCurrentWidget(current_widget)
-            self.current_view_name = view_name
-            
-            # Resize window to fit the new view's size.
-            self.resize(current_widget.size())
-
-            # If the new view is the login view, make the window fixed size again.
-            # The login view itself sets this, but we ensure it here as well for consistency.
-            if view_name == "Login":
-                self.setFixedSize(current_widget.size())
-            
-            if view_name in self.controllers and hasattr(self.controllers[view_name], 'on_show'):
-                self.controllers[view_name].on_show()
-            
-            # Update window title based on view
-            current_widget_title = self.views[view_name].windowTitle()
-            if current_widget_title:
-                self.setWindowTitle(f"Hangman Game - {current_widget_title}")
-            else:
-                self.setWindowTitle(f"Hangman Game - {view_name}")
-        else:
-            print(f"Error: View '{view_name}' not found.")
-            QMessageBox.critical(self, "Navigation Error", f"View '{view_name}' does not exist or is not yet implemented.")
-
-    def logout_user_and_show_login(self):
-        # First, ensure any active game is properly ended if current view is a game view
-        current_game_view_name = "SinglePlayer1v1Game" # Updated name
-        if self.current_view_name == current_game_view_name and current_game_view_name in self.controllers:
-            print(f"MainWindow: Logging out during active {current_game_view_name} game. Attempting to end game.")
-            # Ensure the controller has a method to handle game exit properly
-            if hasattr(self.controllers[current_game_view_name], 'handle_back_to_menu_from_sp_game'):
-                 self.controllers[current_game_view_name].handle_back_to_menu_from_sp_game()
-            elif hasattr(self.controllers[current_game_view_name], 'on_hide'): # Fallback
-                 self.controllers[current_game_view_name].on_hide()
-            # The show_view("Login") call will happen after this, ensuring proper state change.
-        # Add similar checks for multiplayer game if it's active.
-
-        current_user = self.model.get_username()
-        if current_user:
-            self.model.logout()
-            print(f"User '{current_user}' logged out.")
-        else:
-            print("No user was logged in to log out.")
+        # Get the current and new views
+        old_view_name = self.current_view_name
+        new_view = self.views[view_name]
         
-        self.show_view("Login")
-        login_view_widget = self.views.get("Login")
-        if login_view_widget and hasattr(login_view_widget, 'clear_inputs'):
-            login_view_widget.clear_inputs()
+        # Clean up any lingering visual effects before switching views
+        self.cleanup_visual_effects()
+        
+        # If we're showing the login view, reset any session invalidation flag
+        if view_name == 'Login':
+            try:
+                from controllers.base_controller import BaseController
+                if hasattr(BaseController, '_session_invalidation_in_progress'):
+                    BaseController._session_invalidation_in_progress = False
+                    print("Reset session invalidation flag when showing Login view")
+            except Exception as e:
+                print(f"Error resetting session invalidation flag: {e}")
+        
+        # Call on_hide for the current view's controller
+        if old_view_name and old_view_name in self.controllers:
+            try:
+                self.controllers[old_view_name].on_hide()
+            except Exception as e:
+                print(f"Error calling on_hide for {old_view_name}: {e}")
+        
+        # Update current view
+        self.current_view_name = view_name
+        
+        # Show the new view
+        self.stacked_widget.setCurrentWidget(new_view)
+        
+        # Handle window size based on view
+        try:
+            # Preserve the window size for non-login views
+            if view_name != "Login":
+                # Remember the current size for non-login views
+                if hasattr(self, '_last_window_size') and self._last_window_size:
+                    # Restore the last window size
+                    self.resize(self._last_window_size)
+                    # Allow resizing
+                    self.setMinimumSize(0, 0)
+                    self.setMaximumSize(16777215, 16777215)
+                else:
+                    # Set a default size if no previous size
+                    self.resize(800, 600)
+            else:
+                # For login view, store current size if not login
+                if old_view_name and old_view_name != "Login":
+                    self._last_window_size = self.size()
+                
+                # Set fixed size for login view
+                login_size = new_view.sizeHint()
+                if login_size.isValid():
+                    self.setFixedSize(login_size)
+                else:
+                    # Fallback size for login
+                    self.setFixedSize(450, 550)
+        except Exception as e:
+            print(f"Error handling window size: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # Call on_show for the new view's controller
+        if view_name in self.controllers:
+            try:
+                self.controllers[view_name].on_show()
+            except Exception as e:
+                print(f"Error calling on_show for {view_name}: {e}")
+                
+        # Update window title
+        self.setWindowTitle(f"Hangman Game - {view_name}")
+        
+        print(f"Switched to view: {view_name}")
+
+    def logout_user_and_show_login(self, skip_server_logout=False):
+        """Log out current user (optionally skip server-side logout) and show login view"""
+        print("Logging out user and showing login view")
+        
+        try:
+            # Get the current controller
+            current_controller = None
+            try:
+                current_controller = self.controllers[self.current_view_name]
+            except Exception as e:
+                print(f"Error getting current controller: {e}")
+            
+            # End any active game
+            if current_controller and hasattr(current_controller.model, 'end_game_session'):
+                try:
+                    print("Ending active game session")
+                    current_controller.model.end_game_session()
+                except Exception as e:
+                    print(f"Error ending game session: {e}")
+            
+            # Only call server logout if not skipping
+            if (not skip_server_logout) and current_controller and hasattr(current_controller.model, 'logout'):
+                try:
+                    print("Logging out from server")
+                    current_controller.model.logout()
+                except Exception as e:
+                    print(f"Error logging out: {e}")
+            
+            # If skip_server_logout is True, clear local credentials so further session checks won't fire endlessly
+            elif skip_server_logout and current_controller and hasattr(current_controller.model, 'username'):
+                try:
+                    print("Clearing local credentials without server logout")
+                    current_controller.model.username = None
+                    current_controller.model.session_id = None
+                except Exception as e:
+                    print(f"Error clearing credentials: {e}")
+            
+            # Show the login view
+            self.show_view('Login')
+            
+            # Reset the session invalidation flag if it exists in the BaseController class
+            try:
+                from controllers.base_controller import BaseController
+                if hasattr(BaseController, '_session_invalidation_in_progress'):
+                    BaseController._session_invalidation_in_progress = False
+                    print("Session invalidation flag reset")
+            except Exception as e:
+                print(f"Error resetting session invalidation flag: {e}")
+        
+        except Exception as e:
+            print(f"Error in logout_user_and_show_login: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Last resort: just show login view
+            self.show_view('Login')
+
+    @pyqtSlot()
+    def handle_session_invalidated(self):
+        """Handle session invalidation by showing a dialog and redirecting to login"""
+        print("Session invalidated! Handling in MainWindow")
+        
+        try:
+            # Force the application to process events
+            QApplication.processEvents()
+            
+            # Get the current view
+            current_view_name = self.current_view_name
+            print(f"Current view in MainWindow: {current_view_name}")
+            
+            # Flag to track if dialog was shown
+            dialog_shown = False
+            
+            # Try to show dialog from current view
+            if current_view_name and current_view_name in self.views:
+                current_view = self.views[current_view_name]
+                if hasattr(current_view, 'show_session_invalidated_dialog'):
+                    print(f"Showing session invalidated dialog from {current_view_name} view")
+                    try:
+                        current_view.show_session_invalidated_dialog("Your session has been invalidated")
+                        dialog_shown = True
+                        print(f"Dialog shown from {current_view_name} view")
+                    except Exception as e:
+                        print(f"Error showing dialog from current view: {e}")
+                        import traceback
+                        traceback.print_exc()
+            
+            # If dialog wasn't shown from current view, try login view
+            if not dialog_shown and 'Login' in self.views:
+                print("Trying to show dialog from Login view")
+                try:
+                    self.views['Login'].show_session_invalidated_dialog("Your session has been invalidated")
+                    dialog_shown = True
+                    print("Dialog shown from Login view")
+                except Exception as e:
+                    print(f"Error showing dialog from Login view: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # If still no dialog shown, create one directly
+            if not dialog_shown:
+                print("Creating session invalidated dialog directly")
+                try:
+                    from views.qt_login_view import SessionInvalidatedDialog
+                    dialog = SessionInvalidatedDialog(self, "Your session has been invalidated")
+                    dialog.exec_()
+                    print("Direct dialog shown and closed")
+                except Exception as e:
+                    print(f"Error showing direct dialog: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    
+                    # Last resort: QMessageBox
+                    try:
+                        print("Showing QMessageBox as last resort")
+                        from PyQt5.QtWidgets import QMessageBox
+                        msg = QMessageBox(self)
+                        msg.setIcon(QMessageBox.Critical)
+                        msg.setText("Session Invalidated")
+                        msg.setInformativeText("Your session has been invalidated. You will be logged out.")
+                        msg.setWindowTitle("Session Ended")
+                        msg.setStandardButtons(QMessageBox.Ok)
+                        msg.exec_()
+                        print("QMessageBox shown and closed")
+                    except Exception as e2:
+                        print(f"Error showing QMessageBox: {e2}")
+                        traceback.print_exc()
+            
+            # Force events to process again
+            QApplication.processEvents()
+            
+            # Schedule logout after a short delay
+            QTimer.singleShot(1000, lambda: self.logout_user_and_show_login(skip_server_logout=True))
+            print("Scheduled logout after dialog")
+            
+        except Exception as e:
+            print(f"Error in handle_session_invalidated: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Fallback: just logout
+            self.logout_user_and_show_login()
 
     def cleanup_on_exit(self):
         print("Application is about to quit. Performing cleanup...")

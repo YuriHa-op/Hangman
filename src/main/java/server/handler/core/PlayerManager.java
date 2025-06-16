@@ -3,7 +3,7 @@ package server.handler.core;
 import java.sql.*;
 import client.admin.model.SystemStatisticsDTO;
 import client.admin.model.LeaderboardEntryDTO;
-import GameModule.Bool;
+import LoginModule.Bool;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,68 +12,9 @@ public class PlayerManager {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/game";
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "";
-
+    
     private Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-    }
-
-    public Bool login(String username, String password) throws GameModule.AlreadyLoggedInException {
-        Connection conn = null;
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            conn = getConnection();
-            ps = conn.prepareStatement("SELECT * FROM players WHERE username = ? AND password = ?");
-            ps.setString(1, username);
-            ps.setString(2, password);
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                if (rs.getBoolean("currently_logged_in")) {
-                    throw new GameModule.AlreadyLoggedInException("User already logged in");
-                }
-                try (PreparedStatement updatePs = conn.prepareStatement(
-                        "UPDATE players SET currently_logged_in = 1 WHERE username = ?")) {
-                    updatePs.setString(1, username);
-                    updatePs.executeUpdate();
-                }
-                return Bool.BOOL_TRUE;
-            }
-            return Bool.BOOL_FALSE;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return Bool.BOOL_FALSE;
-        } finally {
-            try { if (rs != null) rs.close(); } catch (Exception ignored) {}
-            try { if (ps != null) ps.close(); } catch (Exception ignored) {}
-            try { if (conn != null) conn.close(); } catch (Exception ignored) {}
-        }
-    }
-
-    public void logout(String username) {
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "UPDATE players SET currently_logged_in = 0 WHERE username = ?")) {
-            ps.setString(1, username);
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Logs out all currently logged in players.
-     * Used during server shutdown or restart.
-     */
-    public void logoutAllPlayers() {
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                     "UPDATE players SET currently_logged_in = 0 WHERE currently_logged_in = 1")) {
-            int count = ps.executeUpdate();
-            System.out.println("Logged out " + count + " active players");
-        } catch (SQLException e) {
-            System.err.println("Database error logging out all players: " + e.getMessage());
-            e.printStackTrace();
-        }
     }
 
     public Bool createPlayer(String username, String password) {
