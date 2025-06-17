@@ -62,8 +62,8 @@ public class MultiplayerGameManager {
     
         // Add the player to the selected or new lobby
         if (lobby.addPlayer(username)) {
-            // If the lobby is now ready with enough players, start it immediately
-            if (lobby.isReady()) {
+            // If the lobby is now full, start it immediately (otherwise wait for queue timeout)
+            if (lobby.isFull()) {
                 startLobbyIfReady(lobby.getLobbyId());
             }
             return lobby;
