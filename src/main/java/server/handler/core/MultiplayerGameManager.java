@@ -12,7 +12,8 @@ public class MultiplayerGameManager {
     private final Map<String, MultiplayerGameState> activeGames = new ConcurrentHashMap<>();
     private final int minPlayers;
     private final int maxPlayers;
-    private final int queueTimeSeconds;
+    // Queue time (seconds) is mutable because settings can change at runtime
+    private volatile int queueTimeSeconds;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final WordManager wordManager;
     private final PlayerManager playerManager;
@@ -33,6 +34,7 @@ public class MultiplayerGameManager {
         this.playerManager = playerManager;
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
+        // Use initial value but allow refresh later
         this.queueTimeSeconds = queueTimeSeconds;
     }
 
@@ -49,14 +51,16 @@ public class MultiplayerGameManager {
             lobby = new MultiplayerLobby(lobbyId, minPlayers, maxPlayers);
             activeLobbies.put(lobbyId, lobby);
             
-            // Schedule lobby start after queue time, this now acts as a timeout
+            // Refresh queue time in case settings changed
+            this.queueTimeSeconds = playerManager.getWaitingTime();
+            // Schedule lobby start after the (possibly updated) queue time; this now acts as a timeout
             ScheduledFuture<?> future = scheduler.schedule(() -> {
                 try {
                     startLobbyIfReady(lobbyId);
                 } catch (Throwable t) {
                     logMessage("ERROR in scheduled startLobbyIfReady for lobby " + lobbyId + ": " + t.getMessage());
                 }
-            }, queueTimeSeconds, TimeUnit.SECONDS);
+            }, this.queueTimeSeconds, TimeUnit.SECONDS);
             lobbyStartTimers.put(lobbyId, future);
         }
     
@@ -134,7 +138,9 @@ public class MultiplayerGameManager {
     }
 
     public int getQueueTimeSeconds() {
-        return queueTimeSeconds;
+        // Always return latest value from settings table via PlayerManager
+        this.queueTimeSeconds = playerManager.getWaitingTime();
+        return this.queueTimeSeconds;
     }
 
     public MultiplayerGameState getGameState(String username) {
