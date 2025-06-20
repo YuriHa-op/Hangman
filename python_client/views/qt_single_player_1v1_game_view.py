@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QMessageBox, QDialog, QApplication, QProgressBar, QGraphicsDropShadowEffect, QFrame)
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QMessageBox, QDialog, QApplication, QProgressBar, QGraphicsDropShadowEffect, QFrame, QSizePolicy)
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QParallelAnimationGroup, QMargins, QEasingCurve, QPoint, QSize
 from PyQt5.QtGui import QFont, QPainter, QPixmap, QFontDatabase, QColor, QPalette, QBrush, QLinearGradient
 from PyQt5 import uic
@@ -477,7 +477,7 @@ class QtSinglePlayer1v1GameView(QWidget):
         
         # Configure the word container to be smaller
         self.word_container_widget.setFixedHeight(100)  # Set fixed height to match the red area in the image
-        self.word_container_widget.setMaximumWidth(650)  # Limit width
+        self.word_container_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Allow horizontal expansion
         
         # Center the word container
         word_layout = self.word_container_widget.layout()
@@ -492,6 +492,7 @@ class QtSinglePlayer1v1GameView(QWidget):
             color: #FFFFFF;
         """)
         self.word_label.setAlignment(Qt.AlignCenter)  # Ensure text is centered
+        self.word_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)  # Allow text label to expand
         
         # For better centering, make sure the word_label gets enough space in the layout
         if word_layout:
@@ -846,14 +847,42 @@ class QtSinglePlayer1v1GameView(QWidget):
         # Update the last known score
         self._last_player_score = player_wins
             
-        # Word
+        # Word - with adaptive font sizing based on word length
         if masked_word:
             # Use a wider space for better visibility of individual characters
             spaced_word = " ".join(list(masked_word))
             self.word_label.setText(spaced_word)
             
-            # Don't set minimum width as it might be causing crashes
-            # self.word_label.setMinimumWidth(self.word_container_widget.width() * 0.9)
+            # Adaptive font sizing based on word length
+            word_length = len(masked_word.replace(" ", ""))
+            if word_length > 12:
+                # Long word: smaller font and letter spacing
+                font_size = max(18, 32 - (word_length - 12))
+                letter_spacing = max(2, 8 - (word_length - 12) // 2)
+                self.word_label.setStyleSheet(f"""
+                    font-size: {font_size}px; 
+                    font-weight: bold;
+                    letter-spacing: {letter_spacing}px;
+                    color: #FFFFFF;
+                """)
+            elif word_length > 8:
+                # Medium word
+                font_size = 26
+                letter_spacing = 6
+                self.word_label.setStyleSheet(f"""
+                    font-size: {font_size}px; 
+                    font-weight: bold;
+                    letter-spacing: {letter_spacing}px;
+                    color: #FFFFFF;
+                """)
+            else:
+                # Short word: standard size
+                self.word_label.setStyleSheet("""
+                    font-size: 32px; 
+                    font-weight: bold;
+                    letter-spacing: 8px;
+                    color: #FFFFFF;
+                """)
         else:
             self.word_label.setText("")
         
