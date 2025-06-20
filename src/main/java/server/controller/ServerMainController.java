@@ -283,6 +283,40 @@ public class ServerMainController {
         logWithLevel(message, "DEBUG", DEBUG_COLOR);
     }
 
+    /**
+     * Special high-visibility logging for game words
+     */
+    public void logWordInfo(String message) {
+        // Create a distinct style for word logs
+        Platform.runLater(() -> {
+            // Create timestamp
+            Text timestamp = new Text(
+                java.time.LocalDateTime.now().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                )
+            );
+            timestamp.getStyleClass().add(TIMESTAMP_COLOR);
+            
+            // Create special log level with bold and distinct color
+            Text levelText = new Text(" [WORD] ");
+            levelText.setFill(Color.PURPLE);
+            levelText.setStyle("-fx-font-weight: bold;");
+            
+            // Create message with distinct style
+            Text messageText = new Text(message + "\n");
+            messageText.setFill(Color.PURPLE);
+            messageText.setStyle("-fx-font-weight: bold;");
+            
+            // Add to TextFlow
+            serverLogsArea.getChildren().addAll(
+                new Text("["), timestamp, new Text("] "), levelText, messageText
+            );
+            
+            // Auto-scroll to bottom
+            scrollPane.setVvalue(1.0);
+        });
+    }
+
     private void logWithLevel(String message, String level, String styleClass) {
         Platform.runLater(() -> {
             // Create timestamp

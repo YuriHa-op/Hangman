@@ -80,7 +80,7 @@ MultiplayerGameState {
         }
 
         roundInProgress = true;
-        roundStartTime = System.currentTimeMillis();
+        roundStartTime = System.currentTimeMillis();;
         
         for (String player : players) {
             StringBuilder maskedWord = new StringBuilder();

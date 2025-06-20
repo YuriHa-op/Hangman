@@ -187,6 +187,11 @@ public class GameManager {
         playerWins.put(player2, 0);
         roundFinished.computeIfAbsent(player1, k -> new HashMap<>()).put(0, false);
         roundFinished.computeIfAbsent(player2, k -> new HashMap<>()).put(0, false);
+        
+        // Log the word being used for single player game
+        if (logCallback != null) {
+            logCallback.accept("[WORD LOG] Single player game started between " + player1 + " and " + player2 + " with word: \"" + firstWord + "\"");
+        }
         // Track all players for this session
         String gameSessionId = playerGameSessionIds.get(player1);
         if (gameSessionId != null) {
@@ -558,6 +563,14 @@ public class GameManager {
             roundFinishTime.computeIfAbsent(username, k -> new HashMap<>()).remove(newRound);
             roundGuessedWord.computeIfAbsent(username, k -> new HashMap<>()).remove(newRound);
             lastRoundWinner.computeIfAbsent(username, k -> new HashMap<>()).remove(newRound);
+            
+            // Log the word being used for the new round
+            if (logCallback != null) {
+                String opponentName = matchedPlayers.get(username);
+                logCallback.accept("[WORD LOG] Single player round " + (newRound + 1) + " started for " + username + 
+                                  (opponentName != null ? " and " + opponentName : "") + 
+                                  " with word: \"" + nextWord + "\"");
+            }
 
             return true;
         }

@@ -78,7 +78,47 @@ public class GameServiceImpl extends GameServicePOA {
 
     public void setLogCallback(Consumer<String> callback) {
         this.logCallback = callback;
-        gameManager.setLogCallback(callback);
+        gameManager.setLogCallback(this::handleLog);
+        multiplayerGameManager.setLogCallback(this::handleLog);
+    }
+    
+    /**
+     * Intercepts logs to highlight word logs in the UI
+     */
+    private void handleLog(String message) {
+        if (logCallback != null) {
+            if (message.startsWith("[WORD LOG]")) {
+                // Extract word from message for clearer display
+                String wordOnly = message;
+                int startIndex = message.indexOf("\"");
+                int endIndex = message.lastIndexOf("\"");
+                if (startIndex > 0 && endIndex > startIndex) {
+                    String word = message.substring(startIndex + 1, endIndex);
+                    String context = message.substring(0, startIndex).replace("[WORD LOG]", "").trim();
+                    wordOnly = "Word for " + context + ": " + word;
+                    
+                    // Log regular message first for debugging
+                    System.out.println("WORD LOG RECEIVED: " + message);
+                    
+                    // Special handling for word logs via reflection to use the logWordInfo method
+                    try {
+                        Object controller = logCallback;
+                        java.lang.reflect.Method logWordMethod = controller.getClass().getMethod("logWordInfo", String.class);
+                        logWordMethod.invoke(controller, wordOnly);
+                    } catch (Exception e) {
+                        // Fall back to regular logging if special method doesn't exist
+                        System.out.println("Failed to use special logWordInfo method: " + e.getMessage());
+                        logCallback.accept("⭐ " + wordOnly + " ⭐");
+                    }
+                } else {
+                    // Malformed word log message
+                    logCallback.accept("⚠️ Malformed word log: " + message);
+                }
+            } else {
+                // Normal logs
+                logCallback.accept(message);
+            }
+        }
     }
 
     /**
