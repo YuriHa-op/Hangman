@@ -1,1 +1,0 @@
-# Effects package for PyQt5 game views 

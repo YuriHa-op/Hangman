@@ -18,20 +18,12 @@ import javafx.scene.image.Image;
 import javafx.animation.Timeline;
 import javafx.util.Duration;
 import java.util.*;
-import client.player.helper.ConfettiHelper;
-import client.player.helper.SpectatablePlayerLabel;
 import client.player.helper.SpectatorManager;
-import javafx.animation.FadeTransition;
 import client.player.view.results.GameResultsView;
-import javafx.scene.effect.Glow;
 import javafx.scene.effect.DropShadow;
-import javafx.animation.ScaleTransition;
 import javafx.animation.SequentialTransition;
 import javafx.scene.paint.Color;
 import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Animation;
-import javafx.animation.ParallelTransition;
 import client.player.helper.AfkCheckDialog;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.animation.TranslateTransition;
@@ -63,7 +55,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private SpectatorManager spectatorManager = new SpectatorManager();
     private String povPlayer = null; // Whose POV is being shown
     private StackPane spectateOverlay = null;
-    private Map<String, Animation> activeAnimations = new HashMap<>(); // Store active animations
     private int lastEventCount = 0;
 
     // AFK Dialog related fields
@@ -486,7 +477,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         List<String> currentPlayersInPanel = new ArrayList<>(playerScoreLabels.keySet());
         for (String existingPlayer : currentPlayersInPanel) {
             if (!state.getPlayers().contains(existingPlayer)) {
-                stopFieryGlowAnimation(existingPlayer);
                 playerScoreLabels.remove(existingPlayer);
             }
         }
@@ -503,6 +493,11 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 label.getStyleClass().add("player-score");
             }
             label.setText(player + ":" + score); // Update text
+            label.setStyle(""); // Clear any previous inline styles
+
+            HBox playerBox = new HBox(5); // spacing between icon and label
+            playerBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            playerBox.setPadding(new javafx.geometry.Insets(2, 5, 2, 5));
 
             if (player.equals(model.getUsername())) {
                 if (!label.getStyleClass().contains("current-player")) {
@@ -516,16 +511,11 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             int winStreak = state.getPlayerWinStreak(player);
 
             if (winStreak >= 2) {
-
-                animateFieryGlow(label, player);
+                playerBox.setStyle("-fx-background-color: #1A237E; -fx-background-radius: 5;");
             } else {
-
-                stopFieryGlowAnimation(player); // Stop animation if streak is lost/not active
-                if(label.getEffect() != null) label.setEffect(null); // Ensure effect is cleared if animation was stopped externally
+                playerBox.setStyle(""); // Reset to default
             }
 
-            HBox playerBox = new HBox(5); // spacing between icon and label
-            playerBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             // Only show eye icon if user can spectate and not self
             if (canSpectate && !player.equals(model.getUsername())) {
                 try {
@@ -568,14 +558,12 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
 
         try {
             boolean correct = model.makeGuess(letter.charAt(0));
-            new animatefx.animation.Pulse(clickedButton).play();
 
             // Always remove both classes before adding
             clickedButton.getStyleClass().removeAll("correct", "incorrect");
             // Color the key for correct/incorrect
             if (correct) {
                 clickedButton.getStyleClass().add("correct");
-                GameViewHelper.animateWordDisplay(wordDisplay); // Bounce animation for correct guess
             } else {
                 clickedButton.getStyleClass().add("incorrect");
             }
@@ -635,8 +623,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             afkPreCheckDelayTimer.stop();
         }
         afkDialogDelayTimerActive = false; // Reset flag here as well
-        new ArrayList<>(activeAnimations.keySet()).forEach(this::stopFieryGlowAnimation);
-        activeAnimations.clear(); 
     }
 
 
@@ -660,11 +646,14 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             keyboardGrid.setVisible(true);
             hangmanImage.setVisible(true);
         };
-        GameViewHelper.explodeNode(wordDisplay, () ->
-            GameViewHelper.explodeNode(keyboardGrid, () ->
-                GameViewHelper.explodeNode(hangmanImage, afterExplosion)
-            )
-        );
+        
+        wordDisplay.setVisible(false);
+        keyboardGrid.setVisible(false);
+        hangmanImage.setVisible(false);
+
+        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2));
+        pause.setOnFinished(event -> afterExplosion.run());
+        pause.play();
     }
 
     private void showRoundWinnerBanner(String message, String color, boolean showConfetti) {
@@ -674,7 +663,7 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         if (showConfetti && root != null) {
             // Defer confetti call to ensure root pane is fully laid out
             Platform.runLater(() -> {
-                ConfettiHelper.showConfetti(root);
+                // Confetti removed
             });
         }
         if (color != null) {
@@ -707,9 +696,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
     private void onSpectatedPlayerChanged(String playerName) {
         this.povPlayer = playerName;
         showSpectateTransition(playerName);
-        // if (model != null) {
-        //     model.updateLobbyState(); // Removing this to let the current onLobbyUpdate cycle handle the refresh
-        // }
     }
 
     private void showSpectateTransition(String playerName) {
@@ -717,32 +703,25 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
         if (spectateOverlay == null) {
             spectateOverlay = new StackPane();
             spectateOverlay.setStyle("-fx-background-color: rgba(0,0,0,0.85); -fx-alignment: center;");
-            spectateOverlay.setPrefSize(root.getWidth(), root.getHeight());
             Label label = new Label();
             label.setStyle("-fx-font-size: 38px; -fx-text-fill: #ffdd00; -fx-font-family: 'Minecraftia';");
             spectateOverlay.getChildren().add(label);
             root.getChildren().add(spectateOverlay);
+            spectateOverlay.setMouseTransparent(true);
         }
+        
         Label label = (Label) spectateOverlay.getChildren().get(0);
         if (playerName != null && !playerName.equals(model.getUsername())) {
             label.setText("Spectating: " + playerName);
         } else {
             label.setText("Returning to your POV");
         }
-        spectateOverlay.setOpacity(0);
+        
         spectateOverlay.setVisible(true);
-        FadeTransition fadeIn = new FadeTransition(javafx.util.Duration.millis(400), spectateOverlay);
-        fadeIn.setFromValue(0);
-        fadeIn.setToValue(1);
-        fadeIn.setOnFinished(e -> {
-            FadeTransition fadeOut = new FadeTransition(javafx.util.Duration.millis(400), spectateOverlay);
-            fadeOut.setFromValue(1);
-            fadeOut.setToValue(0);
-            fadeOut.setDelay(javafx.util.Duration.millis(500));
-            fadeOut.setOnFinished(ev -> spectateOverlay.setVisible(false));
-            fadeOut.play();
-        });
-        fadeIn.play();
+        
+        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
+        pause.setOnFinished(e -> spectateOverlay.setVisible(false));
+        pause.play();
     }
 
     private void updateKeyboardForPOV(LobbyState state, String povToUpdate) {
@@ -801,71 +780,6 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
                 // Make sure grid itself is enabled if player is not finished and not spectating
                 keyboardGrid.setDisable(false);
             }
-        }
-    }
-
-    private void animateFieryGlow(Label label, String playerName) {
-        if (activeAnimations.containsKey(playerName)) { 
-            return; 
-        }
-
-        DropShadow fieryShadow = new DropShadow();
-        fieryShadow.setColor(Color.rgb(255, 70, 0, 0.9)); // Brighter, slightly transparent orange-red
-        fieryShadow.setRadius(12); // Initial radius
-        fieryShadow.setSpread(0.6); // Initial spread
-
-        Glow fieryGlow = new Glow();
-        fieryGlow.setLevel(0.1); // Initial glow
-        fieryShadow.setInput(fieryGlow);
-        label.setEffect(fieryShadow);
-
-        Timeline effectTimeline = new Timeline(
-            new KeyFrame(Duration.ZERO, 
-                new KeyValue(fieryGlow.levelProperty(), 0.2),
-                new KeyValue(fieryShadow.radiusProperty(), 12),
-                new KeyValue(fieryShadow.spreadProperty(), 0.6), 
-                new KeyValue(fieryShadow.colorProperty(), Color.rgb(255,70,0,0.8))
-            ),
-            new KeyFrame(Duration.millis(450), // Faster, more dynamic pulse
-                new KeyValue(fieryGlow.levelProperty(), 0.95), // Max glow
-                new KeyValue(fieryShadow.radiusProperty(), 22), // Max radius
-                new KeyValue(fieryShadow.spreadProperty(), 0.75),
-                new KeyValue(fieryShadow.colorProperty(), Color.rgb(255,100,0,1.0)) // Shift color slightly
-            ),
-            new KeyFrame(Duration.millis(900), // Return to base
-                new KeyValue(fieryGlow.levelProperty(), 0.2),
-                new KeyValue(fieryShadow.radiusProperty(), 12),
-                new KeyValue(fieryShadow.spreadProperty(), 0.6),
-                new KeyValue(fieryShadow.colorProperty(), Color.rgb(255,70,0,0.8))
-            )
-        );
-        effectTimeline.setCycleCount(Timeline.INDEFINITE); // This will be part of ParallelTransition
-
-        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(450), label);
-        scaleTransition.setFromX(1.0);
-        scaleTransition.setFromY(1.0);
-        scaleTransition.setToX(1.12); // Slightly more pronounced scale
-        scaleTransition.setToY(1.12);
-        scaleTransition.setAutoReverse(true);
-        scaleTransition.setCycleCount(Timeline.INDEFINITE); // This will also be part of ParallelTransition
-
-        ParallelTransition parallelTransition = new ParallelTransition(label, effectTimeline, scaleTransition);
-        parallelTransition.setCycleCount(Timeline.INDEFINITE); // The whole group pulses indefinitely
-        parallelTransition.play();
-
-        activeAnimations.put(playerName, parallelTransition); // Store the main ParallelTransition
-    }
-
-    private void stopFieryGlowAnimation(String playerName) {
-        Animation animation = activeAnimations.remove(playerName);
-        if (animation != null) {
-            animation.stop();
-        }
-        Label label = playerScoreLabels.get(playerName);
-        if (label != null) {
-            label.setEffect(null); // Clear effects
-            label.setScaleX(1.0);  // Reset scale
-            label.setScaleY(1.0);  // Reset scale
         }
     }
 

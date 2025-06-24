@@ -44,11 +44,6 @@
             <Text text="Server Uptime" style="-fx-fill: white; -fx-font-size: 14px;"/>
             <Text fx:id="uptimeText" text="00:00:00" style="-fx-fill: #FFC107; -fx-font-size: 24px;"/>
         </VBox>
-        <!-- Memory Usage -->
-        <VBox styleClass="stat-box" alignment="CENTER">
-            <Text text="Memory Usage" style="-fx-fill: white; -fx-font-size: 14px;"/>
-            <Text fx:id="memoryUsageText" text="0 MB" style="-fx-fill: #9C27B0; -fx-font-size: 24px;"/>
-        </VBox>
     </HBox>
 
     <!-- Server Logs Section -->

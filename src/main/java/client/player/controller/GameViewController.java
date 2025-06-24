@@ -15,22 +15,9 @@ import javafx.stage.Stage;
 import javafx.scene.image.Image;
 import javafx.event.ActionEvent;
 import javafx.animation.*;
-import javafx.scene.paint.Color;
 import javafx.util.Duration;
 import GameModule.GameStateDTO;
 import client.player.helper.GameStatePoller;
-import animatefx.animation.Bounce;
-import animatefx.animation.FadeOut;
-import animatefx.animation.FadeIn;
-import animatefx.animation.Pulse;
-import animatefx.animation.FadeInDown;
-import animatefx.animation.Tada;
-import client.player.controller.MatchFoundDialogController;
-import javafx.scene.layout.Pane;
-import javafx.scene.shape.Rectangle;
-import java.util.Random;
-import client.player.helper.ConfettiHelper;
-import GameModule.Bool;
 
 public class GameViewController implements GameModel.MatchListener {
     // Magic string constants
@@ -167,7 +154,6 @@ public class GameViewController implements GameModel.MatchListener {
     }
 
     public void startNewGame() {
-        if (gameStatePoller != null) gameStatePoller.stop();
         gameOverDialogShown = false;
         timeUpHandled = false;
         lastRoundWinnerShown = -1;
@@ -232,10 +218,8 @@ public class GameViewController implements GameModel.MatchListener {
             // model.makeGuess now only needs the letter. clientRemainingTime is not used by this path.
             boolean correct = model.makeGuess(letter.charAt(0), 0);
 
-            new Pulse(clickedButton).play();
             if (correct) {
                 clickedButton.getStyleClass().add("correct");
-                // animateCorrectGuess(); // Removed: wordDisplay updated by poller via updateUI
             } else {
                 clickedButton.getStyleClass().add("incorrect");
             }
@@ -295,7 +279,6 @@ public class GameViewController implements GameModel.MatchListener {
                     this.lastDisplayedMaskedWord = freshState.maskedWord;
                     this.lastDisplayedIncorrectGuesses = freshState.incorrectGuesses;
                     timeUpHandled = false;
-                    GameViewHelper.animateWordDisplay(wordDisplay);
                 } else if (freshState != null && WAITING_FOR_MATCH.equals(freshState.maskedWord)) {
                     handleWaitingForMatchUI();
                     gameOutput.appendText("\nMatch was interrupted. Please try again.\n");
@@ -498,7 +481,6 @@ public class GameViewController implements GameModel.MatchListener {
             // Only animate if a letter was revealed, not on full word changes (like new round)
             if (didCorrectLetterGetRevealed(this.lastDisplayedMaskedWord, state.maskedWord) && !isWaitingForMatch(state)) {
                 wordDisplay.setText(state.maskedWord);
-                GameViewHelper.animateWordDisplay(wordDisplay);
             } else {
                 wordDisplay.setText(state.maskedWord);
             }
@@ -620,7 +602,8 @@ public class GameViewController implements GameModel.MatchListener {
 
     private void triggerConfettiIfNeeded(GameStateDTO state) {
         if (state.gameOver == GameModule.Bool.BOOL_FALSE && state.playerWins > lastPlayerWins) {
-            ConfettiHelper.showConfetti(root);
+            gameOutput.appendText("\n--- You won this round! ---\n");
+            gameOutput.setScrollTop(Double.MAX_VALUE);
         }
         lastPlayerWins = state.playerWins;
     }
@@ -668,7 +651,7 @@ public class GameViewController implements GameModel.MatchListener {
             nextRoundStarted = true;
             stopTimerIfRunning();
             // Explode round UI elements instead of fading out root
-            Runnable afterExplosion = () -> {
+            Runnable afterAnimation = () -> {
                 GameStateDTO latestState = model.getGameState();
                 if (!ONGOING.equals(latestState.sessionResult)) {
                     // If game is over, restore UI and show dialog immediately
@@ -712,12 +695,14 @@ public class GameViewController implements GameModel.MatchListener {
                     gameTimerHelper.startRoundTimer(gameService.getRoundTime(), newStateAfterServerStart.remainingTime);
                 }
             };
-            // Chain explosions: wordDisplay -> keyboardGrid -> hangmanImage -> afterExplosion
-            GameViewHelper.explodeNode(wordDisplay, () ->
-                GameViewHelper.explodeNode(keyboardGrid, () ->
-                    GameViewHelper.explodeNode(hangmanImage, afterExplosion)
-                )
-            );
+            
+            wordDisplay.setVisible(false);
+            keyboardGrid.setVisible(false);
+            hangmanImage.setVisible(false);
+
+            PauseTransition pause = new PauseTransition(Duration.seconds(2));
+            pause.setOnFinished(event -> afterAnimation.run());
+            pause.play();
         }
     }
 

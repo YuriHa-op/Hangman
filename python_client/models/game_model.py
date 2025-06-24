@@ -4,7 +4,7 @@ import time
 import json
 from omniORB import CORBA
 import GameModule
-import LoginModule
+import LoginModule  # Import LoginModule
 import CosNaming
 
 # Default ORB settings (change if your server uses different host/port)
@@ -16,157 +16,118 @@ class GameModel:
         self.orb = CORBA.ORB_init([
             '-ORBInitRef', f'NameService=corbaloc:iiop:{ORB_HOST}:{ORB_PORT}/NameService'
         ], CORBA.ORB_ID)
-        self.game_service = self._get_service("GameService", GameModule.GameService)
-        self.login_service = self._get_service("LoginService", LoginModule.LoginService)
+        self.naming_context = self._get_naming_context()
+        
+        self.game_service = self._resolve_service("GameService", GameModule.GameService)
+        self.login_service = self._resolve_service("LoginService", LoginModule.LoginService)
+
         self.username = None
-        self.session_id = None  # Store the session ID
+        self.session_id = None
         self.lobby_state = None
         self.game_state = None
-        self.last_game_id = None
 
-    def _get_service(self, service_name, helper_class):
+    def _get_naming_context(self):
         try:
             obj = self.orb.resolve_initial_references('NameService')
             naming_context = obj._narrow(CosNaming.NamingContext)
             if naming_context is None:
-                print(f'Failed to narrow the naming context for {service_name}')
+                print('Failed to narrow the naming context')
                 sys.exit(1)
-            
-            name = [CosNaming.NameComponent(service_name, '')]
-            obj_ref = naming_context.resolve(name)
-            service = obj_ref._narrow(helper_class)
-            
+            return naming_context
+        except CORBA.ORB.InvalidName:
+            print(f"Could not resolve NameService. Is the server at {ORB_HOST}:{ORB_PORT} running?")
+            sys.exit(1)
+        except CORBA.SystemException as e:
+            print(f"CORBA system exception while getting naming context: {e}")
+            sys.exit(1)
+
+    def _resolve_service(self, service_name, service_type):
+        if self.naming_context is None:
+            print(f"Cannot resolve {service_name} because naming context is not available.")
+            sys.exit(1)
+        
+        name = [CosNaming.NameComponent(service_name, '')]
+        try:
+            obj_ref = self.naming_context.resolve(name)
+            service = obj_ref._narrow(service_type)
             if service is None:
                 print(f'{service_name} reference is not valid')
                 sys.exit(1)
-            
-            print(f"Successfully connected to {service_name}")
+            print(f"{service_name} resolved successfully.")
             return service
+        except CosNaming.NamingContext.NotFound:
+            print(f'Could not resolve {service_name}: Not found in the naming service.')
+            sys.exit(1)
         except Exception as e:
             print(f'Could not resolve {service_name}: {e}')
             sys.exit(1)
 
     def login(self, username, password):
         try:
-            # Try to use the enhanced loginWithSession method if available
-            try:
-                response = self.login_service.loginWithSession(username, password)
-                if response.success == LoginModule.BOOL_TRUE:
-                    self.username = username
-                    self.session_id = response.sessionId
-                    print(f"Logged in with session ID: {self.session_id}")
-                    return True
-                return False
-            except (AttributeError, CORBA.BAD_OPERATION):
-                # Fallback to regular login if the enhanced method is not available
-                print("Server doesn't support session-based login, falling back to regular login")
-                result = self.login_service.login(username, password)
-                if result == LoginModule.BOOL_TRUE:
-                    self.username = username
-                    return True
+            response = self.login_service.loginWithSession(username, password)
+            if response.success == LoginModule.BOOL_TRUE:
+                self.username = username
+                self.session_id = response.sessionId
+                print(f"Login successful for {username}. Session ID: {self.session_id}")
+                return True
+            else:
+                print(f"Login failed for {username}.")
                 return False
         except LoginModule.AlreadyLoggedInException as e:
-            raise e  # Re-raise the exception
+            # Re-raise the exception to be handled by the controller
+            raise e
         except CORBA.SystemException as e:
             print(f"CORBA SystemException during login: {e}")
             return False
 
     def force_login(self, username, password):
-        """Force login when account is already logged in elsewhere"""
         try:
-            # Try to use the enhanced loginWithSession method
-            response = self.login_service.loginWithSession(username, password)
+            response = self.login_service.forceLoginWithSession(username, password)
             if response.success == LoginModule.BOOL_TRUE:
                 self.username = username
                 self.session_id = response.sessionId
-                print(f"Force logged in with session ID: {self.session_id}")
+                print(f"Force login successful for {username}. Session ID: {self.session_id}")
                 return True
-            return False
-        except Exception as e:
-            print(f"Error during force login: {e}")
-            return False
-
-    def validate_session(self):
-        """Validate if the current session is still valid"""
-        if not self.username:
-            print("No username to validate session")
-            return False
-            
-        try:
-            # Try the straightforward way first - use checkSessionValid
-            try:
-                print(f"Validating session for {self.username} using checkSessionValid")
-                is_valid = self.login_service.checkSessionValid(self.username)
-                valid_result = is_valid == LoginModule.BOOL_TRUE
-                print(f"Session validation result for {self.username}: {valid_result}")
-                return valid_result
-            except (AttributeError, CORBA.BAD_OPERATION) as e:
-                print(f"checkSessionValid not available: {e}")
-                # Fall back to validateSession if we have a session ID
-                if self.session_id:
-                    try:
-                        print(f"Validating session for {self.username} using validateSession with session ID {self.session_id}")
-                        is_valid = self.login_service.validateSession(self.username, self.session_id)
-                        valid_result = is_valid == LoginModule.BOOL_TRUE
-                        print(f"Session validation result for {self.username}: {valid_result}")
-                        return valid_result
-                    except (AttributeError, CORBA.BAD_OPERATION) as e:
-                        print(f"validateSession not available: {e}")
-                        # Method not available, fall back to basic check
-                        pass
-                else:
-                    print(f"No session ID available for {self.username}")
-                
-                # Last resort - try to get player stats - this will throw an exception if session is invalid
-                try:
-                    print(f"Trying fallback validation for {self.username} using getPlayerWins")
-                    self.game_service.getPlayerWins(self.username)
-                    print(f"Fallback validation successful for {self.username}")
-                    return True
-                except Exception as e:
-                    print(f"Fallback validation failed for {self.username}: {e}")
-                    return False
-        except Exception as e:
-            print(f"Error validating session for {self.username}: {e}")
+            else:
+                print(f"Force login failed for {username}.")
+                return False
+        except CORBA.SystemException as e:
+            print(f"CORBA SystemException during force login: {e}")
             return False
 
-    def keep_alive(self):
-        """Check if session is still valid by passing our current session ID to the server."""
-        if not self.username or not self.session_id:
-            return False
-
-        try:
-            # Prefer validateSession(username, sessionId) if available – it detects replacement sessions.
-            try:
-                result = self.login_service.validateSession(self.username, self.session_id)
-                return result == LoginModule.BOOL_TRUE
-            except (AttributeError, CORBA.BAD_OPERATION):
-                # Fallback to checkSessionValid(username) – less strict but better than nothing.
-                result = self.login_service.checkSessionValid(self.username)
-                return result == LoginModule.BOOL_TRUE
-        except Exception as e:
-            print(f"Error during session validation for {self.username}: {e}")
-            return False
+    def set_user_session(self, username, session_id):
+        self.username = username
+        self.session_id = session_id
+        print(f"Session set for user {self.username}")
 
     def create_player(self, username, password):
         try:
-            result = self.login_service.createPlayer(username, password) # Ensure this matches the IDL method name
+            result = self.login_service.createPlayer(username, password)
             return result == LoginModule.BOOL_TRUE
         except CORBA.SystemException as e:
             print(f"CORBA SystemException during create_player: {e}")
             return False
 
-    def logout(self, skip_server_logout=False):
-        if self.username and not skip_server_logout:
+    def logout(self):
+        if self.username:
             try:
                 self.login_service.logout(self.username)
-            except Exception as e:
-                print(f"Error during server logout for {self.username}: {e}")
-        
-        # Always clear local credentials
-        self.username = None
-        self.session_id = None
-        print("Local session cleared.")
+                print(f"Logout signal sent for {self.username}.")
+            except CORBA.SystemException as e:
+                print(f"CORBA error during logout: {e}")
+            finally:
+                self.username = None
+                self.session_id = None
+
+    def keep_alive(self):
+        if not self.username or not self.session_id:
+            return False
+        try:
+            result = self.login_service.keepAlive(self.username, self.session_id)
+            return result == LoginModule.BOOL_TRUE
+        except CORBA.SystemException as e:
+            print(f"Keep-alive failed: {e}")
+            return False
 
     def start_game(self):
         if not self.username:
@@ -205,22 +166,22 @@ class GameModel:
 
     def send_guess(self, guess):
         if not self.username:
+            # print("[DEBUG] send_guess: No username, returning False")
             return False
         try:
+            # print(f"[DEBUG SP CLIENT] Attempting to send guess: username='{self.username}', letter='{guess}' (type: {type(guess)})")
             result_corba_bool = self.game_service.sendGuess(self.username, guess)
+            # print(f"[DEBUG SP CLIENT] Raw response from server sendGuess: {result_corba_bool} (type: {type(result_corba_bool)})")
             
-            # Revert to direct comparison with GameModule.BOOL_TRUE
-            # It's the most explicit way if BOOL_TRUE is the defined constant for true.
-            is_correct_guess = (result_corba_bool == GameModule.BOOL_TRUE)
+            bool_true_val = GameModule.BOOL_TRUE
+            # print(f"[DEBUG SP CLIENT] GameModule.BOOL_TRUE is: {bool_true_val} (type: {type(bool_true_val)})")
             
-            # --- DEBUG PRINT ---
-            print(f"[DEBUG GameModel.send_guess] Letter: {guess}, Server Raw: {result_corba_bool} (Type: {type(result_corba_bool)}), " \
-                  f"GameModule.BOOL_TRUE: {GameModule.BOOL_TRUE} (Type: {type(GameModule.BOOL_TRUE)}), " \
-                  f"Comparison Result (is_correct_guess): {is_correct_guess}")
-            # --- END DEBUG PRINT ---
+            is_correct_guess = (result_corba_bool == bool_true_val)
+            # print(f"[DEBUG SP CLIENT] Comparison (result_corba_bool == GameModule.BOOL_TRUE): {is_correct_guess}")
             
             return is_correct_guess
         except Exception as e:
+            # print(f"[ERROR SP CLIENT] Exception in send_guess: {e}")
             import traceback
             traceback.print_exc() 
             return False 
@@ -290,15 +251,9 @@ class GameModel:
     def send_multiplayer_guess(self, guess):
         if not self.username:
             return False
-        try:
-            # Convert the guess to lowercase before sending to the server
-            result = self.game_service.sendMultiplayerGuess(self.username, guess.lower())
-            is_correct_guess = (result == GameModule.BOOL_TRUE)
-            return is_correct_guess
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return False
+        # Convert GameModule.Bool to Python boolean
+        result = self.game_service.sendMultiplayerGuess(self.username, guess)
+        return result == GameModule.BOOL_TRUE
 
     def start_multiplayer_next_round(self):
         if self.username:
@@ -311,19 +266,13 @@ class GameModel:
         if self.username:
             try:
                 self.game_service.leaveMultiplayerGame(self.username)
-                return True
-            except Exception as e:
-                print(f"Error leaving multiplayer game: {e}")
-                return False
-        return False
+                print(f"Sent leave multiplayer game signal for {self.username}")
+            except CORBA.SystemException as e:
+                print(f"Error sending leave multiplayer game signal: {e}")
 
     # Utility to get current username
     def get_username(self):
         return self.username
-        
-    # Get the current session ID
-    def get_session_id(self):
-        return self.session_id
 
     # Potentially add methods to store/retrieve specific parts of game_state or lobby_state
     # to avoid repeated parsing or direct access from controller/view.
@@ -389,85 +338,6 @@ class GameModel:
         game_data = self.get_mp_game_state_data()
         return game_data.get("sessionResult", "ONGOING")
 
-    def get_mp_game_id(self):
-        game_data = self.get_mp_game_state_data()
-        return game_data.get("gameId", None)
-
     def get_mp_player_finish_times(self):
         game_data = self.get_mp_game_state_data()
-        return game_data.get("allPlayerFinishTimes", {})
-
-    def get_mp_player_finish_times(self):
-        game_data = self.get_mp_game_state_data()
-        return game_data.get("allPlayerFinishTimes", {})
-
-    def set_last_game_id(self, game_id):
-        self.last_game_id = game_id
-
-    def get_last_game_id(self):
-        return self.last_game_id
-
-    def get_ranked_players_for_game(self, game_id):
-        """Get a list of ranked players for a specific game"""
-        details = self.get_match_details(game_id)
-        if not details:
-            return []
-        if isinstance(details, str):
-            try:
-                details = json.loads(details)
-            except Exception as e:
-                print("[ERROR] Could not parse match details JSON:", e)
-                return []
-        # Now details is a dict
-        player_scores = {player: 0 for player in details.get('players', [])}
-        for round_info in details.get('rounds', []):
-            winner = round_info.get('winner')
-            if winner:
-                player_scores[winner] = player_scores.get(winner, 0) + 1
-        ranked = sorted(player_scores.items(), key=lambda x: x[1], reverse=True)
-        return [
-            {"rank": i+1, "name": name, "score": score}
-            for i, (name, score) in enumerate(ranked)
-        ]
-            
-    def force_win_count_update(self, username=None):
-        """Force an update of the win count for a player by directly calling the server.
-        If username is None, uses the current logged-in player."""
-        if not username:
-            username = self.username
-            
-        if not username:
-            return False
-            
-        try:
-            # can't directly update the win count through the GameService interface
-            # Instead, we'll trigger the win processing logic by calling startMultiplayerNextRound
-            # This should cause the server to process any pending wins
-            print(f"[GameModel] Forcing win processing for {username}")
-            
-            # First, check current win count for logging purposes
-            try:
-                current_wins = self.game_service.getPlayerWins(username)
-                print(f"[GameModel] Current win count for {username}: {current_wins}")
-            except Exception as e:
-                print(f"[GameModel] Error getting player wins: {e}")
-            
-            # Call startMultiplayerNextRound to trigger win processing
-            try:
-                result = self.game_service.startMultiplayerNextRound(username)
-                print(f"[GameModel] Start next round result: {result}")
-            except Exception as e:
-                print(f"[GameModel] Error starting next round: {e}")
-            
-            # Check if win count was updated
-            try:
-                new_wins = self.game_service.getPlayerWins(username)
-                print(f"[GameModel] New win count for {username}: {new_wins}")
-                return True
-            except Exception as e:
-                print(f"[GameModel] Error getting updated player wins: {e}")
-                return False
-                
-        except Exception as e:
-            print(f"[GameModel] Error in force_win_count_update: {e}")
-            return False 
+        return game_data.get("allPlayerFinishTimes", {}) 

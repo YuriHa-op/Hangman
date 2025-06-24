@@ -1,8 +1,6 @@
 package client.player.controller;
 
-import animatefx.animation.*;
 import javafx.animation.*;
-import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -17,7 +15,6 @@ import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import javafx.scene.layout.HBox;
 import javafx.scene.Node;
-import client.player.helper.ConfettiHelper;
 import javafx.scene.layout.Pane;
 import javafx.application.Platform;
 
@@ -45,7 +42,6 @@ public class MatchFoundDialogController {
                 Image bgImg = new Image(getClass().getResourceAsStream("/client/player/view/pasobeso.png"));
                 backgroundImage.setImage(bgImg);
                 backgroundImage.setPreserveRatio(false);
-                animateBackground();
             } catch (Exception e) {
                 System.err.println("Could not load background image for MatchFoundDialog: " + e.getMessage());
             }
@@ -83,20 +79,6 @@ public class MatchFoundDialogController {
 
             dialog.setOnCloseRequest(event -> event.consume());
 
-            if (root != null) controller.fadeInNode(root);
-
-            controller.slideAndBouncePlayers();
-
-            controller.bounceAndRotateVs();
-
-            controller.rotateAvatars();
-
-            Platform.runLater(() -> {
-                if (controller.root != null && controller.root.getWidth() > 0 && controller.root.getHeight() > 0) {
-                    ConfettiHelper.showConfetti(controller.root);
-                }
-            });
-
             controller.startCountdown();
             dialog.show();
         } catch (Exception e) {
@@ -108,18 +90,12 @@ public class MatchFoundDialogController {
     private void startCountdown() {
         countdown = 5;
         countdownLabel.setText(String.valueOf(countdown));
-        playCountdownAnimation();
         countdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             countdown--;
             if (countdown > 0) {
                 countdownLabel.setText(String.valueOf(countdown));
-                playCountdownAnimation();
             } else {
                 countdownLabel.setText("Go!");
-                playGoPulse();
-                if (root != null && root.getWidth() > 0 && root.getHeight() > 0) {
-                    ConfettiHelper.showConfetti(root);
-                }
                 countdownTimeline.stop();
                 if (dialogStage != null) dialogStage.close();
                 if (onCountdownFinished != null) onCountdownFinished.run();
@@ -127,113 +103,6 @@ public class MatchFoundDialogController {
         }));
         countdownTimeline.setCycleCount(5);
         countdownTimeline.play();
-    }
-
-    private void playCountdownAnimation() {
-        if (countdownLabel != null) {
-            try {
-                new ZoomIn(countdownLabel).play();
-            } catch (Exception e) {
-                // fallback: no animation
-            }
-        }
-    }
-
-    private void playGoPulse() {
-        if (countdownLabel != null) {
-            try {
-                new Pulse(countdownLabel).play();
-            } catch (Exception e) {
-                // fallback: no animation
-            }
-        }
-    }
-
-    private void fadeInNode(Node node) {
-        if (node == null) return;
-        FadeTransition ft = new FadeTransition(Duration.millis(700), node);
-        ft.setFromValue(0);
-        ft.setToValue(1);
-        ft.play();
-    }
-
-    private void slideAndBouncePlayers() {
-        if (playerRow != null && playerRow.getChildren().size() >= 3) {
-            VBox leftPanel = (VBox) playerRow.getChildren().get(0);
-            VBox rightPanel = (VBox) playerRow.getChildren().get(2);
-            try {
-                new SlideInLeft(leftPanel).play();
-                new SlideInRight(rightPanel).play();
-                ImageView leftAvatar = (ImageView) leftPanel.getChildren().get(0);
-                ImageView rightAvatar = (ImageView) rightPanel.getChildren().get(0);
-                new BounceIn(leftAvatar).play();
-                new BounceIn(rightAvatar).play();
-            } catch (Exception e) {
-                // fallback: no animation
-            }
-        }
-    }
-
-    private void bounceAndRotateVs() {
-        if (matchVs != null) {
-            try {
-                new BounceIn(matchVs).play();
-                RotateTransition rotate = new RotateTransition(Duration.seconds(1.2), matchVs);
-                rotate.setByAngle(20);
-                rotate.setAutoReverse(true);
-                rotate.setCycleCount(2);
-                rotate.play();
-            } catch (Exception e) {
-                // fallback: no animation
-            }
-        }
-    }
-
-    private void rotateAvatars() {
-        if (playerRow != null && playerRow.getChildren().size() >= 3) {
-            VBox leftPanel = (VBox) playerRow.getChildren().get(0);
-            VBox rightPanel = (VBox) playerRow.getChildren().get(2);
-            try {
-                ImageView leftAvatar = (ImageView) leftPanel.getChildren().get(0);
-                ImageView rightAvatar = (ImageView) rightPanel.getChildren().get(0);
-                RotateTransition rotateLeft = new RotateTransition(Duration.seconds(1.2), leftAvatar);
-                rotateLeft.setByAngle(-15);
-                rotateLeft.setAutoReverse(true);
-                rotateLeft.setCycleCount(2);
-                rotateLeft.play();
-                RotateTransition rotateRight = new RotateTransition(Duration.seconds(1.2), rightAvatar);
-                rotateRight.setByAngle(15);
-                rotateRight.setAutoReverse(true);
-                rotateRight.setCycleCount(2);
-                rotateRight.play();
-            } catch (Exception e) {
-                // fallback: no animation
-            }
-        }
-    }
-
-    private void animateBackground() {
-        if (backgroundImage != null) {
-            try {
-                ScaleTransition scale = new ScaleTransition(Duration.seconds(4), backgroundImage);
-                scale.setFromX(1.0);
-                scale.setFromY(1.0);
-                scale.setToX(1.05);
-                scale.setToY(1.05);
-                scale.setAutoReverse(true);
-                scale.setCycleCount(Animation.INDEFINITE);
-                scale.play();
-
-                FadeTransition fade = new FadeTransition(Duration.seconds(4), backgroundImage);
-                fade.setFromValue(0.85);
-                fade.setToValue(1.0);
-                fade.setAutoReverse(true);
-                fade.setCycleCount(Animation.INDEFINITE);
-                fade.play();
-            } catch (Exception e) {
-                // fallback: no animation
-            }
-        }
     }
 }
 

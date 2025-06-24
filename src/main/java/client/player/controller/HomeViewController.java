@@ -1,20 +1,17 @@
 package client.player.controller;
 
 import GameModule.GameService;
-import GameModule.GameStateDTO;
 import client.player.model.MultiplayerGameModel;
 import client.player.model.MultiplayerGameModel.LobbyState;
 import client.player.view.GameView;
 import client.player.view.LeaderboardView;
 import client.player.view.MultiplayerGameView;
 import client.player.view.QueueStatusPane;
-import client.player.view.MatchHistoryView;
 import javafx.animation.KeyFrame;
 import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
@@ -25,10 +22,9 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import java.util.List;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import javafx.event.ActionEvent;
+
 import javafx.scene.layout.HBox;
 import javafx.scene.Scene;
 import LoginModule.LoginService;
@@ -88,18 +84,6 @@ public class HomeViewController {
 
     @FXML
     public void initialize() {
-        // Initialize and play the splash text animation
-        if (splashText != null) {
-            ScaleTransition st = new ScaleTransition(Duration.seconds(1.5), splashText);
-            st.setFromX(1.0);
-            st.setFromY(1.0);
-            st.setToX(1.05);
-            st.setToY(1.05);
-            st.setAutoReverse(true);
-            st.setCycleCount(Timeline.INDEFINITE);
-            st.play();
-        }
-
         // Set welcome message with username
         if (welcomeLabel != null) {
             welcomeLabel.setText("Welcome, " + username + "!");

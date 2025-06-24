@@ -26,7 +26,6 @@ public class ServerMainController {
     @FXML private Text activePlayersText;
     @FXML private Text activeGamesText;
     @FXML private Text uptimeText;
-    @FXML private Text memoryUsageText;
     @FXML private ScrollPane scrollPane;
     @FXML private TextFlow serverLogsArea;
     @FXML private Button clearLogsButton;
@@ -226,10 +225,6 @@ public class ServerMainController {
     private void updateStats() {
         Platform.runLater(() -> {
             try {
-                // Always update memory usage regardless of server state
-                long usedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
-                memoryUsageText.setText(usedMemory + " MB");
-                
                 // Only update player and game stats when server is running and not paused
                 if (isRunning && !isPaused) {
                     if (gameService != null) {

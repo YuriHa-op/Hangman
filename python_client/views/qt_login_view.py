@@ -151,15 +151,6 @@ class QtLoginView(QWidget):
         self.username_input.clear()
         self.password_input.clear()
 
-    def navigate_to_main_menu(self):
-        # This method will be called by the controller upon successful login
-        print("DEBUG: Navigating to main menu (placeholder)")
-        # Example: self.main_window.show_main_menu() 
-        # We'll implement this in MainWindow later
-        self.show_message("Login Successful", "Welcome!", success=True)
-        self.main_window.show_view("MainMenu")
-
-
     def show_login_error(self, message):
         self.show_message("Login Failed", message)
 
