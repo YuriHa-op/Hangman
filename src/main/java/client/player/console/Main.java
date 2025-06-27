@@ -161,6 +161,7 @@ public class Main {
         MultiplayerGameModel multiModel = new MultiplayerGameModel(gameService, username);
         multiModel.startGame();
         System.out.println("Waiting for other players to join the lobby...");
+
         // Wait for enough players and lobby to start
         while (sessionValid.get()) {
             multiModel.updateLobbyState();
@@ -170,102 +171,43 @@ public class Main {
                 if (state.getPlayers().size() > 1 && "STARTED".equalsIgnoreCase(state.getState())) {
                     System.out.println("Game starting!");
                     multiModel.playerReadyForFirstRound();
-                    // Wait for the first round to actually start
-                    while (sessionValid.get()) {
-                        multiModel.updateLobbyState();
-                        MultiplayerGameModel.LobbyState roundState = multiModel.getLastLobbyState();
-                        String maskedWord = roundState.getPlayerMaskedWord(username);
-                        Boolean roundInProgress = roundState.getGameState() != null && Boolean.TRUE.equals(roundState.getGameState().get("roundInProgress"));
-                        if (maskedWord != null && !maskedWord.isEmpty() && maskedWord.contains("_ ") && roundInProgress != null && roundInProgress) {
-                            break;
-                        }
-                        try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-                    }
-                    break;
+                    break; // Exit lobby wait loop
                 }
             }
             try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
         }
 
-        if (!sessionValid.get()) return; // Exit if session became invalid during wait
+        if (!sessionValid.get()) return;
 
-        // Main game loop: handle rounds until game over
+        // Main game loop
         while (sessionValid.get()) {
             multiModel.updateLobbyState();
             MultiplayerGameModel.LobbyState state = multiModel.getLastLobbyState();
+
             if (state == null) {
-                System.out.println("Lost connection to server or lobby. Returning to menu.");
+                System.out.println("Lost connection to server. Returning to menu.");
                 break;
             }
+
             // Check for game over
-            String gameResult = state.getStringFromGameState("sessionResult", null);
             Boolean isGameOver = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("gameOver"));
-            if (isGameOver || (gameResult != null && !gameResult.isEmpty() && !"ONGOING".equalsIgnoreCase(gameResult))) {
-                System.out.println("\nGame Over! Result: " + gameResult);
-                Map<String, Integer> scores = state.getScoresFromGameState();
-                if (scores != null && !scores.isEmpty()) {
-                    System.out.println("Final Scores:");
-                    for (Map.Entry<String, Integer> entry : scores.entrySet()) {
-                        System.out.println(entry.getKey() + ": " + entry.getValue());
-                    }
-                }
+            if (isGameOver) {
+                System.out.println("\nGame Over!");
                 String winner = state.getStringFromGameState("gameWinner", "");
                 if (winner != null && !winner.isEmpty()) {
                     System.out.println("Winner: " + winner);
                 }
-                break;
-            }
-            // Wait for round to be in progress
-            Boolean roundInProgress = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundInProgress"));
-            if (roundInProgress == null || !roundInProgress) {
-                // Wait for the next round to start
-                System.out.println("Waiting for next round to start...");
-                while (sessionValid.get()) {
-                    multiModel.updateLobbyState();
-                    MultiplayerGameModel.LobbyState nextState = multiModel.getLastLobbyState();
-                    Boolean nextRoundInProgress = nextState.getGameState() != null && Boolean.TRUE.equals(nextState.getGameState().get("roundInProgress"));
-                    if (nextRoundInProgress != null && nextRoundInProgress) {
-                        break;
-                    }
-                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+                Map<String, Integer> scores = state.getScoresFromGameState();
+                if (scores != null && !scores.isEmpty()) {
+                    System.out.println("Final Scores:");
+                    scores.forEach((player, score) -> System.out.println(player + ": " + score));
                 }
-                if (!sessionValid.get()) break; // Exit outer loop if session invalidated
-                continue;
+                break; // Exit game loop
             }
-            // Show current round state
-            String maskedWord = state.getPlayerMaskedWord(username);
-            int incorrectGuesses = state.getPlayerIncorrectGuesses(username);
-            Set<Character> alreadyGuessed = state.getPlayerGuesses(username);
-            int maxGuesses = state.getIntFromGameState("maxIncorrectGuesses", 5);
-            int timeLeft = state.getIntFromGameState("remainingTime", 0);
-            System.out.println("\n--- Round " + (state.getIntFromGameState("currentRound", 0) + 1) + " ---");
-            System.out.println("Word: " + maskedWord);
-            System.out.println("Incorrect guesses: " + incorrectGuesses + "/" + maxGuesses);
-            System.out.println("Time left: " + timeLeft + " seconds");
-            System.out.print("Guessed letters: ");
-            for (char c : alreadyGuessed) System.out.print(c + " ");
-            System.out.println();
-            // Accept guess
-            System.out.print("Enter a letter: ");
-            String input = scanner.nextLine();
-            if (input.length() != 1 || !Character.isLetter(input.charAt(0))) {
-                System.out.println("Please enter a single letter.");
-                continue;
-            }
-            char guess = Character.toLowerCase(input.charAt(0));
-            if (alreadyGuessed.contains(guess)) {
-                System.out.println("You already guessed that letter.");
-                continue;
-            }
-            boolean correct = multiModel.makeGuess(guess);
-            if (correct) {
-                System.out.println("Correct!");
-            } else {
-                System.out.println("Incorrect!");
-            }
-            // Check for round over
+
+            // Check if round is over
             Boolean isRoundOver = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundOver"));
-            if (isRoundOver != null && isRoundOver) {
+            if (isRoundOver) {
                 String roundWinner = state.getStringFromGameState("roundWinner", "");
                 System.out.println("\nRound Over!");
                 if (roundWinner != null && !roundWinner.isEmpty()) {
@@ -273,10 +215,53 @@ public class Main {
                 } else {
                     System.out.println("No winner this round.");
                 }
-                System.out.println("Press Enter to continue to the next round...");
+                System.out.println("Press Enter to continue...");
                 scanner.nextLine();
                 multiModel.playerReadyForFirstRound(); // Signal ready for next round
+                continue;
             }
+
+            // Check if waiting for round to start
+            Boolean roundInProgress = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundInProgress"));
+            if (!roundInProgress) {
+                System.out.println("Waiting for next round to start...");
+                try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                continue;
+            }
+
+            // --- Round is in progress ---
+            int timeLeft = state.getIntFromGameState("remainingTime", 0);
+            System.out.println("\n--- Round " + (state.getIntFromGameState("currentRound", 0) + 1) + " ---");
+            System.out.println("Word: " + state.getPlayerMaskedWord(username));
+            System.out.println("Incorrect guesses: " + state.getPlayerIncorrectGuesses(username) + "/" + state.getIntFromGameState("maxIncorrectGuesses", 5));
+            System.out.println("Time left: " + timeLeft + " seconds");
+            System.out.print("Guessed letters: ");
+            state.getPlayerGuesses(username).forEach(c -> System.out.print(c + " "));
+            System.out.println();
+
+            // If time is up, don't ask for input, just wait for server to end the round
+            if (timeLeft <= 0) {
+                try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+                continue;
+            }
+
+            // Accept guess
+            System.out.print("Enter a letter: ");
+            String input = scanner.nextLine();
+            if (!sessionValid.get()) break;
+
+            if (input.length() != 1 || !Character.isLetter(input.charAt(0))) {
+                System.out.println("Please enter a single letter.");
+                continue;
+            }
+            char guess = Character.toLowerCase(input.charAt(0));
+            if (state.getPlayerGuesses(username).contains(guess)) {
+                System.out.println("You already guessed that letter.");
+                continue;
+            }
+
+            boolean correct = multiModel.makeGuess(guess);
+            System.out.println(correct ? "Correct!" : "Incorrect!");
         }
         System.out.println("Returning to home menu.");
     }
@@ -284,7 +269,7 @@ public class Main {
     private static void showLeaderboard(GameService gameService) {
         try {
             LeaderboardEntryDTO[] entries = gameService.getLeaderboardEntries();
-            System.out.println("\nLeaderboard:");
+            System.out.println("\n--- Leaderboard ---");
             System.out.printf("%-5s %-20s %-5s\n", "Rank", "Username", "Wins");
             for (int i = 0; i < entries.length; i++) {
                 System.out.printf("%-5d %-20s %-5d\n", i + 1, entries[i].username, entries[i].wins);
@@ -296,31 +281,123 @@ public class Main {
 
     private static void showMatchHistory(String username, GameService gameService) {
         try {
-            String history = gameService.getMatchHistory(username);
-            System.out.println("\nMatch History:");
-            if (history == null || history.trim().isEmpty()) {
+            String historyJson = gameService.getMatchHistory(username);
+            System.out.println("\n--- Multiplayer Match History ---");
+            if (historyJson == null || historyJson.trim().isEmpty() || historyJson.trim().equals("[]")) {
                 System.out.println("No match history found.");
                 return;
             }
-            // Try to parse as JSON array of objects
-            try {
-                java.lang.reflect.Type listType = new TypeToken<java.util.List<java.util.Map<String, Object>>>(){}.getType();
-                java.util.List<java.util.Map<String, Object>> matches = gson.fromJson(history, listType);
-                int idx = 1;
-                for (java.util.Map<String, Object> match : matches) {
-                    System.out.println("Match " + idx + ":");
-                    for (Map.Entry<String, Object> entry : match.entrySet()) {
-                        System.out.printf("  %s: %s\n", entry.getKey(), entry.getValue());
-                    }
-                    System.out.println();
-                    idx++;
+
+            java.lang.reflect.Type listType = new TypeToken<java.util.List<java.util.Map<String, Object>>>(){}.getType();
+            java.util.List<java.util.Map<String, Object>> matches = gson.fromJson(historyJson, listType);
+
+            if (matches.isEmpty()) {
+                System.out.println("No match history found.");
+                return;
+            }
+
+            for (int i = 0; i < matches.size(); i++) {
+                Map<String, Object> match = matches.get(i);
+                String gameId = (String) match.get("gameId");
+                long endTime = ((Double) match.get("gameEndTime")).longValue();
+                String winner = (String) match.get("overallWinner");
+                java.util.List<String> players = (java.util.List<String>) match.get("players");
+
+                String result = "DRAW";
+                if (winner != null) {
+                    result = winner.equals(username) ? "WIN" : "LOSE";
                 }
-            } catch (Exception e) {
-                // Fallback: print raw string
-                System.out.println(history);
+
+                System.out.printf("%d. Game ID: %s\n", i + 1, gameId);
+                System.out.printf("   Date: %s\n", new java.util.Date(endTime));
+                System.out.printf("   Players: %s\n", String.join(", ", players));
+                System.out.printf("   Winner: %s\n", winner != null ? winner : "Unknown");
+                System.out.printf("   Your Result: %s\n\n", result);
+            }
+
+            while (true) {
+                System.out.print("Enter game number to view details (or 0 to return): ");
+                String choice = scanner.nextLine();
+                if (!sessionValid.get()) break;
+                try {
+                    int gameNum = Integer.parseInt(choice);
+                    if (gameNum == 0) {
+                        break;
+                    }
+                    if (gameNum > 0 && gameNum <= matches.size()) {
+                        String gameId = (String) matches.get(gameNum - 1).get("gameId");
+                        showMatchDetails(gameId, gameService);
+                        // After viewing, re-display the list header for clarity
+                        System.out.println("\n--- Multiplayer Match History ---");
+                        for (int i = 0; i < matches.size(); i++) {
+                            Map<String, Object> match = matches.get(i);
+                            String mGameId = (String) match.get("gameId");
+                            long mEndTime = ((Double) match.get("gameEndTime")).longValue();
+                            String mWinner = (String) match.get("overallWinner");
+                            java.util.List<String> mPlayers = (java.util.List<String>) match.get("players");
+                            String mResult = "DRAW";
+                            if (mWinner != null) {
+                                mResult = mWinner.equals(username) ? "WIN" : "LOSE";
+                            }
+                            System.out.printf("%d. Game ID: %s\n", i + 1, mGameId);
+                            System.out.printf("   Date: %s\n", new java.util.Date(mEndTime));
+                            System.out.printf("   Players: %s\n", String.join(", ", mPlayers));
+                            System.out.printf("   Winner: %s\n", mWinner != null ? mWinner : "Unknown");
+                            System.out.printf("   Your Result: %s\n\n", mResult);
+                        }
+                    } else {
+                        System.out.println("Invalid number.");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid input. Please enter a number.");
+                }
             }
         } catch (Exception e) {
             System.out.println("Could not load match history: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void showMatchDetails(String gameId, GameService gameService) {
+        System.out.println("\n--- Match Details ---");
+        try {
+            String detailsJson = gameService.getMatchDetails(gameId);
+            if (detailsJson == null || detailsJson.trim().isEmpty()) {
+                System.out.println("Could not retrieve details for game " + gameId);
+                return;
+            }
+
+            java.lang.reflect.Type mapType = new TypeToken<java.util.Map<String, Object>>>(){}.getType();
+            Map<String, Object> details = gson.fromJson(detailsJson, mapType);
+
+            long endTime = ((Double) details.get("gameEndTime")).longValue();
+            java.util.List<String> players = (java.util.List<String>) details.get("players");
+            String winner = (String) details.get("overallWinner");
+            int totalRounds = ((Double) details.get("totalRounds")).intValue();
+
+            System.out.printf("Game ID: %s\n", details.get("gameId"));
+            System.out.printf("Date: %s\n", new java.util.Date(endTime));
+            System.out.printf("Players: %s\n", String.join(", ", players));
+            System.out.printf("Winner: %s\n", winner != null ? winner : "None");
+            System.out.printf("Total Rounds: %d\n", totalRounds);
+
+            System.out.println("\nRounds:");
+            java.util.List<Map<String, Object>> rounds = (java.util.List<Map<String, Object>>) details.get("rounds");
+            if (rounds != null) {
+                for (Map<String, Object> round : rounds) {
+                    int roundNum = ((Double) round.get("roundNumber")).intValue();
+                    String word = (String) round.get("word");
+                    String roundWinner = (String) round.get("winner");
+                    System.out.printf("  Round %d: Word = %s, Winner = %s\n", roundNum, word, roundWinner != null ? roundWinner : "None");
+                }
+            }
+
+            System.out.print("\nPress Enter to return...");
+            scanner.nextLine();
+
+        } catch (Exception e) {
+            System.out.println("Error retrieving match details: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

@@ -95,25 +95,28 @@ public class MultiplayerGameManager {
 
         MultiplayerLobby lobby = activeLobbies.get(lobbyId);
         if (lobby == null || lobby.isStarted()) return;
-        
+
         if (lobby.isReady()) {
             lobby.setStarted(true);
             // Create new game state for this lobby
             MultiplayerGameState gameState = new MultiplayerGameState(
-                lobbyId,
-                lobby.getPlayers(),
-                wordManager,
-                playerManager.getRoundTime()
+                    lobbyId,
+                    lobby.getPlayers(),
+                    wordManager,
+                    playerManager.getRoundTime()
             );
             // Record all current players as having joined
             for (String player : lobby.getPlayers()) {
                 gameState.recordPlayerJoined(player);
             }
             activeGames.put(lobbyId, gameState);
-            
+
             // Start the first round to initialize with a word
             gameState.startNewRound();
-            
+
+            // Schedule the timer for the first round
+            scheduleRoundTimer(lobbyId);
+
             // Explicitly log the initial word (server-side only)
             if (logCallback != null) {
                 String initialWord = gameState.getCurrentWord();
@@ -123,7 +126,7 @@ public class MultiplayerGameManager {
                     logCallback.accept("[ERROR] Failed to initialize word for lobby " + lobbyId);
                 }
             }
-            
+
             // Game starts, but first round waits for players to signal readiness
         } else {
             // Not enough players when timeout hit, so destroy the lobby
@@ -352,17 +355,15 @@ public class MultiplayerGameManager {
         if (game.getCurrentRound() == -1 && game.areAllPlayersReady()) {
             game.resetPlayerReady(); // Optional: reset for next use
             boolean started = game.startNewRound();
-            
+
             // Log the word being used in this round (server-side only)
             if (started && logCallback != null) {
                 String currentWord = game.getCurrentWord();
                 if (currentWord != null) {
-                    logCallback.accept("[WORD LOG] Multiplayer first round started in lobby " + game.getLobbyId() + 
+                    logCallback.accept("[WORD LOG] Multiplayer first round started in lobby " + game.getLobbyId() +
                                       " with word: \"" + currentWord + "\"");
                 }
             }
-            
-            scheduleRoundTimer(game.getLobbyId());
         }
     }
 

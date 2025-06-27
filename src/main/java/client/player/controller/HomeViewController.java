@@ -61,7 +61,11 @@ public class HomeViewController {
     private long lastKeepAliveTime = 0;
     
     // Flag to prevent multiple invalid session dialogs
-    private boolean invalidSessionDialogShown = false;
+    private static volatile boolean invalidSessionDialogShown = false;
+
+    public static boolean isInvalidSessionDialogShown() {
+        return invalidSessionDialogShown;
+    }
 
     public void setGameService(GameService gameService) {
         this.gameService = gameService;
@@ -279,6 +283,7 @@ public class HomeViewController {
         Stage dialogStage = new Stage();
         dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
         dialogStage.setTitle("Session Ended");
+        dialogStage.setAlwaysOnTop(true);
         dialogStage.initStyle(javafx.stage.StageStyle.UNDECORATED);
         dialogStage.setResizable(false);
         

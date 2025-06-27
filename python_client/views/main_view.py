@@ -363,8 +363,12 @@ class MultiplayerGameView(BaseView):
                 status_indicator = tk.Label(player_frame, text=status_text, font=("Arial", 10, "italic"), anchor="e", bg=bg_color, fg="#BDBDBD")
                 status_indicator.pack(side="right", padx=5)
 
-            # Make the frame clickable to spectate (if not self and not finished)
-            if not is_self:
+            # Make the frame clickable to spectate (if not self and user is done guessing)
+            if not is_self and is_user_done_guessing_for_self:
+                player_frame.bind("<Button-1>", lambda e, p=player: self.controller.set_spectate_player(p))
+                player_name_label.bind("<Button-1>", lambda e, p=player: self.controller.set_spectate_player(p))
+                score_label.bind("<Button-1>", lambda e, p=player: self.controller.set_spectate_player(p))
+            elif is_self: # Always allow clicking own name to reset POV to self
                 player_frame.bind("<Button-1>", lambda e, p=player: self.controller.set_spectate_player(p))
                 player_name_label.bind("<Button-1>", lambda e, p=player: self.controller.set_spectate_player(p))
                 score_label.bind("<Button-1>", lambda e, p=player: self.controller.set_spectate_player(p))

@@ -235,6 +235,24 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             String sessionResult = state.getStringFromGameState("sessionResult", "");
             boolean gameOver = "WIN".equals(sessionResult) || "LOSE".equals(sessionResult);
             if (gameOver && !gameOverDialogShown) {
+                // IMPORTANT: If the session has already been invalidated (e.g., player deleted),
+                // suppress the game over/victory dialog and proceed directly to cleanup.
+                if (client.player.controller.HomeViewController.isInvalidSessionDialogShown()) {
+                    System.out.println("Session already invalidated. Suppressing game over/victory dialog.");
+                    stopPolling();
+                    final String gameId = state.getGameId();
+                    final List<String> playerNames = new ArrayList<>(state.getAllPlayersEver());
+                    final Map<String, Integer> finalScores = new HashMap<>(state.getScoresFromGameState());
+                    Runnable showResultsAndGoHome = () -> {
+                        Platform.runLater(() -> {
+                            GameResultsView resultsView = new GameResultsView();
+                            resultsView.showResults(this.stage, playerNames, finalScores, model, gameId, this::handleBackToMenu);
+                        });
+                    };
+                    showResultsAndGoHome.run();
+                    return;
+                }
+
                 gameOverDialogShown = true;
                 stopPolling();
 
@@ -368,13 +386,14 @@ public class MultiplayerGameViewController implements MultiplayerGameModel.Lobby
             }
 
             int serverRemainingTime = state.getIntFromGameState("remainingTime", model.getGameService().getRoundTime());
-            // Stop timer if round is not in progress
-            if (!roundInProgress) {
+            // Stop timer if round is not in progress OR if remaining time is 0 (server-side)
+            if (!roundInProgress || serverRemainingTime <= 0) {
                 if (gameTimerHelper != null) {
                     gameTimerHelper.stopRoundTimer();
                 }
                 timerLabel.setText("0");
                 new animatefx.animation.Shake(timerLabel).play();
+                disableAllKeys(); // Immediately disable keys when round is not in progress or time is 0
             } else {
                 // Always sync the timer to the server's value
                 if (gameTimerHelper == null) {

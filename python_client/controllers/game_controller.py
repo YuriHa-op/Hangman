@@ -316,6 +316,15 @@ class GameController:
                 player_finish_times_map = self.model.get_mp_player_finish_times() # Get the new map
                 players = self.model.get_lobby_players() # Fetch players after getting lobby state
 
+                if my_username not in players:
+                    self.polling_active = False
+                    self.app_view.after(0, lambda: mp_game_view.show_game_cleaned_up_dialog(on_ok_callback=lambda: self.show_frame("MainMenu")))
+                    if not cleaned_up_session:
+                        try: self.model.cleanup_player_session(); 
+                        except Exception: pass; 
+                        cleaned_up_session = True
+                    break
+
                 # Update _mp_game_was_ongoing for the current poll iteration AFTER fetching all current states
                 self._mp_game_was_ongoing = (lobby_status_current == "STARTED" or session_result_server == "ONGOING")
 
@@ -463,14 +472,10 @@ class GameController:
                 )
                 
                 should_update_scores = current_scores_panel_state != self.last_scores_panel_state_mp
-                if should_update_scores:
-                    self.last_scores_panel_state_mp = current_scores_panel_state
 
                 # State for keyboard
                 current_keyboard_state_tuple = (pov_username, frozenset(player_guesses_map.get(pov_username, [])), all_current_words.get(pov_username, ""), can_truly_guess, interaction_over_for_pov, current_round_server)
                 should_update_keyboard = current_keyboard_state_tuple != self.last_keyboard_state_mp
-                if should_update_keyboard:
-                     self.last_keyboard_state_mp = current_keyboard_state_tuple
 
                 # Schedule the main UI update
                 self.app_view.after(0, lambda pov_u=pov_username, p_guesses=dict(player_guesses_map), act_words=dict(all_current_words), c_truly_g=can_truly_guess, interact_o=interaction_over_for_pov, wd=word_display, td=timer_display, rd=round_display, sd=status_display, pl=list(players), sc=dict(scores), iudgfsb=is_user_done_guessing_for_spectate_button, sh_upd_kb=should_update_keyboard, sh_upd_sc=should_update_scores: 

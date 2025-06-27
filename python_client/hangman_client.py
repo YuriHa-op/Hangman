@@ -219,6 +219,12 @@ def play_multiplayer_game(login_service, game_service, username, session_id):
                 print("No active game found.")
                 break
                 
+            # If player is no longer in the game, exit
+            players_in_game = game_state.get("maskedWords", {}).keys()
+            if username not in players_in_game and game_state.get("roundInProgress", False):
+                print("\nYou are no longer in the game. Returning to main menu.")
+                break
+
             # Check if game is over
             game_winner = game_state.get("gameWinner")
             if game_winner:
@@ -292,13 +298,6 @@ def play_multiplayer_game(login_service, game_service, username, session_id):
                     print("Correct!")
                 else:
                     print("Incorrect!")
-                    
-                # Show other players' progress after making a guess
-                print("\nOther players:")
-                for player, word in masked_words.items():
-                    if player != username:
-                        incorrect = incorrect_guesses_map.get(player, 0)
-                        print(f"{player}: {word} (Incorrect: {incorrect}/5)")
             else:
                 print("Waiting for round to start...")
                 time.sleep(1)
@@ -613,7 +612,7 @@ def login_or_create(login_service):
                     print("Login successful!")
                     return username, response.sessionId
                 else:
-                    print("Login failed. Check your credentials.")
+                    print("Login failed. Please check your username and password, or create a new account.")
             except LoginModule.AlreadyLoggedInException as e:
                 print(f"Error: {e.message}")
                 force_logout = input("This account is already logged in. Force logout? (y/n): ").strip().lower()
