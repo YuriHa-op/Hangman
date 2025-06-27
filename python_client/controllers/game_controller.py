@@ -394,6 +394,8 @@ class GameController:
                 interaction_over_for_pov = bool(game_winner_server) or (not round_in_progress_server and pov_username == my_username) or (pov_username == my_username and my_player_is_done_this_round) or (self.spectating_player and pov_is_done_guessing)
                 is_user_done_guessing_for_spectate_button = my_player_is_done_this_round or not round_in_progress_server
 
+                # Store flag to enforce spectate restrictions in the click handler
+                self._can_spectate_now = is_user_done_guessing_for_spectate_button
 
                 # --- Main Game Logic Flow (Game Over / Round In Progress / Round Over) ---
                 if game_winner_server or (session_result_server not in ["ONGOING", None, ""]):
@@ -512,7 +514,19 @@ class GameController:
         self.model.send_multiplayer_guess(letter.lower())
 
     def set_spectate_player(self, player_username):
-        self.spectating_player = player_username
+        """Attempt to change spectating POV. Only allowed if user finished their own word/guesses
+        or the round is already over (enforced via _can_spectate_now flag)."""
+        if not getattr(self, "_can_spectate_now", False):
+            # Ignore clicks when spectating is not permitted (prevents cheating)
+            return
+
+        # Prevent selecting self while already POV self (no-op)
+        my_username = self.model.get_username() if self.model else None
+        if player_username == my_username:
+            self.spectating_player = None
+        else:
+            self.spectating_player = player_username
+
         # The poll will pick this up and change the POV.
         self.last_keyboard_state_mp = None # Force keyboard refresh on next poll for new POV
 

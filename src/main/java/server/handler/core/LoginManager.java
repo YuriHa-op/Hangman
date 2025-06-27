@@ -229,8 +229,13 @@ public class LoginManager {
                         activeSessions.put(username, sessionId);
                     }
                 } else {
-                    // Session is invalid - notify the client
-                    sessionNotifier.notifySessionInvalidated(username, "Your session is no longer valid.");
+                    // Session is invalid. Only notify if this exact session was the active one
+                    String cachedSessionId = activeSessions.get(username);
+                    if (cachedSessionId != null && cachedSessionId.equals(sessionId)) {
+                        sessionNotifier.notifySessionInvalidated(username, "Your session is no longer valid.");
+                        // Remove cached entry so stale sessions aren't repeatedly notified
+                        activeSessions.remove(username);
+                    }
                 }
                 
                 return isValid;

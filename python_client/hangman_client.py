@@ -42,7 +42,7 @@ def check_session(login_service, username, session_id):
             print(f"\n\n[FATAL] Connection to server lost: {e}. Exiting.")
             session_valid.clear()
             break
-        time.sleep(5) # Check every 5 seconds
+        time.sleep(1) # Faster detection (~1s)
 
 # --- Helper function to show a pop-up if no match is found ---
 def show_no_match_popup():
