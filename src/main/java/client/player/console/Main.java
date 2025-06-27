@@ -177,12 +177,12 @@ public class Main {
                 return;
             }
 
-            System.out.println("Players in lobby: " + state.getPlayers());
-            if (state.getPlayers().size() > 1 && "STARTED".equalsIgnoreCase(state.getState())) {
-                System.out.println("Game starting!");
+                System.out.println("Players in lobby: " + state.getPlayers());
+                if (state.getPlayers().size() > 1 && "STARTED".equalsIgnoreCase(state.getState())) {
+                    System.out.println("Game starting!");
                 multiModel.playerReadyForNextRound();
-                break; // Exit lobby wait loop
-            }
+                    break; // Exit lobby wait loop
+                }
 
             // Use server-provided queue time for timeout
             if (state.getQueueTimeSeconds() > 0 && (System.currentTimeMillis() - lobbyStartTime) / 1000 > state.getQueueTimeSeconds()) {
@@ -224,7 +224,7 @@ public class Main {
                 } else {
                     // Fallback for other states
                     if (!winner.isEmpty()) {
-                        System.out.println("Winner: " + winner);
+                    System.out.println("Winner: " + winner);
                     }
                 }
 
