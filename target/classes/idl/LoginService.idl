@@ -26,5 +26,7 @@ module LoginModule {
         Bool checkSessionValid(in string username);
 
         Bool keepAlive(in string username, in string sessionId);
+        
+        Bool isPlayerDeleted(in string username);
     };
 }; 

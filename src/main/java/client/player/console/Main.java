@@ -163,17 +163,34 @@ public class Main {
         System.out.println("Waiting for other players to join the lobby...");
 
         // Wait for enough players and lobby to start
+        long lobbyStartTime = System.currentTimeMillis();
         while (sessionValid.get()) {
             multiModel.updateLobbyState();
             MultiplayerGameModel.LobbyState state = multiModel.getLastLobbyState();
-            if (state != null && state.getPlayers() != null) {
-                System.out.println("Players in lobby: " + state.getPlayers());
-                if (state.getPlayers().size() > 1 && "STARTED".equalsIgnoreCase(state.getState())) {
-                    System.out.println("Game starting!");
-                    multiModel.playerReadyForFirstRound();
-                    break; // Exit lobby wait loop
-                }
+            if (state == null) {
+                System.out.println("Lost connection to server or lobby disbanded. Returning to menu.");
+                return;
             }
+
+            if ("CANCELLED".equalsIgnoreCase(state.getState())) {
+                System.out.println("Lobby was cancelled. Returning to home menu.");
+                return;
+            }
+
+            System.out.println("Players in lobby: " + state.getPlayers());
+            if (state.getPlayers().size() > 1 && "STARTED".equalsIgnoreCase(state.getState())) {
+                System.out.println("Game starting!");
+                multiModel.playerReadyForNextRound();
+                break; // Exit lobby wait loop
+            }
+
+            // Use server-provided queue time for timeout
+            if (state.getQueueTimeSeconds() > 0 && (System.currentTimeMillis() - lobbyStartTime) / 1000 > state.getQueueTimeSeconds()) {
+                System.out.println("Lobby timed out. Not enough players joined within the allowed time. Returning to home menu.");
+                multiModel.leaveGame(); // Signal server that client is leaving
+                return;
+            }
+
             try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
         }
 
@@ -189,14 +206,28 @@ public class Main {
                 break;
             }
 
-            // Check for game over
-            Boolean isGameOver = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("gameOver"));
-            if (isGameOver) {
+            // Check for game over using sessionResult (highest priority)
+            String sessionResult = state.getStringFromGameState("sessionResult", "");
+            if (sessionResult != null && !sessionResult.isEmpty() && !sessionResult.equalsIgnoreCase("ONGOING")) {
                 System.out.println("\nGame Over!");
                 String winner = state.getStringFromGameState("gameWinner", "");
-                if (winner != null && !winner.isEmpty()) {
-                    System.out.println("Winner: " + winner);
+
+                if ("WIN".equalsIgnoreCase(sessionResult)) {
+                    System.out.println("Congratulations, you won the game!");
+                } else if ("LOSE".equalsIgnoreCase(sessionResult)) {
+                    System.out.println("Sorry, you lost the game.");
+                    if (!winner.isEmpty()) {
+                        System.out.println("Winner: " + winner);
+                    }
+                } else if ("DRAW".equalsIgnoreCase(sessionResult)) {
+                    System.out.println("The game is a draw!");
+                } else {
+                    // Fallback for other states
+                    if (!winner.isEmpty()) {
+                        System.out.println("Winner: " + winner);
+                    }
                 }
+
                 Map<String, Integer> scores = state.getScoresFromGameState();
                 if (scores != null && !scores.isEmpty()) {
                     System.out.println("Final Scores:");
@@ -205,8 +236,12 @@ public class Main {
                 break; // Exit game loop
             }
 
-            // Check if round is over
-            Boolean isRoundOver = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundOver"));
+            // --- Detect if the round has ended ---
+            int currentRoundNum = state.getIntFromGameState("currentRound", -1);
+            Boolean roundInProgressFlag = state.getGameState() != null && Boolean.TRUE.equals(state.getGameState().get("roundInProgress"));
+
+            boolean isRoundOver = currentRoundNum >= 0 && !roundInProgressFlag;
+
             if (isRoundOver) {
                 String roundWinner = state.getStringFromGameState("roundWinner", "");
                 System.out.println("\nRound Over!");
@@ -215,9 +250,40 @@ public class Main {
                 } else {
                     System.out.println("No winner this round.");
                 }
-                System.out.println("Press Enter to continue...");
+                System.out.println("Press Enter to advance to the next round...");
                 scanner.nextLine();
-                multiModel.playerReadyForFirstRound(); // Signal ready for next round
+                multiModel.playerReadyForNextRound(); // Signal ready for next round
+
+                // Wait for the server to transition to the next round
+                long waitStartTime = System.currentTimeMillis();
+                final long MAX_WAIT_FOR_NEXT_ROUND_MS = 10 * 1000; // Wait up to 10 seconds
+
+                while (sessionValid.get()) {
+                    multiModel.updateLobbyState();
+                    MultiplayerGameModel.LobbyState newState = multiModel.getLastLobbyState();
+
+                    if (newState == null) {
+                        System.out.println("Lost connection to server while waiting for next round. Returning to menu.");
+                        return; // Exit playMultiplayer method
+                    }
+
+                    // Detect if the next round has begun
+                    Boolean newRoundInProgress = newState.getGameState() != null && Boolean.TRUE.equals(newState.getGameState().get("roundInProgress"));
+                    int nextRoundNum = newState.getIntFromGameState("currentRound", -1);
+
+                    // If round is in progress AND it's a different round number, we can proceed
+                    if (Boolean.TRUE.equals(newRoundInProgress) && nextRoundNum != currentRoundNum) {
+                        System.out.println("New round detected. Proceeding...");
+                        break; // Exit wait loop, continue main game loop
+                    }
+
+                    if (System.currentTimeMillis() - waitStartTime > MAX_WAIT_FOR_NEXT_ROUND_MS) {
+                        System.out.println("Timed out waiting for next round to start. Returning to home menu.");
+                        return; // Exit playMultiplayer method
+                    }
+
+                    try { Thread.sleep(500); } catch (InterruptedException ignored) {} // Shorter sleep for faster polling
+                }
                 continue;
             }
 
@@ -367,7 +433,7 @@ public class Main {
                 return;
             }
 
-            java.lang.reflect.Type mapType = new TypeToken<java.util.Map<String, Object>>>(){}.getType();
+            java.lang.reflect.Type mapType = new TypeToken<java.util.Map<String, Object>>(){}.getType();
             Map<String, Object> details = gson.fromJson(detailsJson, mapType);
 
             long endTime = ((Double) details.get("gameEndTime")).longValue();

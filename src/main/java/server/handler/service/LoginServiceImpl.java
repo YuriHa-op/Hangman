@@ -128,4 +128,9 @@ public class LoginServiceImpl extends LoginServicePOA {
         }
         return isValid;
     }
+
+    @Override
+    public Bool isPlayerDeleted(String username) {
+        return loginManager.isPlayerDeleted(username) ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
+    }
 } 

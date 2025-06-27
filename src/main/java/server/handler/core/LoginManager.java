@@ -311,4 +311,20 @@ public class LoginManager {
             e.printStackTrace();
         }
     }
+
+    public boolean isPlayerDeleted(String username) {
+        if (username == null) {
+            return true;
+        }
+        try (Connection conn = getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM players WHERE username = ?")) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                return !rs.next(); // If no rows, player is deleted
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return true; // Assume deleted on error to be safe
+        }
+    }
 } 

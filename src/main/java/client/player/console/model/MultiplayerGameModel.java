@@ -232,12 +232,12 @@ public class MultiplayerGameModel {
         }
     }
 
-    public void playerReadyForFirstRound() {
+    public void playerReadyForNextRound() {
         if (username != null && !username.isEmpty()) {
             try {
-                gameService.playerReadyForFirstRound(username);
+                startNextRound();
             } catch (Exception e) {
-                System.err.println("Error signaling player ready for first round: " + e.getMessage());
+                System.err.println("Error signaling player ready for next round: " + e.getMessage());
             }
         }
     }

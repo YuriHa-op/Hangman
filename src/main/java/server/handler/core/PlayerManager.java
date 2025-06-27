@@ -123,15 +123,17 @@ public class PlayerManager {
     }
 
     public Bool updatePlayerWins(String username, int wins) {
+        System.out.println("Attempting to update wins for user: " + username + " to " + wins);
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                     "UPDATE players SET wins = ? WHERE username = ?")) {
+                     "UPDATE players SET wins = ?, last_win_timestamp = NOW() WHERE username = ?")) {
             ps.setInt(1, wins);
             ps.setString(2, username);
             int rowsAffected = ps.executeUpdate();
+            System.out.println("UpdatePlayerWins: Rows affected for " + username + ": " + rowsAffected);
             return rowsAffected > 0 ? Bool.BOOL_TRUE : Bool.BOOL_FALSE;
         } catch (SQLException e) {
-            System.err.println("Database error updating wins: " + e.getMessage());
+            System.err.println("Database error updating wins for " + username + ": " + e.getMessage());
             return Bool.BOOL_FALSE;
         }
     }
@@ -228,7 +230,7 @@ public class PlayerManager {
     public List<LeaderboardEntryDTO> getLeaderboardEntries() {
         List<LeaderboardEntryDTO> leaderboard = new ArrayList<>();
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT username, wins FROM players ORDER BY wins DESC, username ASC LIMIT 5")) {
+             PreparedStatement stmt = conn.prepareStatement("SELECT username, wins FROM players ORDER BY wins DESC, last_win_timestamp DESC, username ASC LIMIT 5")) {
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 leaderboard.add(new LeaderboardEntryDTO(rs.getString("username"), rs.getInt("wins")));
