@@ -1,16 +1,13 @@
-package client.player;
+package client.player.console;
 
-import client.player.model.LoginModel;
-import client.player.model.GameModel;
-import client.player.model.MultiplayerGameModel;
+import client.player.console.model.LoginModel;
+import client.player.console.model.MultiplayerGameModel;
 import GameModule.GameService;
-import GameModule.GameStateDTO;
 import GameModule.LeaderboardEntryDTO;
 import LoginModule.Bool;
 import LoginModule.AlreadyLoggedInException;
 import org.omg.CORBA.ORB;
 import java.util.Scanner;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -165,7 +162,7 @@ public class Main {
         multiModel.startGame();
         System.out.println("Waiting for other players to join the lobby...");
         // Wait for enough players and lobby to start
-        while (true) {
+        while (sessionValid.get()) {
             multiModel.updateLobbyState();
             MultiplayerGameModel.LobbyState state = multiModel.getLastLobbyState();
             if (state != null && state.getPlayers() != null) {
@@ -174,7 +171,7 @@ public class Main {
                     System.out.println("Game starting!");
                     multiModel.playerReadyForFirstRound();
                     // Wait for the first round to actually start
-                    while (true) {
+                    while (sessionValid.get()) {
                         multiModel.updateLobbyState();
                         MultiplayerGameModel.LobbyState roundState = multiModel.getLastLobbyState();
                         String maskedWord = roundState.getPlayerMaskedWord(username);
@@ -189,8 +186,11 @@ public class Main {
             }
             try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
         }
+
+        if (!sessionValid.get()) return; // Exit if session became invalid during wait
+
         // Main game loop: handle rounds until game over
-        while (true) {
+        while (sessionValid.get()) {
             multiModel.updateLobbyState();
             MultiplayerGameModel.LobbyState state = multiModel.getLastLobbyState();
             if (state == null) {
@@ -220,7 +220,7 @@ public class Main {
             if (roundInProgress == null || !roundInProgress) {
                 // Wait for the next round to start
                 System.out.println("Waiting for next round to start...");
-                while (true) {
+                while (sessionValid.get()) {
                     multiModel.updateLobbyState();
                     MultiplayerGameModel.LobbyState nextState = multiModel.getLastLobbyState();
                     Boolean nextRoundInProgress = nextState.getGameState() != null && Boolean.TRUE.equals(nextState.getGameState().get("roundInProgress"));
@@ -229,6 +229,7 @@ public class Main {
                     }
                     try { Thread.sleep(500); } catch (InterruptedException ignored) {}
                 }
+                if (!sessionValid.get()) break; // Exit outer loop if session invalidated
                 continue;
             }
             // Show current round state

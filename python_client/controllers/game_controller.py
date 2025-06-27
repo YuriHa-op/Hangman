@@ -5,6 +5,7 @@ import sys
 import json # For parsing match history/details if model returns JSON strings
 import subprocess
 import os
+from tkinter import messagebox
 from models.game_model import GameModel # Adjusted import
 from views.main_view import MainMenuView, MultiplayerQueueView, MatchHistoryView, MultiplayerGameView, SinglePlayerGameView, LeaderboardView # Adjusted import
 import GameModule # For GameModule.AlreadyLoggedInException
@@ -16,7 +17,8 @@ class GameController:
         self.model = game_model
         self.current_view = None
         self.polling_active = False
-        self.keep_alive_timer = None # For session keep-alive
+        self._session_check_thread = None
+        self._session_check_running = False
         self.spectating_player = None # For multiplayer spectate
         self.last_keyboard_state_mp = None # For multiplayer keyboard updates
         self.last_scores_panel_state_mp = None # For multiplayer scores panel
@@ -61,7 +63,7 @@ class GameController:
 
     def start(self):
         self.setup_frames()
-        self.start_keep_alive() # Start session keep-alive now that user is logged in
+        self.start_session_checking() # Start frequent session check
         self.show_frame("MainMenu") # Start with the main menu view
         self.app_view.run() # Start the Tkinter main loop
 
@@ -100,7 +102,7 @@ class GameController:
 
     def handle_exit(self):
         self.stop_all_polling()
-        self.stop_keep_alive() # Stop keep-alive timer
+        self.stop_session_checking() # Stop the new checker
         # Perform any cleanup if necessary via model
         if self.model.get_username():
             self.model.cleanup_player_session() # Cleanup game resources
@@ -110,43 +112,70 @@ class GameController:
 
     # --- MainMenuView Handlers ---
     def handle_logout(self):
-        self.stop_keep_alive() # Stop keep-alive timer
+        self.stop_session_checking()
         self.model.cleanup_player_session() # Cleanup game resources
         self.model.logout()
         self._launch_login_app()
 
-    # --- Keep-Alive Session Management ---
-    def start_keep_alive(self):
-        # Stop any existing timer before starting a new one
-        self.stop_keep_alive()
-        
-        # Call the keep-alive function
-        if self.model.keep_alive():
-            # If successful, schedule the next keep-alive call
-            # Server session timeout is 60s, so 50s is a safe interval
-            self.keep_alive_timer = threading.Timer(50, self.start_keep_alive)
-            self.keep_alive_timer.daemon = True # Ensure thread doesn't block exit
-            self.keep_alive_timer.start()
-        else:
-            # If keep-alive fails, the session is likely invalid.
-            # Force logout on the UI thread.
-            print("Session keep-alive failed. Forcing logout.")
-            self.app_view.after(0, self.force_logout_on_session_expiry)
+    # --- Session Management ---
+    def start_session_checking(self, interval=5.0):
+        """Starts a background thread to periodically check session validity."""
+        self.stop_session_checking()
+        self._session_check_running = True
+        self._session_check_thread = threading.Thread(
+            target=self._session_check_worker,
+            args=(interval,),
+            daemon=True
+        )
+        self._session_check_thread.start()
 
-    def stop_keep_alive(self):
-        if self.keep_alive_timer:
-            self.keep_alive_timer.cancel()
-            self.keep_alive_timer = None
+    def stop_session_checking(self):
+        """Stops the session checking thread."""
+        self._session_check_running = False
+        if self._session_check_thread and self._session_check_thread.is_alive():
+            try:
+                self._session_check_thread.join(1.0)
+            except Exception:
+                pass # Ignore errors on join
+        self._session_check_thread = None
+
+    def _session_check_worker(self, interval):
+        """Worker thread for session checking."""
+        while self._session_check_running:
+            time.sleep(interval)
+            if not self._session_check_running:
+                break
+            try:
+                if not self.model.keep_alive():
+                    print("Session check failed in GameController. Forcing logout.")
+                    self._session_check_running = False
+                    self.app_view.after(0, self.force_logout_on_session_expiry)
+                    break
+            except Exception as e:
+                print(f"Error during session check in GameController: {e}. Forcing logout.")
+                self._session_check_running = False
+                self.app_view.after(0, self.force_logout_on_session_expiry)
+                break
 
     def force_logout_on_session_expiry(self):
-        # This method is called from the main thread to safely update UI
+        """Handles forced logout on the main UI thread."""
         self.stop_all_polling()
-        self.model.logout() # Clear client-side user/session data
-        self.show_frame("Login")
+        self.stop_session_checking()
+        try:
+            # Attempt to clean up server resources, but don't block if it fails
+            self.model.cleanup_player_session()
+            self.model.logout()
+        except Exception as e:
+            print(f"Ignoring error during session expiry cleanup: {e}")
+
+        # Show a message box to inform the user
+        messagebox.showinfo(
+            "Session Invalidated",
+            "Your session has ended because the account was deleted or logged in elsewhere. Returning to the login screen."
+        )
         
-        login_view = self.app_view.frames.get("Login")
-        if login_view:
-            login_view.set_status("Your session has expired. Please log in again.", color="red")
+        # Relaunch the login app and close this one
+        self._launch_login_app()
 
     # --- MultiplayerQueueView Handlers ---
     def start_multiplayer_queue_poll(self):

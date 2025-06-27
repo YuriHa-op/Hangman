@@ -1,114 +1,91 @@
-/*
- * Minecraft-themed QSS stylesheet
- * By Gemini
- */
-
 QWidget#login_panel {
-    background-color: rgba(49, 50, 51, 0.85); /* Semi-transparent dark grey */
-    border-radius: 5px;
+    background-color: rgba(49, 50, 51, 0.85);
+    border-radius: 6px;
 }
-
-/* All labels inside the login panel */
 QWidget#login_panel QLabel {
     color: #B4B4B4;
     font-family: "Minecraftia";
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: bold;
     text-transform: uppercase;
     text-shadow: none;
 }
-
 QLabel#no_account_label {
-    text-transform: none; /* Override for this specific label */
+    text-transform: none;
     font-weight: normal;
 }
-
 QLineEdit {
     background-color: #000000;
     border: 1px solid #1E1E1E;
     color: #FFFFFF;
     font-family: "Minecraftia";
-    padding: 10px;
+    padding: 9px 10px 10px 11px;
     font-size: 14px;
-    border-radius: 2px;
+    border-radius: 3px;
 }
-
 QLineEdit:focus {
     border: 1px solid #777777;
     outline: none;
 }
-
-/* The main login button */
 QPushButton#login_button {
-    background-color: #FEC80A; /* Minecraft Gold/Yellow */
+    background-color: #FEC80A;
     color: white;
     font-family: "Minecraftia";
     font-size: 14px;
     font-weight: bold;
-    border: 2px solid #A17E0A; /* Darker yellow border */
-    border-radius: 2px;
-    padding: 10px;
+    border: 2px solid #A17E0A;
+    border-radius: 2.5px;
+    padding: 10px 9px;
     outline: none;
 }
-
 QPushButton#login_button:hover {
-    background-color: #FFD44C; /* Lighter yellow on hover */
+    background-color: #FFD44C;
 }
-
 QPushButton#login_button:pressed {
-    background-color: #EAA800; /* Darker yellow when pressed */
+    background-color: #EAA800;
     border-color: #A17E0A;
 }
-
-/* The 'Sign up' button, styled as a link */
 QPushButton#create_account_button {
     background-color: transparent;
     border: none;
-    color: #FEC80A; /* Minecraft Gold/Yellow */
+    color: #FEC80A;
     text-decoration: underline;
     font-family: "Minecraftia";
-    font-size: 11px;
+    font-size: 10.8px;
     font-weight: normal;
-    text-align: left; /* Align text to the left */
+    text-align: left;
     padding: 0;
 }
-
 QPushButton#create_account_button:hover {
-    color: #FFD44C; /* Lighter yellow on hover */
+    color: #FFD44C;
 }
-
-/* --- Dialog Styling --- */
 QMessageBox {
-    background-color: #313233; /* Dark panel color */
+    background-color: #313233;
     border: 2px solid #555555;
 }
-
 QMessageBox QLabel {
     color: #FFFFFF;
     font-family: "Minecraftia";
     font-size: 12px;
-    padding: 10px;
+    padding: 1em;
 }
-
 QMessageBox QPushButton {
-    background-color: #707070; /* Stone grey */
-    color: #DDDDDD; /* Light grey text */
+    background-color: #707070;
+    color: #DDDDDD;
     border-width: 2px;
     border-style: solid;
-    border-color: #898989 #5C5C5C #5C5C5C #898989; /* 3D effect */
-    padding: 8px 25px;
+    border-color: #898989 #5C5C5C #5C5C5C #898989;
+    padding: 7px 24px;
     font-family: "Minecraftia";
     font-size: 12px;
     font-weight: bold;
-    min-width: 80px;
+    min-width: 82px;
 }
-
 QMessageBox QPushButton:hover {
-    background-color: #828282; /* Lighter grey */
-    color: #FFFFA0; /* Yellowish glow on hover */
+    background-color: #828282;
+    color: #FFFFA0;
 }
-
 QMessageBox QPushButton:pressed {
-    background-color: #5C5C5C; /* Darker grey when pressed */
-    border-color: #5C5C5C #898989 #898989 #5C5C5C; /* Invert 3D effect */
+    background-color: #5C5C5C;
+    border-color: #5C5C5C #898989 #898989 #5C5C5C;
 } 

@@ -459,8 +459,29 @@ public class GameViewController implements GameModel.MatchListener {
     }
 
     private void updateUI() {
-        GameStateDTO state = model.getGameState();
-        if (state == null) return; // Should not happen, but good guard
+        GameStateDTO state = null;
+        try {
+            state = model.getGameState();
+        } catch (Exception e) {
+            System.err.println("Exception in updateUI while getting game state: " + e.getMessage());
+            if (gameStatePoller != null) {
+                gameStatePoller.stop();
+            }
+            Platform.runLater(() -> {
+                GameViewHelper.showGameOverDialog(stage, "Your session has ended unexpectedly.", false, this::handleBackToMenu);
+            });
+            return;
+        }
+
+        if (state == null) {
+            if (gameStatePoller != null) {
+                gameStatePoller.stop();
+            }
+            Platform.runLater(() -> {
+                GameViewHelper.showGameOverDialog(stage, "Your session has ended.", false, this::handleBackToMenu);
+            });
+            return;
+        }
 
         // Handle waiting for match separately
         if (isWaitingForMatch(state)) {
@@ -510,25 +531,25 @@ public class GameViewController implements GameModel.MatchListener {
         }
 
         // Check if we are in the pre-first-round state (after match found, server waiting for ready signals)
-        boolean isPreFirstRoundState = !WAITING_FOR_MATCH.equals(state.maskedWord) && 
-                                     state.roundOver == GameModule.Bool.BOOL_FALSE &&
-                                     state.gameOver == GameModule.Bool.BOOL_FALSE &&
-                                     state.remainingTime == gameService.getRoundTime(); // Server sends full time when awaiting ready
+        boolean isPreFirstRoundState = !WAITING_FOR_MATCH.equals(state.maskedWord) &&
+                state.roundOver == GameModule.Bool.BOOL_FALSE &&
+                state.gameOver == GameModule.Bool.BOOL_FALSE &&
+                state.remainingTime == gameService.getRoundTime(); // Server sends full time when awaiting ready
 
         if (isPreFirstRoundState) {
-            stopTimerIfRunning(); 
+            stopTimerIfRunning();
             if (gameTimerHelper != null) {
                 gameTimerHelper.resetTimerLabelAppearance(); // Set text to "" and color to default
             } else if (timerLabel != null) {
                 timerLabel.setText(""); // Fallback if helper not init
                 timerLabel.setStyle(""); // Reset style, assuming default is no inline style or handled by CSS
             }
-            
+
             if (keyboardGrid != null && keyboardGrid.isVisible()) {
-                // keyboardGrid.setVisible(false); 
+                // keyboardGrid.setVisible(false);
             }
-            timeUpHandled = false; 
-            if (gameTimerHelper == null) { 
+            timeUpHandled = false;
+            if (gameTimerHelper == null) {
                 gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
                 gameTimerHelper.startRoundTimer(gameService.getRoundTime(), state.remainingTime); // This will now set initial color
             } else {
@@ -536,7 +557,7 @@ public class GameViewController implements GameModel.MatchListener {
                 int serverTime = state.remainingTime;
                 // Ensure timer also resyncs if it was previously in a "blank" state from pre-round
                 if (Math.abs(clientTime - serverTime) > 1 || clientTime > serverTime || clientTime == gameService.getRoundTime() || timerLabel.getText().isEmpty()) {
-                    gameTimerHelper.startRoundTimer(gameService.getRoundTime(), serverTime); 
+                    gameTimerHelper.startRoundTimer(gameService.getRoundTime(), serverTime);
                 }
             }
         } else if (state.roundOver == GameModule.Bool.BOOL_TRUE) {
@@ -546,18 +567,18 @@ public class GameViewController implements GameModel.MatchListener {
             stopTimerIfRunning();
             if (timerLabel != null) timerLabel.setText("0");
             if (!timeUpHandled) {
-                handleTimeUp(); 
+                handleTimeUp();
             }
         } else if (!isWaitingForMatch(state) && state.remainingTime > 0) { // Round is active and server says time > 0
-            timeUpHandled = false; 
-            if (gameTimerHelper == null) { 
+            timeUpHandled = false;
+            if (gameTimerHelper == null) {
                 gameTimerHelper = new GameTimerHelper(timerLabel, this::handleTimeUp);
                 gameTimerHelper.startRoundTimer(gameService.getRoundTime(), state.remainingTime);
             } else {
                 int clientTime = gameTimerHelper.getRemainingTime();
                 int serverTime = state.remainingTime;
                 if (Math.abs(clientTime - serverTime) > 1 || clientTime > serverTime || clientTime == gameService.getRoundTime()) {
-                    gameTimerHelper.startRoundTimer(gameService.getRoundTime(), serverTime); 
+                    gameTimerHelper.startRoundTimer(gameService.getRoundTime(), serverTime);
                 }
             }
         }
