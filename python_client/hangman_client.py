@@ -252,17 +252,21 @@ def play_multiplayer_game(login_service, game_service, username, session_id):
             # Display round status
             print(f"\nRound {current_round + 1}")
             print(f"Your word: {my_word}")
-            print(f"Incorrect guesses: {my_incorrect}/5 | Time left: {remaining_time}s")
+            scores = game_state.get("scores", {})
+            my_score = scores.get(username, 0)
+            print(f"Incorrect guesses: {my_incorrect}/5 | Time left: {remaining_time}s | Your Score: {my_score}")
             
             # Check if round is over
             round_winner = game_state.get("roundWinner")
             if round_winner:
                 # Show other players' progress when round is over
+                scores = game_state.get("scores", {})
                 print("\nOther players:")
                 for player, word in masked_words.items():
                     if player != username:
                         incorrect = incorrect_guesses_map.get(player, 0)
-                        print(f"{player}: {word} (Incorrect: {incorrect}/5)")
+                        player_score = scores.get(player, 0)
+                        print(f"{player}: {word} (Incorrect: {incorrect}/5) | Score: {player_score}")
                         
                 print(f"\nRound over! Winner: {round_winner}")
                 
@@ -531,7 +535,7 @@ def play_round(login_service, game_service, username, session_id):
     while session_valid.is_set():
         # Display game state
         print("-" * 20)
-        print(f"Round {state.currentRound}/{state.totalRounds} | Guesses left: {state.incorrectGuesses}/5 | Wins: {state.playerWins}")
+        print(f"Round {state.currentRound}/{state.totalRounds} | Guesses left: {state.incorrectGuesses}/5 | Score: {state.playerWins}")
         
         guess = input("Enter a letter (or 'quit' to exit): ").strip().lower()
         if guess == 'quit':
