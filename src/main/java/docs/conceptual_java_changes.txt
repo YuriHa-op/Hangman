@@ -1,7 +1,0 @@
-public class MultiplayerGameState {
-    private final Map<String, Long> playerFinishTimes;
-
-    public Map<String, Long> getAllPlayerFinishTimes() {
-        return new ConcurrentHashMap<>(playerFinishTimes);
-    }
-} 
