@@ -1,6 +1,6 @@
 package client.player.console.dto;
 
-import client.player.dto.MultiplayerRoundInfoDTO;
+import client.player.console.dto.MultiplayerRoundInfoDTO;
 
 import java.util.List;
 
@@ -9,7 +9,7 @@ public class MultiplayerGameDetailsDTO {
     private int totalRounds;
     private String overallWinner;
     private List<String> players;
-    private List<client.player.dto.MultiplayerRoundInfoDTO> rounds;
+    private List<client.player.console.dto.MultiplayerRoundInfoDTO> rounds;
     private long gameEndTime;
 
     // Getters

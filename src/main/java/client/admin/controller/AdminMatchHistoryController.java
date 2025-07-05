@@ -3,7 +3,7 @@ package client.admin.controller;
 import AdminModule.AdminService;
 // Removed direct import of GameSummary and MatchSummary from player controller, as they are defined below if different
 // or assumed to be compatible if Admin uses the same DAO's GameSummary
-import client.player.controller.MatchDetailsDialogController; 
+import client.admin.controller.AdminMatchDetailsDialogController;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import javafx.application.Platform;
@@ -152,7 +152,7 @@ public class AdminMatchHistoryController {
                             } else {
                                 jsonDetails = adminService.getMatchDetails(gameId);
                             }
-                            MatchDetailsDialogController.showDialog(stage, jsonDetails, mode); 
+                            AdminMatchDetailsDialogController.showDialog(stage, jsonDetails, mode);
                         });
                     }
                     @Override
